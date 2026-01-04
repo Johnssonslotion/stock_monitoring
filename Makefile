@@ -25,3 +25,14 @@ verify: ## Verify data collection (run after 2-3 minutes)
 clean: ## Remove all containers, volumes, and data
 	docker compose -f deploy/docker-compose.yml down -v
 	rm -rf data/*.duckdb
+## debug-redis: Watch Redis traffic in real-time
+debug-redis:
+	docker exec stock-redis redis-cli MONITOR
+
+## debug-pubsub: Check pub/sub subscribers count
+debug-pubsub:
+	docker exec stock-redis redis-cli PUBSUB NUMSUB "tick.*"
+
+## debug-channels: List all active channels
+debug-channels:
+	docker exec stock-redis redis-cli PUBSUB CHANNELS
