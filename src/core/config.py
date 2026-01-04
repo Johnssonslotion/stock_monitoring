@@ -45,6 +45,12 @@ class AppConfig(BaseModel):
             
         with open(config_path, "r", encoding="utf-8") as f:
             config_dict = yaml.safe_load(f)
+        
+        # Override with environment variables if present (Docker/production)
+        if "REDIS_URL" in os.environ:
+            if "data" not in config_dict:
+                config_dict["data"] = {}
+            config_dict["data"]["redis_url"] = os.environ["REDIS_URL"]
             
         return cls(**config_dict)
 

@@ -1,17 +1,27 @@
-.PHONY: help up down clean
+.PHONY: help up down restart logs verify clean
 
-help:
-	@echo "Stock Monitoring Project Management"
-	@echo "Usage:"
-	@echo "  make up    : Start services"
-	@echo "  make down  : Stop services"
-	@echo "  make clean : Remove artifacts"
+help: ## Display this help message
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
-up:
-	docker-compose -f deploy/docker-compose.yml up -d
+up: ## Start all services
+	docker compose -f deploy/docker-compose.yml up -d
 
-down:
-	docker-compose -f deploy/docker-compose.yml down
+down: ## Stop all services
+	docker compose -f deploy/docker-compose.yml down
 
-clean:
-	find . -type d -name "__pycache__" -exec rm -rf {} +
+restart: down up ## Restart all services
+
+logs: ## View logs from all services
+	docker compose -f deploy/docker-compose.yml logs -f
+
+verify: ## Verify data collection (run after 2-3 minutes)
+	@echo "=== Checking Tick Data ==="
+	@docker exec tick-archiver python -c "import duckdb; conn = duckdb.connect('data/market_data.duckdb'); print('Ticks:', conn.execute('SELECT count(*) FROM ticks').fetchone()[0])" || echo "No ticks yet"
+	@echo "\n=== Checking News Data ==="
+	@docker exec news-collector python -c "import duckdb; conn = duckdb.connect('data/market_data.duckdb'); print('News:', conn.execute('SELECT count(*) FROM news').fetchone()[0])" || echo "No news yet"
+
+clean: ## Remove all containers, volumes, and data
+	docker compose -f deploy/docker-compose.yml down -v
+	rm -rf data/*.duckdb

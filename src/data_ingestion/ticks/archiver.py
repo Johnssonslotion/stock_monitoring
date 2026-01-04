@@ -24,7 +24,7 @@ class TickArchiver:
     
     def __init__(self, batch_size: int = 100, flush_interval: int = 1):
         self.redis_url = settings.data.redis_url
-        self.db_path = "data/market_data.duckdb"
+        self.db_path = "data/ticks.duckdb"  # Separate DB for tick data
         self.redis_client = None
         self.running = False
         
@@ -102,8 +102,8 @@ class TickArchiver:
         await self.connect_redis()
         
         pubsub = self.redis_client.pubsub()
-        await pubsub.subscribe("tick.*") # Pattern Subscribe
-        logger.info("Subscribed to tick.* channels")
+        await pubsub.psubscribe("tick.*")  # Pattern Subscribe (use psubscribe not subscribe)
+        logger.info("Pattern-subscribed to tick.* channels")
 
         try:
             while self.running:

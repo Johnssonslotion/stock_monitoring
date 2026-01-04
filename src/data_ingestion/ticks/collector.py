@@ -105,6 +105,8 @@ class TickCollector:
                         async for msg in ws:
                             if not self.running:
                                 break
+                            
+                            logger.debug(f"Received message type: {msg.type}")  # DEBUG
                                 
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 # Upbit sends Blob (Binary) usually, but aiohttp handles text
@@ -115,6 +117,7 @@ class TickCollector:
                                 normalized = self.normalize(data)
                                 if normalized:
                                     await self.publish_tick(normalized)
+                                    logger.info(f"Published tick: {normalized['symbol']} @ {normalized['price']}")  # INFO
                                     
                             elif msg.type == aiohttp.WSMsgType.ERROR:
                                 logger.error(f"WebSocket Error: {msg.data}")
@@ -125,7 +128,7 @@ class TickCollector:
 
 if __name__ == "__main__":
     # 간단한 실행 테스트 (Production에서는 별도 Entrypoint 사용)
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)  # Changed to DEBUG
     collector = TickCollector()
     try:
         asyncio.run(collector.run())
