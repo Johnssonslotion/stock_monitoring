@@ -15,26 +15,45 @@ st.set_page_config(
 
 st.title("📈 Stock Monitoring Dashboard")
 
-# Auto-refresh interval (in seconds)
-REFRESH_INTERVAL = st.sidebar.slider("Refresh Interval (s)", 5, 60, 10)
+import shutil
 
-# Database Paths
-TICKS_DB = "data/ticks.duckdb"
-NEWS_DB = "data/news.duckdb"
+# ... (Previous imports)
 
-@st.cache_data(ttl=5)  # Cache for 5 seconds
-def load_ticks_data(hours=1):
-    """Load tick data from DuckDB"""
+def get_db_connection(db_path):
+    """
+    DuckDB 동시성 문제(Lock)를 회피하기 위해 
+    DB 파일을 임시 경로로 복사(Snapshot)하여 연결합니다.
+    """
+    if not os.path.exists(db_path):
+        return None
+        
+    # Create a temp filename based on original filename
+    filename = os.path.basename(db_path)
+    temp_path = f"/tmp/{filename}"
+    
     try:
-        if not os.path.exists(TICKS_DB):
+        # Copy the file to temp location
+        # shutil.copy2 preserves metadata, copyfile is faster
+        # Copying .wal file might be needed if checkpoint hasn't happened, 
+        # but let's try just the main db file first.
+        # Archiver holds the lock, so direct read fails. File copy usually works.
+        shutil.copyfile(db_path, temp_path)
+        
+        # Connect to the temp file
+        conn = duckdb.connect(temp_path, read_only=True)
+        return conn
+    except Exception as e:
+        st.error(f"Snapshot creation failed: {e}")
+        return None
+
+@st.cache_data(ttl=5)
+def load_ticks_data(hours=1):
+    """Load tick data from DuckDB Snapshot"""
+    try:
+        conn = get_db_connection(TICKS_DB)
+        if not conn:
             return pd.DataFrame()
             
-        conn = duckdb.connect(TICKS_DB, read_only=True)
-        # Calculate timestamp for N hours ago
-        # timestamp in DB is unix timestamp (ms? no, we need to check schema)
-        # In collector, we didn't specify unit, but usually APIs allow ms.
-        # Let's check raw data or just load all for now limit 10000
-        
         query = f"""
             SELECT * 
             FROM ticks 
@@ -45,7 +64,6 @@ def load_ticks_data(hours=1):
         conn.close()
         
         # Convert timestamp to datetime
-        # Upbit timestamp is ms
         if not df.empty:
             df['datetime'] = pd.to_datetime(df['timestamp'], unit='ms')
             
@@ -56,19 +74,19 @@ def load_ticks_data(hours=1):
 
 @st.cache_data(ttl=60)
 def load_news_data():
-    """Load news data from DuckDB"""
+    """Load news data from DuckDB Snapshot"""
     try:
-        if not os.path.exists(NEWS_DB):
+        conn = get_db_connection(NEWS_DB)
+        if not conn:
             return pd.DataFrame()
-            
-        conn = duckdb.connect(NEWS_DB, read_only=True)
+
         query = "SELECT * FROM news ORDER BY published_at DESC LIMIT 50"
         df = conn.execute(query).fetchdf()
         conn.close()
         return df
     except Exception as e:
-        # Table might not exist yet
         return pd.DataFrame()
+
 
 # Main Layout
 col1, col2 = st.columns([2, 1])
