@@ -8,9 +8,19 @@
 
 ## 2. 데이터 수집 (Data Ingestion)
 ### 2.1 대상 소스
--   **뉴스 (News)**: 경제 전문 뉴스 RSS (매일경제, 한국경제 등), 네이버 금융 뉴스.
--   **소셜 (Social)**: Telegram 주요 주식 채널, 트위터(X) 금융 인플루언서 (API 허용 시).
--   **공시 (Disclosure)**: 전자공시시스템(DART) 주요 공시 (선택 사항).
+-   **뉴스 (News)**: 
+    -   **Global**: Reuters, Bloomberg (헤드라인 RSS).
+    -   **Domestic**: 매일경제, 한국경제 (네이버 금융 RSS).
+    -   **Political (US)**: Google News RSS (Keywords: 'Election', 'Trump', 'Regulation').
+    -   **Domestic (KR)**: 
+        -   **Politics**: 총선/대선 관련주, 정당별 공약 (키워드: '테마주', '공약', '수혜').
+        -   **Policy**: 금융 정책 및 규제 (키워드: '금투세', '밸류업', '공매도', '상법 개정').
+        -   **Social/Risk**: 오너 리스크, 노조 파업, 중대재해법 (키워드: '횡령', '배임', '파업', '압수수색').
+-   **소셜 및 정치 (Social & Politics)**:
+    -   **Platforms**: Truth Social (주요 인물 계정 모니터링), X (Elon Musk, SEC 등).
+    -   **Aggregators**: StockTwits (심리 파악), CryptoPanic (속보).
+    -   **이슈 트래킹**: 미국 대선, FOMC 회의록, 지정학적 리스크 키워드 감지.
+-   **공시 (Disclosure)**: 전자공시시스템(DART), SEC EDGAR (주요 기업).
 
 ### 2.2 수집 방식
 -   **주기**: 1시간 단위 Polling (실시간성보다는 비용 효율성 중시).

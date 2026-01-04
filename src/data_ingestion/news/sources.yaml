@@ -1,0 +1,44 @@
+# News Source Configuration
+sources:
+  - name: "google_news_us_politics"
+    type: "rss"
+    url: "https://news.google.com/rss/search?q=US+Politics+Election&hl=en-US&gl=US&ceid=US:en"
+    lang: "en"
+
+  - name: "mk_news_economy"
+    type: "rss"
+    url: "https://www.mk.co.kr/rss/30100041/" # 매일경제 경제
+    lang: "ko"
+    
+  - name: "hankyung_economy"
+    type: "rss"
+    url: "https://www.hankyung.com/feed/economy" # 한국경제 경제
+    lang: "ko"
+
+# Filtering Keywords (Case-insensitive)
+keywords:
+  # US Politics & Macro
+  - "election"
+  - "trump"
+  - "white house"
+  - "regulation"
+  - "sec"
+  - "fomc"
+  - "tariff"
+  
+  # KR Politics & Policy
+  - "총선"
+  - "대선"
+  - "금투세"
+  - "공매도"
+  - "밸류업"
+  - "상법 개정"
+  
+  # Risk & Themes
+  - "테마주"
+  - "수혜"
+  - "압수수색"
+  - "횡령"
+  - "배임"
+  - "파업"
+  - "중대재해"
