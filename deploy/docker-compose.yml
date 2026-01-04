@@ -1,14 +1,53 @@
 version: '3.8'
 
 services:
-  # Placeholder for future services
-  # web:
-  #   build: ./src/web
-  #   ports:
-  #     - "8080:8080"
-  
-  # Placeholder for database
-  # db:
-  #   image: postgres:13
-  #   environment:
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
+  redis:
+    image: redis:7-alpine
+    container_name: stock-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  tick-collector:
+    build: ..
+    container_name: tick-collector
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+    command: python -m src.data_ingestion.ticks.collector
+    restart: unless-stopped
+    volumes:
+      - ../data:/app/data
+
+  tick-archiver:
+    build: ..
+    container_name: tick-archiver
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379
+    command: python -m src.data_ingestion.ticks.archiver
+    restart: unless-stopped
+    volumes:
+      - ../data:/app/data
+
+  news-collector:
+    build: ..
+    container_name: news-collector
+    command: python -m src.data_ingestion.news.collector
+    restart: unless-stopped
+    volumes:
+      - ../data:/app/data
+
+volumes:
+  redis-data:
