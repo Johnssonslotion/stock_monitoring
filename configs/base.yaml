@@ -1,0 +1,17 @@
+project_name: "stock_monitoring"
+environment: "development"
+
+data:
+  base_dir: "data"
+  tick_path: "data/ticks"
+  redis_url: "redis://localhost:6379/0"
+
+exchange:
+  name: "upbit"  # Default to crypto for easy testing
+  symbols: 
+    - "KRW-BTC"
+    - "KRW-ETH"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
