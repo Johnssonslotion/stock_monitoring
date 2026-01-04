@@ -6,15 +6,15 @@ help: ## Display this help message
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
 up: ## Start all services
-	docker-compose -f deploy/docker-compose.yml up -d
+	docker compose -f deploy/docker-compose.yml up -d
 
 down: ## Stop all services
-	docker-compose -f deploy/docker-compose.yml down
+	docker compose -f deploy/docker-compose.yml down
 
 restart: down up ## Restart all services
 
 logs: ## View logs from all services
-	docker-compose -f deploy/docker-compose.yml logs -f
+	docker compose -f deploy/docker-compose.yml logs -f
 
 verify: ## Verify data collection (run after 2-3 minutes)
 	@echo "=== Checking Tick Data ==="
@@ -23,5 +23,5 @@ verify: ## Verify data collection (run after 2-3 minutes)
 	@docker exec news-collector python -c "import duckdb; conn = duckdb.connect('data/market_data.duckdb'); print('News:', conn.execute('SELECT count(*) FROM news').fetchone()[0])" || echo "No news yet"
 
 clean: ## Remove all containers, volumes, and data
-	docker-compose -f deploy/docker-compose.yml down -v
+	docker compose -f deploy/docker-compose.yml down -v
 	rm -rf data/*.duckdb
