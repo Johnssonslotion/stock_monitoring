@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir \
     duckdb==1.4.3 \
     pydantic==2.12.5 \
     pyyaml==6.0.3 \
-    python-dotenv ==1.2.1 \
+    python-dotenv==1.2.1 \
     feedparser==6.0.12 \
     aiohttp
 
