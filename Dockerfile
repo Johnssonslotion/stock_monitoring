@@ -2,15 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry==1.8.0
-
 # Copy dependency files
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
-# Install dependencies (without dev dependencies)
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-dev
+# Install dependencies using pip (pyproject.toml uses PEP 621 format)
+RUN pip install --no-cache-dir -e .
 
 # Copy application code
 COPY . .
