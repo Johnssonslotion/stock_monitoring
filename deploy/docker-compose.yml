@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  # Placeholder for future services
+  # web:
+  #   build: ./src/web
+  #   ports:
+  #     - "8080:8080"
+  
+  # Placeholder for database
+  # db:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
