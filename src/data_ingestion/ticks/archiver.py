@@ -24,7 +24,7 @@ class TickArchiver:
     
     def __init__(self, batch_size: int = 100, flush_interval: int = 1):
         self.redis_url = settings.data.redis_url
-        self.db_path = "data/market_data.duckdb"
+        self.db_path = "data/ticks.duckdb"  # Separate DB for tick data
         self.redis_client = None
         self.running = False
         

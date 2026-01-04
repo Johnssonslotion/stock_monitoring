@@ -17,7 +17,7 @@ class NewsCollector:
     정의된 RSS 소스에서 뉴스를 가져와 키워드 필터링 후 DuckDB에 저장합니다.
     """
     
-    def __init__(self, config_path: str = "src/data_ingestion/news/sources.yaml", db_path: str = "data/market_data.duckdb"):
+    def __init__(self, config_path: str = "src/data_ingestion/news/sources.yaml", db_path: str = "data/news.duckdb"):
         self.config_paths = config_path
         self.db_path = db_path
         self.running = False
