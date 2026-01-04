@@ -102,8 +102,8 @@ class TickArchiver:
         await self.connect_redis()
         
         pubsub = self.redis_client.pubsub()
-        await pubsub.subscribe("tick.*") # Pattern Subscribe
-        logger.info("Subscribed to tick.* channels")
+        await pubsub.psubscribe("tick.*")  # Pattern Subscribe (use psubscribe not subscribe)
+        logger.info("Pattern-subscribed to tick.* channels")
 
         try:
             while self.running:
