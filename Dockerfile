@@ -16,7 +16,10 @@ RUN pip install --no-cache-dir \
     aiohttp \
     streamlit==1.41.1 \
     plotly==5.24.1 \
-    watchdog==6.0.0
+    watchdog==6.0.0 \
+    fastapi==0.109.2 \
+    uvicorn==0.27.1 \
+    websockets==12.0
 
 # Copy application code
 COPY . .
