@@ -57,7 +57,26 @@
 
 ---
 
-## 5. 승인 프로세스 (Approval Process)
+## 5. 아티팩트 및 실험 관리 (Artifacts & Experiments Management)
+> **Antigravity Structure Expert's Comment**: 
+> "Git은 **코드(Code)**의 변화를 추적하는 도구이지, **생각(Context)**이나 **결과(Data)**를 저장하는 도구가 아닙니다. 
+> 에이전트의 뇌(Artifacts)와 실험의 결과(Reports)는 별도의 전략으로 영구 보존되어야 합니다."
+
+### 5.1 아티팩트 미러링 (Artifact Mirroring) - **Owner: PM & Doc Specialist**
+-   **문제**: `.gemini/...` 경로의 아티팩트는 에이전트의 '단기 메모리'다. 덮어쓰기(Overwrite) 되면 이전 계획이 사라진다.
+-   **전략**: **'계획의 이력 관리(History of Plans)'**
+    -   **Timing**: 사용자가 `implementation_plan.md`를 **승인(Approve)**한 직후.
+    -   **Action**: 해당 아티팩트를 `docs/planning/{YYYYMMDD}_{TaskName}_plan.md`로 복사하여 커밋한다.
+    -   **Benefit**: 프로젝트가 끝났을 때 "우리가 처음에 무슨 생각을 했고, 어떻게 변했는지"를 추적할 수 있다.
+
+### 5.2 실험 결과 보존 (Experiment Retention) - **Owner: Data Scientist**
+-   **문제**: `exp/*` 브랜치는 실험 종료 후 삭제된다. "어떤 파라미터로 실패했는지"에 대한 *실패의 지식*도 같이 사라진다.
+-   **전략**: **'지식의 자산화(Knowledge Assetization)'**
+    -   **책임자(R&R)**: **Data Scientist**는 실험 종료 시 반드시 결과 리포트(MDD, 수익률, 로그)를 아티팩트 형태로 생성하고 관리해야 한다.
+    -   브랜치는 삭제하더라도, 리포트는 `reports/experiments/{date}_{strategy_name}.md` 형식으로 **Master 브랜치에 영구 저장**한다.
+    -   성공하든 실패하든 **'리포트'는 남긴다.**
+
+## 6. 승인 프로세스 (Approval Process)
 각 Phase 진입 전과 완료 후, **PM(사용자)의 전략적 승인**을 득해야 한다.
 1.  **Pre-Approval**: 해당 단계의 상세 구현 계획(Implementation Plan) 승인.
 2.  **Post-Review**: 결과물 데모 및 회고.
