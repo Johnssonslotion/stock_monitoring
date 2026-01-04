@@ -13,7 +13,10 @@ RUN pip install --no-cache-dir \
     pyyaml==6.0.3 \
     python-dotenv==1.2.1 \
     feedparser==6.0.12 \
-    aiohttp
+    aiohttp \
+    streamlit==1.41.1 \
+    plotly==5.24.1 \
+    watchdog==6.0.0
 
 # Copy application code
 COPY . .

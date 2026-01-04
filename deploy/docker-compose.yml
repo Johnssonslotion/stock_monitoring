@@ -41,6 +41,21 @@ services:
     volumes:
       - ../data:/app/data
 
+  dashboard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: dashboard
+    command: streamlit run src/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    volumes:
+      - ../data:/app/data # Mount data directory to access DuckDB files
+    ports:
+      - "8501:8501"
+    depends_on:
+      - tick-archiver
+    networks:
+      - default
+
   news-collector:
     build: ..
     container_name: news-collector
