@@ -8,6 +8,7 @@ import redis.asyncio as redis
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict
 from src.core.schema import MarketData
+from src.data_ingestion.logger.raw_logger import RawWebSocketLogger
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class UnifiedWebSocketManager:
     통합 WebSocket 연결 관리자
     - 단일 WebSocket 연결 유지
     - 동적 구독/해제 (Subscribe/Unsubscribe) 지원
+    - Raw Logging 지원
     """
     def __init__(self, collectors: List[BaseCollector], redis_url: str):
         self.collectors: Dict[str, BaseCollector] = {c.tr_id: c for c in collectors}
@@ -54,11 +56,18 @@ class UnifiedWebSocketManager:
         # Subscription State (to prevent redundant requests)
         self.active_markets = set()
         
+        # Raw Logger
+        self.raw_logger = RawWebSocketLogger(retention_hours=24)
+        
     async def connect_redis(self):
         self.redis = await redis.from_url(self.redis_url, decode_responses=True)
         logger.info("✅ Redis Connected")
+        await self.raw_logger.start()
 
     async def handle_message(self, message: str) -> Optional[str]:
+        # 💾 RAW LOGGING
+        await self.raw_logger.log(message, direction="RX")
+
         # 🔍 DEBUG: Log ALL messages (first 200 chars)
         logger.debug(f"📨 RAW MSG: {message[:200]}")
         
