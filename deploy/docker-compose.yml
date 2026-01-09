@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
@@ -23,6 +21,7 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
+      - APP_ENV=${APP_ENV}
     command: python -m src.data_ingestion.ticks.collector
     restart: unless-stopped
     volumes:
@@ -36,26 +35,77 @@ services:
         condition: service_healthy
     environment:
       - REDIS_URL=redis://redis:6379
+      - APP_ENV=${APP_ENV}
     command: python -m src.data_ingestion.ticks.archiver
     restart: unless-stopped
     volumes:
       - ../data:/app/data
 
-  dashboard:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: dashboard
-    command: streamlit run src/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
-    volumes:
-      - ../data:/app/data # Mount data directory to access DuckDB files
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: stock-timescale
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=${DB_NAME:-stockval}
     ports:
-      - "8501:8501"
-    depends_on:
-      - tick-archiver
+      - "5432:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    restart: unless-stopped
     networks:
       - default
 
+  # Archiver: TimescaleDB
+  timescale-archiver:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: timescale-archiver
+    command: python -m src.data_ingestion.archiver.timescale_archiver
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+    networks:
+      - default
+
+  # History Loader (One-off)
+  history-loader:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: history-loader
+    command: python -m src.data_ingestion.history.loader
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - APP_ENV=${APP_ENV}
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+    depends_on:
+      timescaledb:
+        condition: service_started
+    networks:
+      - default
+
+  # API Server (WebSocket)
   api-server:
     build:
       context: ..
@@ -64,21 +114,218 @@ services:
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
     environment:
       - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - API_AUTH_SECRET=${API_AUTH_SECRET:-super-secret-key}
+      - PYTHONUNBUFFERED=1
     ports:
-      - "8000:8000"
+      - "8000:8000" # X-API-Key 인증으로 보안 유지
     depends_on:
-      - stock-redis
+      redis:
+        condition: service_healthy
     networks:
       - default
 
+  # Data Ingestion: News
   news-collector:
-
-    build: ..
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: news-collector
     command: python -m src.data_ingestion.news.collector
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - default
+
+  # Archiver: News
+  news-archiver:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: news-archiver
+    command: python -m src.data_ingestion.news.archiver
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - PYTHONUNBUFFERED=1
     volumes:
       - ../data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - default
+
+  # Data Ingestion: Ticker (Mock)
+  ticker-gen:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ticker-gen
+    command: python -m src.data_ingestion.price.ticker
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - ENABLE_MOCK_TICKER=false # 실제 데이터 수집 시에는 비활성화
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ../configs:/app/configs
+    networks:
+      - default
+
+  # Unified Realtime Collector (KR + US)
+  real-collector:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: real-collector
+    command: python -m src.data_ingestion.price.unified_collector
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - KIS_WS_URL=ws://ops.koreainvestment.com:21000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+    profiles:
+      - real
+
+  # Orderbook Collector (KR) - NEW
+  asp-collector-kr:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: asp-collector-kr
+    command: python -m src.data_ingestion.price.asp_collector
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+    profiles:
+      - real
+
+  # Orderbook Collector (US) - NEW
+  asp-collector-us:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: asp-collector-us
+    command: python -m src.data_ingestion.price.asp_collector_us
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+    profiles:
+      - real
+
+  history-collector:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: history-collector
+    command: python -m src.data_ingestion.history.main
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+    depends_on:
+      timescaledb:
+        condition: service_started
+    networks:
+      - default
+    profiles:
+      - history
+
+  # Sentinel (Monitoring & Alerting) - NEW
+  sentinel-agent:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: sentinel-agent
+    command: python -m src.monitoring.sentinel
+    environment:
+      - REDIS_URL=redis://stock-redis:6379/0
+      - APP_ENV=${APP_ENV}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - default
+    restart: unless-stopped
+    profiles:
+      - real
+      - sentinel
+
+  # Dashboard UI (React + Vite) - NEW
+  dashboard-ui:
+    image: node:20-slim
+    container_name: dashboard-ui
+    working_dir: /app/src/viewer/dashboard
+    volumes:
+      - ..:/app
+    # dev 서버 실행 (host 0.0.0.0으로 외부 접근 허용)
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api-server
+    networks:
+      - default
+    profiles:
+      - real
+      - ui
 
 volumes:
   redis-data:
+  timescale-data:

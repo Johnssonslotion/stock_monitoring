@@ -5,8 +5,19 @@ help: ## Display this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
 
-up: ## Start all services
+up: ## Start all services (default .env)
 	docker compose -f deploy/docker-compose.yml up -d
+
+up-dev: ## Start development environment
+	docker compose --env-file .env.dev -f deploy/docker-compose.yml --profile real up -d
+
+up-prod: ## Start production environment
+	docker compose --env-file .env.prod -f deploy/docker-compose.yml --profile real up -d
+	@echo "Cleaning up unused Docker resources for Stability..."
+	docker system prune -af
+
+test: ## Run unit tests in isolated test environment
+	docker run --rm -v $$(pwd):/app -w /app --env-file .env.test deploy-real-collector /bin/sh -c "pip install pytest && export PYTHONPATH=. && python3 -m pytest tests/"
 
 down: ## Stop all services
 	docker compose -f deploy/docker-compose.yml down
