@@ -99,6 +99,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ../configs:/app/configs
+      - ../data:/app/data
     depends_on:
       timescaledb:
         condition: service_started

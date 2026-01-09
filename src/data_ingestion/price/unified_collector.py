@@ -84,9 +84,9 @@ async def market_scheduler(manager: UnifiedWebSocketManager):
             kr_start = time(8, 30)
             kr_end = time(16, 0)
             
-            # US Market Logic (21:00 ~ 06:00) 
+            # US Market Logic (17:00 ~ 06:00) - Start early for Pre-Market (18:00)
             # Note: Cross midnight check
-            us_start = time(21, 0)
+            us_start = time(17, 0)
             us_end = time(6, 0)
             
             is_kr_time = kr_start <= current_time <= kr_end
