@@ -57,12 +57,12 @@ class KRASPCollector(BaseCollector):
             
             for i in range(5):
                 asks.append(OrderbookUnit(
-                    price=float(fields[3+i]),
-                    vol=float(fields[23+i])
+                    price=float(fields[3+i]),    # ASKP1~5: Index 3~7
+                    vol=float(fields[21+i])      # ASKP_RSQN1~5: Index 21~25 (수정: 23→21)
                 ))
                 bids.append(OrderbookUnit(
-                    price=float(fields[13+i]),
-                    vol=float(fields[33+i])
+                    price=float(fields[12+i]),   # BIDP1~5: Index 12~16 (수정: 13→12)
+                    vol=float(fields[30+i])      # BIDP_RSQN1~5: Index 30~34 (수정: 33→30)
                 ))
                 
             return OrderbookData(
