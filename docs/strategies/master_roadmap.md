@@ -19,7 +19,7 @@
 - **Phase 2**: `Makefile` & `docker-compose.override.yml` 도입.
 
 ### Pillar 2: 고정밀 데이터 인입 파이프라인 (Data Ingestion) [IN-PROGRESS]
-- **Phase 1 (Ticks)**: KR/US 실시간 체결가 수집기 구축. (✅ DONE)
+- **Phase 1 (Ticks)**: KR(Unverified)/US(✅ Verified) 실시간 체결가 수집기 구축.
 - **Phase 3 (Selective Orderbook)**: 1초 단위 호가 스냅샷 구현. (✅ DONE)
 - **Phase 4 (Quality Guardrail)**: **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료).
 
