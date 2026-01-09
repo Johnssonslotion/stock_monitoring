@@ -22,7 +22,7 @@
 ### 1.2 미국 시장 (US Market)
 | ID | 테스트명 | 파일명 | 검증 상황 | 상태 |
 | :--- | :--- | :--- | :--- | :--- |
-| US-TICK-01 | `test_parse_us_tick_data` | `tests/test_us_collector.py` | HDFSCNT0 실시간 체결가 파싱 정확성 | ✅ Pass |
+| US-TICK-01 | `test_parse_us_tick_data` | `tests/test_us_collector.py` | HDFSCNT0 실시간 체결가 파싱 정확성 (Strategy: [Doc](docs/strategies/realtime_ingestion_strategy.md)) | ✅ Pass |
 | US-TICK-02 | `test_parse_us_websocket_message` | `tests/test_us_collector.py` | US 웹소켓 프레임 핸들링 및 Redis 발행 | ✅ Pass |
 | US-ASP-01 | `test_us_orderbook_parsing` | `tests/test_asp_parsing.py` | HDFSASP0 US 호가 패킷 파싱 정확성 | ✅ Pass |
 | US-SCH-01 | `test_us_schema_validation` | `tests/test_schema_integrity.py` | US 데이터의 Pydantic 모델 정합성 검증 | ✅ Pass |
