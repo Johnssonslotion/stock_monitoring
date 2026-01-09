@@ -1,0 +1,70 @@
+market: KR
+
+symbols:
+  indices:
+    - symbol: "069500"
+      name: "KODEX 200"
+      type: "etf_main"
+    - symbol: "102110"
+      name: "TIGER 200"
+      type: "etf_main"
+
+  leverage:
+    - symbol: "122630"
+      name: "KODEX 레버리지 (2x)"
+      type: "etf_leverage"
+    - symbol: "252670"
+      name: "KODEX 200선물인버스2X (-2x)"
+      type: "etf_leverage"
+    - symbol: "233740"
+      name: "KODEX 코스닥150레버리지"
+      type: "etf_leverage"
+
+  sectors:
+    semiconductor:
+      etf:
+        symbol: "091230"
+        name: "TIGER 반도체"
+      top3:
+        - symbol: "005930"
+          name: "삼성전자"
+        - symbol: "000660"
+          name: "SK하이닉스"
+        - symbol: "042700"
+          name: "한미반도체"
+
+    battery:
+      etf:
+        symbol: "305540"
+        name: "TIGER 2차전지테마"
+      top3:
+        - symbol: "373220"
+          name: "LG에너지솔루션"
+        - symbol: "005490"
+          name: "POSCO홀딩스"
+        - symbol: "247540"
+          name: "에코프로비엠"
+
+    biotech:
+      etf:
+        symbol: "091210"
+        name: "TIGER 헬스케어"
+      top3:
+        - symbol: "207940"
+          name: "삼성바이오로직스"
+        - symbol: "068270"
+          name: "셀트리온"
+        - symbol: "000100"
+          name: "유한양행"
+    
+    auto:
+      etf:
+        symbol: "091180"
+        name: "KODEX 자동차"
+      top3:
+        - symbol: "005380"
+          name: "현대차"
+        - symbol: "000270"
+          name: "기아"
+        - symbol: "012330"
+          name: "현대모비스"

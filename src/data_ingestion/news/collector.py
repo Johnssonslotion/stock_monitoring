@@ -1,143 +1,72 @@
 import asyncio
 import logging
+import json
 import feedparser
-import yaml
+import redis.asyncio as redis
 import os
-import duckdb
 from datetime import datetime
-from typing import List, Dict, Optional
-from src.core.config import settings
+from src.core.schema import NewsAlert, MessageType
 
-logger = logging.getLogger(__name__)
+# Setup Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("NewsCollector")
+
+# Config
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+RSS_URLS = [
+    "https://news.google.com/rss/search?q=stock+market+korea&hl=ko&gl=KR&ceid=KR:ko",
+    "https://news.google.com/rss/search?q=economy&hl=ko&gl=KR&ceid=KR:ko"
+]
+KEYWORDS = ["삼성전자", "금리", "환율", "선거", "전쟁"]
+POLL_INTERVAL = 60  # seconds
 
 class NewsCollector:
-    """
-    뉴스 데이터 수집기 (News Collector)
-    
-    정의된 RSS 소스에서 뉴스를 가져와 키워드 필터링 후 DuckDB에 저장합니다.
-    """
-    
-    def __init__(self, config_path: str = "src/data_ingestion/news/sources.yaml", db_path: str = "data/news.duckdb"):
-        self.config_paths = config_path
-        self.db_path = db_path
-        self.running = False
-        self.sources = []
-        self.keywords = []
-        
-        self._load_config()
-        self._init_db()
+    def __init__(self):
+        self.redis = None
+        self.seen_links = set()
 
-    def _load_config(self):
-        """YAML 설정 로드"""
-        try:
-            with open(self.config_paths, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-                self.sources = config.get('sources', [])
-                self.keywords = [k.lower() for k in config.get('keywords', [])]
-                logger.info(f"Loaded {len(self.sources)} sources and {len(self.keywords)} keywords.")
-        except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-
-    def _init_db(self):
-        """DuckDB news 테이블 생성"""
-        try:
-            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-            self.conn = duckdb.connect(self.db_path)
-            
-            self.conn.execute("""
-                CREATE TABLE IF NOT EXISTS news (
-                    source_name VARCHAR,
-                    title VARCHAR,
-                    link VARCHAR,
-                    published_at TIMESTAMP,
-                    matched_keywords VARCHAR,
-                    collected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (link)
-                )
-            """)
-            logger.info("Connected to DuckDB (News Table)")
-        except Exception as e:
-            logger.error(f"DB Init Error: {e}")
-
-    def filter_news(self, entry: Dict) -> Optional[Dict]:
-        """
-        뉴스 제목/요약에 키워드가 포함되어 있는지 확인.
+    async def start(self):
+        self.redis = await redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        logger.info("NewsCollector started. Connected to Redis.")
         
-        Returns:
-            Dict: 저장할 데이터 (매칭 안되면 None)
-        """
-        title = entry.get('title', '').lower()
-        summary = entry.get('summary', '').lower()
-        content = title + " " + summary
-        
-        matched = []
-        for kw in self.keywords:
-            if kw in content:
-                matched.append(kw)
-        
-        if matched:
-            return {
-                "title": entry.get('title'),
-                "link": entry.get('link'),
-                "published": entry.get('published', datetime.now().isoformat()),
-                "keywords": ",".join(matched)
-            }
-        return None
+        while True:
+            await self.fetch_and_process()
+            await asyncio.sleep(POLL_INTERVAL)
 
-    async def fetch_rss(self, source: Dict):
-        """개별 RSS 피드 파싱"""
-        logger.info(f"Fetching {source['name']}...")
-        try:
-            # feedparser는 blocking I/O이므로 executor에서 실행
-            loop = asyncio.get_event_loop()
-            feed = await loop.run_in_executor(None, feedparser.parse, source['url'])
-            
-            items_to_save = []
-            for entry in feed.entries:
-                filtered = self.filter_news(entry)
-                if filtered:
-                    filtered['source_name'] = source['name']
-                    items_to_save.append(filtered)
-            
-            if items_to_save:
-                self.save_to_db(items_to_save)
+    async def fetch_and_process(self):
+        for url in RSS_URLS:
+            try:
+                # Feedparser is blocking, run in executor
+                feed = await asyncio.to_thread(feedparser.parse, url)
                 
-        except Exception as e:
-            logger.error(f"Error fetching {source['name']}: {e}")
+                for entry in feed.entries:
+                    if entry.link in self.seen_links:
+                        continue
+                        
+                    self.seen_links.add(entry.link)
+                    
+                    # Keyword matching
+                    matched_keywords = [k for k in KEYWORDS if k in entry.title or k in entry.description]
+                    
+                    if matched_keywords:
+                        await self.publish_alert(entry, matched_keywords)
+                        
+            except Exception as e:
+                logger.error(f"Error fetching RSS {url}: {e}")
 
-    def save_to_db(self, items: List[Dict]):
-        """DuckDB 저장 (INSERT OR IGNORE)"""
-        try:
-            # DuckDB의 INSERT OR IGNORE 구문 활용 (Link 기준 중복 제거)
-            data = [
-                (i['source_name'], i['title'], i['link'], i['published'], i['keywords']) # published parsing needed?
-                for i in items
-            ]
-            
-            # published string -> timestamp 변환 처리가 필요할 수 있으나,
-            # 일단 VARCHAR나 Auto Cast에 맡김. (실제 구현시 파싱 로직 보완 필요)
-            
-            self.conn.executemany("""
-                INSERT OR IGNORE INTO news (source_name, title, link, published_at, matched_keywords)
-                VALUES (?, ?, ?, ?, ?)
-            """, data)
-            logger.info(f"Saved {len(items)} news from {items[0]['source_name']}")
-            
-        except Exception as e:
-            logger.error(f"DB Save Error: {e}")
-
-    async def run(self, interval_seconds: int = 3600):
-        self.running = True
-        logger.info("Starting NewsCollector...")
+    async def publish_alert(self, entry, keywords):
+        alert = NewsAlert(
+            headline=entry.title,
+            url=entry.link,
+            source="Google News",
+            keywords=keywords,
+            timestamp=datetime.now()
+        )
         
-        while self.running:
-            tasks = [self.fetch_rss(source) for source in self.sources]
-            await asyncio.gather(*tasks)
-            
-            logger.info(f"Cycle finished. Sleeping for {interval_seconds}s...")
-            await asyncio.sleep(interval_seconds)
+        # Publish to Redis
+        await self.redis.publish("news_alert", alert.model_dump_json())
+        logger.info(f"Published Alert: {alert.headline}")
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     collector = NewsCollector()
-    asyncio.run(collector.run(interval_seconds=60)) # Test with 60s
+    asyncio.run(collector.start())

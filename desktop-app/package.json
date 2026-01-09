@@ -1,0 +1,23 @@
+{
+  "name": "stock-monitor-desktop",
+  "version": "1.0.0",
+  "description": "Stock Monitoring System Tray App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "electron",
+    "stock",
+    "tray",
+    "notification"
+  ],
+  "author": "Antigravity",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

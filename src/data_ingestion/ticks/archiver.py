@@ -22,9 +22,16 @@ class TickArchiver:
     2. **Partitioning**: 날짜별(Year/Month/Day)로 폴더를 구분하여 저장.
     """
     
-    def __init__(self, batch_size: int = 100, flush_interval: int = 1):
+    async def connect_redis(self):
+        # Override Redis URL for testing if needed
+        # But usually we use settings or env vars
+        self.redis_client = redis.from_url(self.redis_url, encoding="utf-8", decode_responses=True)
+        await self.redis_client.ping()
+
+    def __init__(self, batch_size: int = 100, flush_interval: int = 1, db_path: str = "data/ticks.duckdb"):
         self.redis_url = settings.data.redis_url
-        self.db_path = "data/ticks.duckdb"  # Separate DB for tick data
+        self.db_path = db_path
+
         self.redis_client = None
         self.running = False
         
