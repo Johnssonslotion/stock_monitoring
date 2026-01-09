@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주식 모니터 (Stock Monitor)</title>
+    <!-- Google Fonts for Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="glass-panel header">
+            <div class="logo-area">
+                <div class="logo-icon"></div>
+                <h1>VIBE<span class="highlight">STOCK</span></h1>
+            </div>
+            <div class="system-status">
+                <span id="connection-status" class="status-indicator disconnected">●</span>
+                <span id="clock" class="mono-text">--:--</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="content-area">
+            <!-- Market Overview -->
+            <section class="market-overview glass-panel">
+                <h2>시장 현황 (Market Pulse)</h2>
+                <div class="market-grid">
+                    <div class="market-item" id="market-samsung">
+                        <span class="label">삼성전자 (Samsung)</span>
+                        <span class="value down">로딩중...</span>
+                    </div>
+                    <div class="market-item" id="market-tsla">
+                        <span class="label">테슬라 (TSLA)</span>
+                        <span class="value up">로딩중...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alerts / Notifications -->
+            <section class="alerts-section glass-panel">
+                <h2>최근 알림 (Recent Alerts)</h2>
+                <ul id="alert-list" class="alert-list">
+                    <!-- Dynamic Items -->
+                    <li class="alert-item placeholder">신호 대기중...</li>
+                </ul>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="glass-panel footer">
+            <div class="footer-info">
+                <span class="mono-text">서버 연결: <span id="server-url">검색중...</span></span>
+            </div>
+            <button id="minimize-btn" class="icon-btn">백그라운드 실행</button>
+        </footer>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

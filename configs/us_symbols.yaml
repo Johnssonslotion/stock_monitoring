@@ -1,0 +1,115 @@
+market: US
+
+symbols:
+  indices:
+    - symbol: "SPY"
+      name: "SPDR S&P 500 ETF Trust"
+      type: "etf_main"
+      exchange: "NYSE"
+    - symbol: "QQQ"
+      name: "Invesco QQQ Trust"
+      type: "etf_main"
+      exchange: "NASDAQ"
+    - symbol: "DIA"
+      name: "SPDR Dow Jones Industrial Average ETF Trust"
+      type: "etf_main"
+      exchange: "NYSE"
+  
+  leverage:
+    - symbol: "TQQQ"
+      name: "ProShares UltraPro QQQ (3x)"
+      type: "etf_leverage"
+      exchange: "NASDAQ"
+    - symbol: "SQQQ"
+      name: "ProShares UltraPro Short QQQ (-3x)"
+      type: "etf_leverage"
+      exchange: "NASDAQ"
+    - symbol: "SOXL"
+      name: "Direxion Daily Semiconductor Bull 3X Shares"
+      type: "etf_leverage"
+      exchange: "NYSE"
+    - symbol: "SOXS"
+      name: "Direxion Daily Semiconductor Bear 3X Shares"
+      type: "etf_leverage"
+      exchange: "NYSE"
+    - symbol: "KORU"
+      name: "Direxion Daily MSCI South Korea Bull 3X Shares"
+      type: "etf_leverage"
+      exchange: "NYSE"
+    - symbol: "NVDL"
+      name: "GraniteShares 2x Long NVDA Daily ETF"
+      type: "etf_leverage"
+      exchange: "NASDAQ"
+    - symbol: "TSLL"
+      name: "Direxion Daily TSLA Bull 2X Shares"
+      type: "etf_leverage"
+      exchange: "NASDAQ"
+    - symbol: "FNGU"
+      name: "MicroSectors FANG+ Index 3X Leveraged ETN"
+      type: "etf_leverage"
+      exchange: "NYSE"
+
+  sectors:
+    technology:
+      etf: 
+        symbol: "XLK"
+        name: "Technology Select Sector SPDR Fund"
+        exchange: "NYSE"
+      top3:
+        - symbol: "AAPL"
+          name: "Apple Inc."
+          exchange: "NASDAQ"
+        - symbol: "MSFT"
+          name: "Microsoft Corporation"
+          exchange: "NASDAQ"
+        - symbol: "NVDA"
+          name: "NVIDIA Corporation"
+          exchange: "NASDAQ"
+    
+    semiconductor:
+      etf:
+        symbol: "SOXX"
+        name: "iShares Semiconductor ETF"
+        exchange: "NASDAQ"
+      top3:
+        - symbol: "NVDA"
+          name: "NVIDIA Corporation"
+          exchange: "NASDAQ"
+        - symbol: "AVGO"
+          name: "Broadcom Inc."
+          exchange: "NASDAQ"
+        - symbol: "AMD"
+          name: "Advanced Micro Devices, Inc."
+          exchange: "NASDAQ"
+
+    finance:
+      etf:
+        symbol: "XLF"
+        name: "Financial Select Sector SPDR Fund"
+        exchange: "NYSE"
+      top3:
+        - symbol: "JPM"
+          name: "JPMorgan Chase & Co."
+          exchange: "NYSE"
+        - symbol: "BAC"
+          name: "Bank of America Corp"
+          exchange: "NYSE"
+        - symbol: "V"
+          name: "Visa Inc."
+          exchange: "NYSE"
+
+    healthcare:
+      etf:
+        symbol: "XLV"
+        name: "Health Care Select Sector SPDR Fund"
+        exchange: "NYSE"
+      top3:
+        - symbol: "LLY"
+          name: "Eli Lilly and Company"
+          exchange: "NYSE"
+        - symbol: "UNH"
+          name: "UnitedHealth Group"
+          exchange: "NYSE"
+        - symbol: "JNJ"
+          name: "Johnson & Johnson"
+          exchange: "NYSE"
