@@ -80,18 +80,22 @@ async def market_scheduler(manager: UnifiedWebSocketManager):
             
             # 주말/공휴일 체크는 생략 (Simplicity)
             
-            # KR Market Logic (08:30 ~ 16:00)
+            # Note: Docker Container TZ is set to Asia/Seoul.
+            # KR Market: 08:30 ~ 16:00 KST
             kr_start = time(8, 30)
             kr_end = time(16, 0)
             
-            # US Market Logic (17:00 ~ 06:00) - Start early for Pre-Market (18:00)
-            # Note: Cross midnight check
+            # US Market: 17:00 ~ 06:00 KST (Pre-Market 18:00 includes buffer)
             us_start = time(17, 0)
             us_end = time(6, 0)
             
-            is_kr_time = kr_start <= current_time <= kr_end
+            # KR doesn't cross midnight
+            is_kr_time = check_time_cross_midnight(current_time, kr_start, kr_end)
+            # US crosses midnight (17:00 -> 06:00)
             is_us_time = check_time_cross_midnight(current_time, us_start, us_end)
             
+            logger.info(f"⏰ Time Check: {current_time} (KST) | KR: {is_kr_time} | US: {is_us_time} | Active: {manager.active_markets}")
+
             if is_kr_time:
                 # KR Mode
                 if 'US' in manager.active_markets:
