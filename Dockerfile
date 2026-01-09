@@ -22,7 +22,8 @@ RUN pip install --no-cache-dir \
     websockets==12.0 \
     asyncpg==0.29.0 \
     yfinance==0.2.36 \
-    finance-datareader==0.9.60
+    finance-datareader==0.9.60 \
+    aiofiles
 
 # Copy application code
 COPY . .
