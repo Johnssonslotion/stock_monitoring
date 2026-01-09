@@ -152,8 +152,9 @@ async def main():
         redis_url=REDIS_URL
     )
     
-    # PRODUCTION WebSocket URL (NOT /tryitout/ test endpoint)
-    ws_url = f"{KIS_WS_URL}/H0STCNT0"
+    # TEST: Using US TR_ID path for connection to enable HHDFS00000300 subscription
+    # If this works, we need to split connections for KR/US later.
+    ws_url = f"{KIS_WS_URL}/tryitout/HHDFS00000300"
 
     logger.info(f"Starting Unified Collector with {ws_url}")
     
