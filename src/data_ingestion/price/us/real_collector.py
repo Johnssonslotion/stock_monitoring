@@ -22,9 +22,11 @@ from src.data_ingestion.price.common.websocket_base import BaseCollector
 
 class USRealCollector(BaseCollector):
     """미국 시장 실시간 데이터 수집기 (핸들러)"""
+    TR_ID = "HHDFS76200200" # 실시간 미국주식 체결가 (Execution Price)
+    # Note: HHDFS76200100 is likely Orderbook (Hoga). Using 200 for Ticks.
     
     def __init__(self):
-        super().__init__(market="US", tr_id="HDFSCNT0")
+        super().__init__(market="US", tr_id=self.TR_ID)
     
     def get_channel(self) -> str:
         return "ticker.us"
