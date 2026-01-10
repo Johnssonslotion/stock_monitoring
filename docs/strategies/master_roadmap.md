@@ -7,7 +7,7 @@
 ## 🚦 품질 통과 기준 (Quality Assurance Gate)
 | 단계 | 검증 대상 | 통과 기준 (Pass Criteria) | 보고 의무 |
 | :--- | :--- | :--- | :--- |
-| **Pillar 1/2** | Ingestion & Sync | 유닛 커버리지 100%, 스키마 무결성 (Tier 2) | ✅ 필수 |
+| **Pillar 1/2** | Ingestion & Sync | 유닛 커버리지 100%, 스키마 무결성 (Tier 2) | ✅ **PASSED** |
 | **Pillar 3/4** | Viewer & Ops | E2E 지연시간 < 50ms, Chaos 복구율 100% | ⏳ 예정 |
 
 ---
@@ -20,8 +20,13 @@
 
 ### Pillar 2: 고정밀 데이터 인입 파이프라인 (Data Ingestion) [IN-PROGRESS]
 - **Phase 1 (Ticks)**: KR(Unverified)/US(✅ Verified) 실시간 체결가 수집기 구축.
+  - *US Config*: `HDFSCNT0` + `/HDFSCNT0` (Dual-Socket Ready)
+- **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
+- **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
 - **Phase 3 (Selective Orderbook)**: 1초 단위 호가 스냅샷 구현. (✅ DONE)
-- **Phase 4 (Quality Guardrail)**: **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료).
+- **Phase 4 (Quality Guardrail)**: 
+  - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
+  - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)
 
 ### Pillar 3: 데이터 비주얼라이제이션 & 분석 터미널 (Viewer Evolution) [IN-PROGRESS]
 - **목표**: 초저지연 시각화 및 알고리즘 인터랙션.

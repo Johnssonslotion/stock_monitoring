@@ -7,6 +7,8 @@ import aiohttp
 import websockets
 import redis.asyncio as redis
 from datetime import datetime
+from src.core.schema import OrderbookData, OrderbookUnit, MessageType
+from pydantic import ValidationError
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -84,25 +86,28 @@ class KISASPCollectorUS:
         fields = body_str.split('^')
         try:
             symbol = fields[1]
-            data = {
-                "symbol": symbol,
-                "timestamp": datetime.now().isoformat(),
-                "asks": [],
-                "bids": []
-            }
+            asks = []
+            bids = []
+            
             # 필드 오프셋은 KIS 해외주식 가이드 참조 (2씩 증가)
             for i in range(5):
                 offset = i * 4
-                data["asks"].append({
-                    "price": float(fields[10 + offset]),
-                    "vol": float(fields[11 + offset])
-                })
-                data["bids"].append({
-                    "price": float(fields[12 + offset]),
-                    "vol": float(fields[13 + offset])
-                })
-            return data
-        except Exception as e:
+                asks.append(OrderbookUnit(
+                    price=float(fields[10 + offset]),
+                    vol=float(fields[11 + offset])
+                ))
+                bids.append(OrderbookUnit(
+                    price=float(fields[12 + offset]),
+                    vol=float(fields[13 + offset])
+                ))
+            
+            return OrderbookData(
+                symbol=symbol,
+                asks=asks,
+                bids=bids,
+                timestamp=datetime.now()
+            )
+        except (IndexError, ValueError, ValidationError) as e:
             logger.error(f"US Parse Error: {e}")
             return None
 
@@ -138,11 +143,11 @@ class KISASPCollectorUS:
                         body = parts[3]
                         parsed = self.parse_us_orderbook(body)
                         if parsed:
-                            symbol = parsed['symbol']
+                            symbol = parsed.symbol
                             now = datetime.now().timestamp()
                             last_ts = self.last_published.get(symbol, 0)
                             if now - last_ts >= SNAPSHOT_INTERVAL:
-                                await self.redis.publish("market_orderbook", json.dumps(parsed))
+                                await self.redis.publish("market_orderbook", parsed.model_dump_json())
                                 self.last_published[symbol] = now
                 else:
                     logger.debug(f"US WS Control Message: {msg}")

@@ -59,6 +59,9 @@ class UnifiedWebSocketManager:
         # Raw Logger
         self.raw_logger = RawWebSocketLogger(retention_hours=24)
         
+        # Dynamic URL State
+        self.current_ws_url: Optional[str] = None
+        
     async def connect_redis(self):
         self.redis = await redis.from_url(self.redis_url, decode_responses=True)
         logger.info("✅ Redis Connected")
@@ -182,7 +185,21 @@ class UnifiedWebSocketManager:
         """Approval Key 동적 업데이트 (Thread-safe)"""
         async with self.ws_lock:
             self.approval_key = new_key
+            self.approval_key = new_key
             logger.info("🔐 Approval Key updated dynamically.")
+
+    async def switch_url(self, new_url: str):
+        """WebSocket URL 동적 변경 및 재연결 요청"""
+        logger.info(f"🔄 Switching WebSocket URL to: {new_url}")
+        self.current_ws_url = new_url
+        
+        # 현재 연결 강제 종료 -> run() 루프에서 재연결 유도
+        async with self.ws_lock:
+            if self.websocket:
+                logger.info("🔌 Disconnecting current socket to force reconnect...")
+                await self.websocket.close()
+                self.websocket = None
+                self.active_markets.clear()
 
     async def run(self, ws_url: str, approval_key: str):
         """메인 실행 루프"""
@@ -196,12 +213,17 @@ class UnifiedWebSocketManager:
             c.load_symbols()
             logger.info(f"[{c.market}] Loaded {len(c.symbols)} symbols")
 
+        # Set initial URL
+        self.current_ws_url = ws_url
+
         while True:
             try:
-                logger.info(f"Connecting to {ws_url}...")
+                # Use current dynamic URL
+                target_url = self.current_ws_url
+                logger.info(f"Connecting to {target_url}...")
                 
                 async with websockets.connect(
-                    ws_url,
+                    target_url,
                     ping_interval=20, 
                     ping_timeout=10, 
                     close_timeout=10

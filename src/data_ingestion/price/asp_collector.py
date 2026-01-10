@@ -7,6 +7,8 @@ import aiohttp
 import websockets
 import redis.asyncio as redis
 from datetime import datetime
+from src.core.schema import OrderbookData, OrderbookUnit, MessageType
+from pydantic import ValidationError
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -78,24 +80,27 @@ class KISASPCollector:
         fields = body_str.split('^')
         try:
             symbol = fields[0]
-            data = {
-                "symbol": symbol,
-                "timestamp": datetime.now().isoformat(),
-                "asks": [],
-                "bids": []
-            }
+            asks = []
+            bids = []
+            
             # KIS 가이드 기반 인덱스 매핑 (매도호가1: 3, 매수호가1: 13, 잔량 등)
             for i in range(5):
-                data["asks"].append({
-                    "price": float(fields[3+i]),
-                    "vol": float(fields[23+i])
-                })
-                data["bids"].append({
-                    "price": float(fields[13+i]),
-                    "vol": float(fields[33+i])
-                })
-            return data
-        except Exception as e:
+                asks.append(OrderbookUnit(
+                    price=float(fields[3+i]),
+                    vol=float(fields[23+i])
+                ))
+                bids.append(OrderbookUnit(
+                    price=float(fields[13+i]),
+                    vol=float(fields[33+i])
+                ))
+            
+            return OrderbookData(
+                symbol=symbol,
+                asks=asks,
+                bids=bids,
+                timestamp=datetime.now()
+            )
+        except (IndexError, ValueError, ValidationError) as e:
             logger.error(f"Parse Error: {e}")
             return None
 
@@ -132,13 +137,13 @@ class KISASPCollector:
                         body = parts[3]
                         parsed = self.parse_orderbook(body)
                         if parsed:
-                            symbol = parsed['symbol']
+                            symbol = parsed.symbol
                             now = datetime.now().timestamp()
                             
                             # 1초 샘플링 (Throttling)
                             last_ts = self.last_published.get(symbol, 0)
                             if now - last_ts >= SNAPSHOT_INTERVAL:
-                                await self.redis.publish("market_orderbook", json.dumps(parsed))
+                                await self.redis.publish("market_orderbook", parsed.model_dump_json())
                                 self.last_published[symbol] = now
                 else:
                     logger.debug(f"WS Message: {msg}")

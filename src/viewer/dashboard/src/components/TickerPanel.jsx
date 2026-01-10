@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
  */
 const TickerPanel = ({ initialData = [], realTimeData }) => {
     const [ticks, setTicks] = useState([]);
+    const [latency, setLatency] = useState(0);
 
     useEffect(() => {
         if (initialData.length > 0) {
@@ -18,14 +19,31 @@ const TickerPanel = ({ initialData = [], realTimeData }) => {
     useEffect(() => {
         if (realTimeData && realTimeData.type === 'ticker') {
             setTicks(prev => [realTimeData, ...prev].slice(0, 50));
+
+            // Latency Calculation (Server Time vs Client Time)
+            if (realTimeData.timestamp) {
+                const serverTime = new Date(realTimeData.timestamp).getTime();
+                const now = Date.now();
+                const diff = Math.max(0, now - serverTime); // Prevent negative
+                setLatency(diff);
+            }
         }
     }, [realTimeData]);
 
     return (
         <div className="glass-panel animate-fade-in" style={{ height: '400px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                <Activity size={20} color="#58a6ff" style={{ marginRight: '10px' }} />
-                <h3 style={{ margin: 0 }}>Real-time Trades</h3>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Activity size={20} color="#58a6ff" style={{ marginRight: '10px' }} />
+                    <h3 style={{ margin: 0 }}>Real-time Trades</h3>
+                </div>
+                <div className="glass-panel" style={{
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    color: latency < 50 ? 'var(--success-color)' : latency < 100 ? 'var(--warning-color)' : 'var(--danger-color)'
+                }}>
+                    Latency: {latency}ms
+                </div>
             </div>
 
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
