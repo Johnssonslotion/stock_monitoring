@@ -18,6 +18,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | KR-ASP-01 | `test_kr_orderbook_parsing` | `tests/test_asp_parsing.py` | H0STASP0 패킷에서 5단계 호가/잔량 파싱 | ✅ Pass |
 | KR-SCH-01 | `test_kr_schema_validation` | `tests/test_schema_integrity.py` | 수집된 데이터가 `MarketData` Pydantic 모델을 100% 통과하는지 | ✅ Pass |
+| KR-SCH-02 | `test_tier2_integration` | `tests/test_tier2_integration.py` | Producer-Consumer 데이터 검증 컨트랙트 (Tier 2 Strict) | ✅ Pass |
 
 ### 1.2 미국 시장 (US Market)
 | ID | 테스트명 | 파일명 | 검증 상황 | 상태 |
@@ -26,6 +27,8 @@
 | US-TICK-02 | `test_parse_us_websocket_message` | `tests/test_us_collector.py` | US 웹소켓 프레임 핸들링 및 Redis 발행 | ✅ Pass |
 | US-ASP-01 | `test_us_orderbook_parsing` | `tests/test_asp_parsing.py` | HDFSASP0 US 호가 패킷 파싱 정확성 | ✅ Pass |
 | US-SCH-01 | `test_us_schema_validation` | `tests/test_schema_integrity.py` | US 데이터의 Pydantic 모델 정합성 검증 | ✅ Pass |
+| DUAL-SOC-01 | `test_concurrent_socket` | `src/data_ingestion/price/common/websocket_dual.py` | Tick/Orderbook 소켓 분리 및 동시 연결 (Logs Verified) | ✅ Pass |
+| DUAL-ISO-01 | `test_socket_isolation` | Manual Verification | 한쪽 소켓 장애 시 다른 소켓 영향 없음 (Logs Verified) | ✅ Pass |
 
 ### 1.3 가상자산 (Crypto)
 | ID | 테스트명 | 파일명 | 검증 내용 | 상태 |
@@ -66,6 +69,8 @@
 | UI-EXT-02 | `test_external_api_connection` | (Manual) | 외부망에서 동적 호스트 기반 API/WS 연결 성공 확인 | ⏳ 검증중 |
 | UI-EXT-03 | `test_external_realtime_data` | (Manual) | 외부망 브라우저에서 실시간 틱/호가 데이터 수신 확인 | ⏳ 검증중 |
 | UI-TS-01 | `test_tailscale_access` | (Manual) | Tailscale IP(100.100.103.19:5173)로 대시보드 접속 | ⏳ 검증중 |
+| UI-CHART-01 | `test_candle_chart_render` | (Manual/Browser) | 분봉 캔들차트 렌더링 및 API 데이터 연동 검증 (QQQ) | ✅ Pass |
+| UI-CHART-02 | `test_professional_chart_features` | (Manual/Browser) | 볼륨 서브플롯, MA5/MA20, 가격 패널, 시간 범위 선택 검증 | ✅ Pass |
 
 ---
 
@@ -83,6 +88,8 @@
 | :--- | :--- | :--- | :--- | :--- |
 | CH-RES-01 | `test_db_disconnect` | 적재 중 DB 강제 종료 | DB 재연결 시 누락 데이터 자동 백필 | ⏳ 예정 |
 | CH-NET-01 | `test_network_jitter` | 500ms 이상의 네트워크 지연 강제 발생 | 세션 자동 재시작 및 API 키 재갱신 확인 | ⏳ 예정 |
+| DOOM-PROT-01 | `test_doomsday_suicide` | Manual (Redis Trigger) | `restart` 신호 수신 시 컨테이너 자폭 및 재부팅 검증 | ✅ Pass |
+| DOOM-PROT-02 | `test_failover_fallback` | Manual (Config Change) | 재발 장애 감지 시 Single Socket 모드 자동 전환 검증 | ✅ Pass |
 
 ---
 

@@ -30,6 +30,17 @@ def test_market_data_schema_integrity():
     with pytest.raises(ValidationError):
         MarketData(**invalid_data)
 
+    # 4. 값 제약 조건 (Tier 2: Price > 0, Volume >= 0)
+    negative_price = valid_data.copy()
+    negative_price["price"] = -100
+    with pytest.raises(ValidationError):
+        MarketData(**negative_price)
+        
+    negative_vol = valid_data.copy()
+    negative_vol["volume"] = -1
+    with pytest.raises(ValidationError):
+        MarketData(**negative_vol)
+
 def test_news_alert_schema_integrity():
     """뉴스 알람 스키마 정합성 검증"""
     from src.core.schema import NewsAlert

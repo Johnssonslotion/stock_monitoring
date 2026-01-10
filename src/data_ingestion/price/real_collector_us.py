@@ -7,6 +7,7 @@ import aiohttp
 import redis.asyncio as redis
 from datetime import datetime, timedelta
 from src.core.schema import MarketData, MessageType
+from pydantic import ValidationError
 
 # Setup Logging
 logging.basicConfig(level=logging.INFO)
@@ -82,7 +83,7 @@ class KISRealCollectorUS:
                 change=0.0, volume=float(fields[13]),
                 timestamp=datetime.now()
             )
-        except (IndexError, ValueError) as e:
+        except (IndexError, ValueError, ValidationError) as e:
             logger.error(f"US Parsing Error: {e} | Raw: {body_str}")
             return None
 

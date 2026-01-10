@@ -12,13 +12,13 @@ def test_kr_orderbook_parsing():
     parsed = collector.parse_orderbook(mock_body)
     
     assert parsed is not None
-    assert parsed['symbol'] == "005930"
-    assert parsed['asks'][0]['price'] == 75000
-    assert parsed['asks'][0]['vol'] == 1000
-    assert parsed['bids'][0]['price'] == 74900
-    assert parsed['bids'][0]['vol'] == 1500
-    assert len(parsed['asks']) == 5
-    assert len(parsed['bids']) == 5
+    assert parsed.symbol == "005930"
+    assert parsed.asks[0].price == 75000
+    assert parsed.asks[0].vol == 1000
+    assert parsed.bids[0].price == 74900
+    assert parsed.bids[0].vol == 1500
+    assert len(parsed.asks) == 5
+    assert len(parsed.bids) == 5
 
 def test_us_orderbook_parsing():
     collector = KISASPCollectorUS()
@@ -38,10 +38,10 @@ def test_us_orderbook_parsing():
     parsed = collector.parse_us_orderbook(mock_body)
     
     assert parsed is not None
-    assert parsed['symbol'] == "AAPL"
-    assert parsed['asks'][0]['price'] == 200.50
-    assert parsed['asks'][0]['vol'] == 100
-    assert parsed['bids'][0]['price'] == 200.40
-    assert parsed['bids'][0]['vol'] == 150
-    assert len(parsed['asks']) == 5
-    assert len(parsed['bids']) == 5
+    assert parsed.symbol == "AAPL"
+    assert parsed.asks[0].price == 200.50
+    assert parsed.asks[0].vol == 100
+    assert parsed.bids[0].price == 200.40
+    assert parsed.bids[0].vol == 150
+    assert len(parsed.asks) == 5
+    assert len(parsed.bids) == 5
