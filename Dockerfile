@@ -23,7 +23,8 @@ RUN pip install --no-cache-dir \
     asyncpg==0.29.0 \
     yfinance==0.2.36 \
     finance-datareader==0.9.60 \
-    aiofiles
+    aiofiles \
+    psutil
 
 # Copy application code
 COPY . .

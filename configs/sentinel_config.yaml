@@ -1,0 +1,13 @@
+sentinel:
+  heartbeat_threshold_sec: 30
+  check_interval_sec: 10
+  
+  resources:
+    cpu_warning_percent: 80.0
+    memory_warning_percent: 85.0
+    disk_warning_percent: 90.0
+    check_interval_sec: 60
+
+  alerting:
+    channels: ["redis"] # ["redis", "discord"]
+    discord_webhook_url: "" # Set via ENV: DISCORD_WEBHOOK_URL

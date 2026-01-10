@@ -4,6 +4,8 @@ import logging
 import json
 import os
 import redis.asyncio as redis
+import yaml
+import psutil
 from datetime import datetime, timedelta
 from src.core.schema import MarketData
 
@@ -22,6 +24,37 @@ class Sentinel:
         self.last_prices = {}  # {symbol: price}
         self.last_arrival = {} # {market: timestamp}
         self.is_running = True
+        self.config = self.load_config()
+
+    def load_config(self):
+        config_path = "configs/sentinel_config.yaml"
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                return yaml.safe_load(f)
+        return {"sentinel": {}}
+
+    async def monitor_resources(self):
+        """Monitor System Resources (CPU/RAM)"""
+        logger.info("🛡️ Resource Monitor Started...")
+        cfg = self.config.get("sentinel", {}).get("resources", {})
+        cpu_threshold = cfg.get("cpu_warning_percent", 80.0)
+        mem_threshold = cfg.get("memory_warning_percent", 85.0)
+        interval = cfg.get("check_interval_sec", 60)
+
+        while self.is_running:
+            await asyncio.sleep(interval)
+            
+            cpu = psutil.cpu_percent(interval=1)
+            mem = psutil.virtual_memory().percent
+            
+            if cpu > cpu_threshold:
+                await self.alert(f"High CPU Usage: {cpu}%", "WARNING")
+            
+            if mem > mem_threshold:
+                await self.alert(f"High Memory Usage: {mem}%", "WARNING")
+            
+            # Heartbeat Log
+            logger.info(f"❤️ System Health: CPU {cpu}% | MEM {mem}%")
 
     async def alert(self, msg: str, level: str = "WARNING"):
         alert_data = {
@@ -34,15 +67,50 @@ class Sentinel:
             await self.redis.publish("system_alerts", json.dumps(alert_data))
 
     async def monitor_heartbeat(self):
-        """Monitor if data is flowing for each market"""
+        """Doomsday Protocol: Monitor data flow and trigger failover"""
+        logger.info("🛡️ Doomsday Protocol Activated: Monitoring Heartbeat...")
+        
+        self.last_restart_time = None
+        
         while self.is_running:
-            await asyncio.sleep(60)
+            await asyncio.sleep(10) # Check every 10s
+            
             now = datetime.now()
-            # Simple check for now: assuming we have KR and US symbols
-            # In production, we'd check based on market hours
-            for market, last_time in self.last_arrival.items():
-                if (now - last_time).total_seconds() > HEARTBEAT_THRESHOLD_SEC:
-                    await self.alert(f"Data flow for {market} has stopped for over 5 minutes!", "CRITICAL")
+            # Market Hours Check (Simplified for now - can use same logic as Scheduler later)
+            # For verification, we assume ALWAYS ACTIVE or check basic hours
+            # TODO: Import TZ logic if needed. For now, strict check on data gap.
+            
+            for market in ["KR", "US"]: # Distinct checks
+                last_time = self.last_arrival.get(market)
+                if not last_time:
+                    continue # Startup grace period or no data yet
+
+                gap = (now - last_time).total_seconds()
+                
+                # Trigger: 60s Silence
+                if gap > 60:
+                    logger.error(f"💀 DEAD MAN'S SWITCH: {market} silent for {gap:.1f}s!")
+                    
+                    # Logic: Level 2 (Degrade) vs Level 1 (Restart)
+                    if self.last_restart_time and (now - self.last_restart_time).total_seconds() < 300:
+                        # Level 2: Persistent Failure -> Degrade Mode
+                        logger.critical("🚨 LEVEL 2 TRIGGERED: Persistent Failure -> Disabling Dual Socket")
+                        if self.redis:
+                            await self.redis.set("config:enable_dual_socket", "false")
+                            logger.info("💾 Config Saved: config:enable_dual_socket = false")
+                            await self.alert(f"Failed to recover {market}. Switching to SINGLE SOCKET mode.", "CRITICAL")
+                    else:
+                        # Level 1: First Failure -> Just Restart
+                        logger.warning("🔨 LEVEL 1 TRIGGERED: Attempting Hard Restart")
+                        await self.alert(f"{market} data stopped. Sending Suicide Packet.", "WARNING")
+
+                    # ACTION: Suicide Packet
+                    if self.redis:
+                        await self.redis.publish("system:control", json.dumps({"command": "restart", "reason": f"no_data_{market}"}))
+                        self.last_restart_time = now
+                        
+                    # Wait for restart to happen (prevent spamming)
+                    await asyncio.sleep(60) 
             
     async def process_ticker(self, data: MarketData):
         symbol = data.symbol
@@ -85,6 +153,9 @@ class Sentinel:
         
         # Start heartbeat monitor
         asyncio.create_task(self.monitor_heartbeat())
+        
+        # Start resource monitor
+        asyncio.create_task(self.monitor_resources())
         
         async for message in pubsub.listen():
             if message['type'] == 'message':
