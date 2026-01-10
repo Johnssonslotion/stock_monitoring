@@ -33,6 +33,10 @@ verify: ## Verify data collection (run after 2-3 minutes)
 	@echo "\n=== Checking News Data ==="
 	@docker exec news-collector python -c "import duckdb; conn = duckdb.connect('data/market_data.duckdb'); print('News:', conn.execute('SELECT count(*) FROM news').fetchone()[0])" || echo "No news yet"
 
+audit: ## Run governance checks (Branch, Commit, Docstrings)
+	@echo "🛡️ Governance Check..."
+	@python3 scripts/governance.py
+
 clean: ## Remove all containers, volumes, and data
 	docker compose -f deploy/docker-compose.yml down -v
 	rm -rf data/*.duckdb
