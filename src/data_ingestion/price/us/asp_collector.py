@@ -15,49 +15,17 @@ class USASPCollector(BaseCollector):
     """미국 시장 실시간 호가 수집기 (핸들러)"""
     
     def __init__(self):
-        super().__init__(market="US", tr_id="HDFSASP0")
+        super().__init__(market="US", tr_id="HHDFS76200100") # 실시간 미국주식 호가 (User Confirmed)
 
     def get_channel(self) -> str:
         return "orderbook.us"
 
     def load_symbols(self) -> list:
-        # Load logic similar to original asp_collector_us (Top 1)
-        try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-            
-            symbols_config = config.get('symbols', {})
-            
-            targets = []
-            # 1. 인덱스 (SPY: NYS, Others: NAS)
-            if 'indices' in symbols_config:
-                for item in symbols_config['indices'][:1]: # Top 1
-                    exchange = item.get('exchange', 'NASDAQ')
-                    prefix = 'DNYS' if exchange == 'NYSE' else 'DNAS'
-                    targets.append(f"{prefix}{item['symbol']}")
-
-            # 2. Leverage
-            if 'leverage' in symbols_config:
-                for item in symbols_config['leverage'][:1]:
-                    exchange = item.get('exchange', 'NASDAQ')
-                    prefix = 'DNYS' if exchange == 'NYSE' else 'DNAS'
-                    targets.append(f"{prefix}{item['symbol']}")
-            
-            # 3. Sector Top 1
-            if 'sectors' in symbols_config:
-                for sector in symbols_config['sectors'].values():
-                    if sector.get('top3'):
-                        item = sector['top3'][0]
-                        exchange = item.get('exchange', 'NASDAQ')
-                        prefix = 'DNYS' if exchange == 'NYSE' else 'DNAS'
-                        targets.append(f"{prefix}{item['symbol']}")
-            
-            self.symbols = list(set(targets))
-            logger.info(f"Loaded {len(self.symbols)} US ASP symbols")
-            return self.symbols
-        except Exception as e:
-            logger.error(f"Symbol Load Error: {e}")
-            return []
+        """대표 종목 하나(NVDA)만 수집 (User Request)"""
+        # NVDA is NASDAQ -> DNAS Prefix
+        self.symbols = ["DNASNVDA"]
+        logger.info(f"Loaded {len(self.symbols)} US ASP symbols: {self.symbols}")
+        return self.symbols
 
     def parse_tick(self, body_str: str):
         # 호가 파싱

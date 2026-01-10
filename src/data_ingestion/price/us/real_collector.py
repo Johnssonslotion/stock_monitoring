@@ -22,7 +22,7 @@ from src.data_ingestion.price.common.websocket_base import BaseCollector
 
 class USRealCollector(BaseCollector):
     """미국 시장 실시간 데이터 수집기 (핸들러)"""
-    TR_ID = "HHDFS00000300" # 실시간 미국주식 체결가 (User Confirmed: Execution)
+    TR_ID = "HDFSCNT0" # 실시간 미국주식 체결가 (Verified: HDFSCNT0 works with DNASAAPL)
     # Note: 200(Details), 100(Hoga). 300 is correct for Ticks.
     
     def __init__(self):

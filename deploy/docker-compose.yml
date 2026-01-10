@@ -100,6 +100,7 @@ services:
     volumes:
       - ../configs:/app/configs
       - ../data:/app/data
+      - ../src:/app/src
     depends_on:
       timescaledb:
         condition: service_started
@@ -206,6 +207,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ../configs:/app/configs
+      - ../src:/app/src
     depends_on:
       redis:
         condition: service_healthy
@@ -234,10 +236,10 @@ services:
         condition: service_healthy
     networks:
       - default
-    profiles:
-      - real
+      # profiles:
+      # - real
 
-  # Orderbook Collector (US) - NEW
+      # Orderbook Collector (US) - NEW
   asp-collector-us:
     build:
       context: ..
@@ -257,8 +259,8 @@ services:
         condition: service_healthy
     networks:
       - default
-    profiles:
-      - real
+      # profiles:
+      # - real
 
   history-collector:
     build:

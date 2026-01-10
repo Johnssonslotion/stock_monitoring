@@ -70,10 +70,14 @@ async def test_after_hours_collection():
             await ws.send(json.dumps(req))
             print("📤 구독 요청 전송: 005930 (삼성전자)")
             
-            # 메시지 수신 대기 (최대 10초)
-            for i in range(10):
+            # 메시지 수신 대기 (최대 15분 - 18:00 체결 대기)
+            print("⏳ 18:00 마감 체결 대기 중... (최대 15분)")
+            for i in range(900):  # 900초 = 15분
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                    
+                    if i % 60 == 0:
+                        print(f"   ...대기 중 ({i}초 경과)")
                     
                     # 실제 데이터 메시지 확인
                     if '|' in msg and msg[0] in ['0', '1']:
@@ -130,7 +134,7 @@ async def test_after_hours_collection():
             print("📤 구독 요청 전송: 005930 (삼성전자)")
             
             # 메시지 수신 대기
-            for i in range(10):
+            for i in range(120): # 호가는 더 자주 바뀔 수 있음
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
                     

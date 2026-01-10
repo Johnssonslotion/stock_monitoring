@@ -133,6 +133,73 @@ async def get_latest_orderbook(symbol: str):
         # 평탄화된 데이터를 클라이언트에 맞게 구조화 (선택 사항)
         return data
 
+@app.get("/api/v1/candles/{symbol}", dependencies=[Depends(verify_api_key)])
+async def get_recent_candles(symbol: str, limit: int = 200):
+    """최근 분봉(Candle) 데이터 조회"""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT time, open, high, low, close, volume
+            FROM market_minutes
+            WHERE symbol = $1
+            ORDER BY time DESC
+            LIMIT $2
+        """, symbol, limit)
+        
+        # 반환 포맷: Frontend(Plotly)에서 쓰기 편하게 리스트 형태로 변환
+        # 시간순 정렬 (과거 -> 현재)로 뒤집어서 반환
+        return [dict(r) for r in reversed(rows)]
+
+@app.get("/api/v1/market-map", dependencies=[Depends(verify_api_key)])
+async def get_market_map():
+    """NASDAQ 100 종목의 Treemap 데이터 조회 (시가총액, 등락률, Active 여부)"""
+    import yfinance as yf
+    from datetime import datetime
+    
+    # NASDAQ 100 대표 종목 리스트 (상위 30개로 제한 - 성능 최적화)
+    nasdaq_symbols = [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ASML", "COST",
+        "NFLX", "AMD", "PEP", "ADBE", "CSCO", "TMUS", "CMCSA", "INTC", "QCOM", "TXN",
+        "INTU", "AMGN", "HON", "AMAT", "SBUX", "ISRG", "BKNG", "GILD", "MDLZ", "VRTX"
+    ]
+    
+    # DB에서 Active 심볼 조회
+    active_symbols = set()
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT DISTINCT symbol FROM market_minutes")
+            active_symbols = {row['symbol'] for row in rows}
+    
+    results = []
+    for symbol in nasdaq_symbols:
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            hist = ticker.history(period="1d")
+            
+            if hist.empty:
+                continue
+                
+            current_price = hist['Close'].iloc[-1]
+            prev_close = info.get('previousClose', current_price)
+            change_percent = ((current_price - prev_close) / prev_close * 100) if prev_close else 0
+            
+            results.append({
+                "symbol": symbol,
+                "name": info.get('shortName', symbol),
+                "marketCap": info.get('marketCap', 0),
+                "price": round(current_price, 2),
+                "change": round(change_percent, 2),
+                "isActive": symbol in active_symbols or symbol == "QQQ"  # QQQ 강제 active
+            })
+        except Exception as e:
+            logger.warning(f"Failed to fetch data for {symbol}: {e}")
+            continue
+    
+    return {"symbols": results, "timestamp": datetime.now().isoformat()}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "db": db_pool is not None}
