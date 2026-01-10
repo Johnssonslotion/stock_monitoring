@@ -19,8 +19,8 @@
 프로젝트의 상세한 진화 방향은 **[Master Roadmap](docs/strategies/master_roadmap.md)**에서 확인할 수 있습니다.
 
 1.  **Pillar 1: 인프라 & 격리 (Infra/HA)** - Dev/Prod 분리 및 데이터 영속성.
-2.  **Pillar 2: 고정밀 수집 (Ingestion)** - KR/US/Crypto 틱 및 1s 호가 스냅샷 수집.
-3.  **Pillar 3: 시각화 터미널 (Viewer)** - Web Dashboard (✅ DONE) 및 macOS Electron 터미널.
+2.  **Pillar 2: 고정밀 수집 (Ingestion)** - KR/US/Crypto 틱 및 1s 호가 스냅샷 수집. (✅ Tier 2 Gate PASSED)
+3.  **Pillar 3: 시각화 터미널 (Viewer)** - Web Dashboard (✅ DONE, Latency Optimized) 및 macOS Electron 터미널.
 4.  **Pillar 4: 운영 및 복원력 (Ops)** - Sentinel 감시 및 카오스 엔지니어링.
 5.  **Pillar 5: 전략 및 분석 (Strategy)** - 백테스팅 엔진 및 실시간 성과 추적.
 
