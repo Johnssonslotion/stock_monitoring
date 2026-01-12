@@ -152,20 +152,65 @@ async def get_recent_candles(symbol: str, limit: int = 200):
         # 시간순 정렬 (과거 -> 현재)로 뒤집어서 반환
         return [dict(r) for r in reversed(rows)]
 
-@app.get("/api/v1/market-map", dependencies=[Depends(verify_api_key)])
-async def get_market_map():
-    """NASDAQ 100 종목의 Treemap 데이터 조회 (시가총액, 등락률, Active 여부)"""
+@app.get("/api/v1/market-map/{market}", dependencies=[Depends(verify_api_key)])
+async def get_market_map(market: str = "us"):
+    """
+    시장별 Treemap 데이터 조회 (시가총액, 등락률, Active 여부)
+    
+    Args:
+        market (str): 시장 구분 ('kr' = KOSPI, 'us' = NASDAQ)
+    """
     import yfinance as yf
     from datetime import datetime
     
-    # NASDAQ 100 대표 종목 리스트 (상위 30개로 제한 - 성능 최적화)
-    nasdaq_symbols = [
-        "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ASML", "COST",
-        "NFLX", "AMD", "PEP", "ADBE", "CSCO", "TMUS", "CMCSA", "INTC", "QCOM", "TXN",
-        "INTU", "AMGN", "HON", "AMAT", "SBUX", "ISRG", "BKNG", "GILD", "MDLZ", "VRTX"
-    ]
+    # 시장별 종목 리스트 정의
+    if market.lower() == "kr":
+        # KOSPI 시가총액 상위 30개 종목
+        symbols = [
+            "005930.KS",  # 삼성전자
+            "000660.KS",  # SK하이닉스
+            "035420.KS",  # NAVER
+            "051910.KS",  # LG화학
+            "005380.KS",  # 현대차
+            "006400.KS",  # 삼성SDI
+            "000270.KS",  # 기아
+            "035720.KS",  # 카카오
+            "068270.KS",  # 셀트리온
+            "207940.KS",  # 삼성바이오로직스
+            "105560.KS",  # KB금융
+            "055550.KS",  # 신한지주
+            "096770.KS",  # SK이노베이션
+            "012330.KS",  # 현대모비스
+            "028260.KS",  # 삼성물산
+            "017670.KS",  # SK텔레콤
+            "066570.KS",  # LG전자
+            "033780.KS",  # KT&G
+            "003670.KS",  # 포스코퓨처엠
+            "009150.KS",  # 삼성전기
+            "034730.KS",  # SK
+            "018260.KS",  # 삼성에스디에스
+            "323410.KS",  # 카카오뱅크
+            "003550.KS",  # LG
+            "000810.KS",  # 삼성화재
+            "086790.KS",  # 하나금융지주
+            "032830.KS",  # 삼성생명
+            "011200.KS",  # HMM
+            "010130.KS",  # 고려아연
+            "051900.KS",  # LG생활건강
+        ]
+        currency = "KRW"
+        market_cap_unit = 1e12  # 조(Trillion)
+    else:
+        # NASDAQ 100 대표 종목 (기본값)
+        symbols = [
+            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ASML", "COST",
+            "NFLX", "AMD", "PEP", "ADBE", "CSCO", "TMUS", "CMCSA", "INTC", "QCOM", "TXN",
+            "INTU", "AMGN", "HON", "AMAT", "SBUX", "ISRG", "BKNG", "GILD", "MDLZ", "VRTX"
+        ]
+        currency = "USD"
+        market_cap_unit = 1e9  # 십억(Billion)
     
-    # DB에서 Active 심볼 조회
+    # DB에서 Active 심볼 조회 (실시간 데이터 수집 여부)
     active_symbols = set()
     if db_pool:
         async with db_pool.acquire() as conn:
@@ -173,7 +218,7 @@ async def get_market_map():
             active_symbols = {row['symbol'] for row in rows}
     
     results = []
-    for symbol in nasdaq_symbols:
+    for symbol in symbols:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
@@ -186,19 +231,29 @@ async def get_market_map():
             prev_close = info.get('previousClose', current_price)
             change_percent = ((current_price - prev_close) / prev_close * 100) if prev_close else 0
             
+            # 한국 종목은 .KS 제거한 순수 코드로 매칭
+            clean_symbol = symbol.replace(".KS", "") if ".KS" in symbol else symbol
+            is_active = clean_symbol in active_symbols or symbol in active_symbols or symbol == "QQQ"
+            
             results.append({
                 "symbol": symbol,
                 "name": info.get('shortName', symbol),
                 "marketCap": info.get('marketCap', 0),
                 "price": round(current_price, 2),
                 "change": round(change_percent, 2),
-                "isActive": symbol in active_symbols or symbol == "QQQ"  # QQQ 강제 active
+                "isActive": is_active,
+                "currency": currency
             })
         except Exception as e:
             logger.warning(f"Failed to fetch data for {symbol}: {e}")
             continue
     
-    return {"symbols": results, "timestamp": datetime.now().isoformat()}
+    return {
+        "symbols": results, 
+        "timestamp": datetime.now().isoformat(),
+        "market": market.upper(),
+        "currency": currency
+    }
 
 @app.get("/health")
 async def health_check():

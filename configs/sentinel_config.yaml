@@ -11,3 +11,7 @@ sentinel:
   alerting:
     channels: ["redis"] # ["redis", "discord"]
     discord_webhook_url: "" # Set via ENV: DISCORD_WEBHOOK_URL
+
+  circuit_breaker:
+    max_restarts_per_hour: 5
+    cool_down_minutes: 60

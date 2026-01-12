@@ -208,6 +208,7 @@ services:
     volumes:
       - ../configs:/app/configs
       - ../src:/app/src
+      - ../data:/app/data # 로그 및 데이터 영구 저장을 위해 추가
     depends_on:
       redis:
         condition: service_healthy

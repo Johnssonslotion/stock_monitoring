@@ -92,6 +92,7 @@ class Sentinel:
                     logger.error(f"💀 DEAD MAN'S SWITCH: {market} silent for {gap:.1f}s!")
                     
                     # Logic: Level 2 (Degrade) vs Level 1 (Restart)
+                    # Logic: Level 2 (Degrade) vs Level 1 (Restart)
                     if self.last_restart_time and (now - self.last_restart_time).total_seconds() < 300:
                         # Level 2: Persistent Failure -> Degrade Mode
                         logger.critical("🚨 LEVEL 2 TRIGGERED: Persistent Failure -> Disabling Dual Socket")
@@ -100,17 +101,48 @@ class Sentinel:
                             logger.info("💾 Config Saved: config:enable_dual_socket = false")
                             await self.alert(f"Failed to recover {market}. Switching to SINGLE SOCKET mode.", "CRITICAL")
                     else:
-                        # Level 1: First Failure -> Just Restart
-                        logger.warning("🔨 LEVEL 1 TRIGGERED: Attempting Hard Restart")
-                        await self.alert(f"{market} data stopped. Sending Suicide Packet.", "WARNING")
+                        # Circuit Breaker Check
+                        if await self.check_circuit_breaker():
+                            # Level 1: First Failure -> Just Restart
+                            logger.warning("🔨 LEVEL 1 TRIGGERED: Attempting Hard Restart")
+                            await self.alert(f"{market} data stopped. Sending Suicide Packet.", "WARNING")
 
-                    # ACTION: Suicide Packet
-                    if self.redis:
-                        await self.redis.publish("system:control", json.dumps({"command": "restart", "reason": f"no_data_{market}"}))
-                        self.last_restart_time = now
+                            # ACTION: Suicide Packet
+                            if self.redis:
+                                await self.redis.publish("system:control", json.dumps({"command": "restart", "reason": f"no_data_{market}"}))
+                                self.last_restart_time = now
+                                self._record_restart()
+                        else:
+                            logger.critical("🛑 CIRCUIT BREAKER TRIPPED: Too many restarts! Manual intervention required.")
+                            await self.alert(f"CIRCUIT BREAKER: {market} dead, but max restarts exceeded. System HALTED.", "CRITICAL")
                         
                     # Wait for restart to happen (prevent spamming)
                     await asyncio.sleep(60) 
+
+    def _record_restart(self):
+        """Record restart timestamp"""
+        if not hasattr(self, 'restart_history'):
+            self.restart_history = []
+        self.restart_history.append(datetime.now())
+        
+        # Cleanup old history (> 1 hour)
+        limit = self.config.get("circuit_breaker", {}).get("cool_down_minutes", 60)
+        cutoff = datetime.now() - timedelta(minutes=limit)
+        self.restart_history = [t for t in self.restart_history if t > cutoff]
+        
+    async def check_circuit_breaker(self) -> bool:
+        """Return True if safe to restart, False if tripped"""
+        if not hasattr(self, 'restart_history'):
+            self.restart_history = []
+            
+        limit_count = self.config.get("sentinel", {}).get("circuit_breaker", {}).get("max_restarts_per_hour", 3)
+        current_count = len(self.restart_history)
+        
+        if current_count >= limit_count:
+            logger.error(f"Circuit Breaker: {current_count}/{limit_count} restarts in last hour.")
+            return False
+            
+        return True 
             
     async def process_ticker(self, data: MarketData):
         symbol = data.symbol
