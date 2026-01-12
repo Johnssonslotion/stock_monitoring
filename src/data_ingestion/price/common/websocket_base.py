@@ -57,7 +57,7 @@ class UnifiedWebSocketManager:
         self.active_markets = set()
         
         # Raw Logger
-        self.raw_logger = RawWebSocketLogger(retention_hours=24)
+        self.raw_logger = RawWebSocketLogger(retention_hours=120)  # 5일 보존
         
         # Dynamic URL State
         self.current_ws_url: Optional[str] = None
