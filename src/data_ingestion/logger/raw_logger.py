@@ -88,21 +88,33 @@ class RawWebSocketLogger:
         while True:
             try:
                 cutoff = datetime.now() - timedelta(hours=self.retention_hours)
+                min_retention = datetime.now() - timedelta(hours=48)  # 최소 2일 보존
                 cnt = 0
+                protected = 0
+                
                 for file_path in self.log_dir.glob("ws_raw_*.jsonl"):
                     # 파일명에서 시간 추출: ws_raw_20260109_17.jsonl
                     try:
                         name_part = file_path.stem.replace("ws_raw_", "")
                         file_time = datetime.strptime(name_part, "%Y%m%d_%H")
                         
-                        if file_time < cutoff:
-                            file_path.unlink()
-                            cnt += 1
+                        # 최소 2일치는 절대 삭제 금지
+                        if file_time < min_retention:
+                            if file_time < cutoff:
+                                file_path.unlink()
+                                cnt += 1
+                            else:
+                                # retention 범위 내이지만 아직 살아있음
+                                pass
+                        else:
+                            # 2일 이내 - 보호됨
+                            protected += 1
+                            
                     except ValueError:
                         continue # 날짜 형식이 아니면 무시
                 
                 if cnt > 0:
-                    logger.info(f"🧹 Cleaned up {cnt} old log files")
+                    logger.info(f"🧹 Cleaned up {cnt} old log files (Protected: {protected} files within 48h)")
                     
             except Exception as e:
                 logger.error(f"Cleanup error: {e}")

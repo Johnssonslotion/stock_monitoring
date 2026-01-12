@@ -68,18 +68,24 @@ class TimescaleArchiver:
         await self.init_db()
         logger.info("TimescaleArchiver started. Connected to Redis & DB.")
 
+
         # 2. Subscribe to pattern (ticker.kr, ticker.us, market_orderbook)
         pubsub = self.redis.pubsub()
+        logger.info("🔧 DEBUG: Created pubsub object")
         await pubsub.psubscribe("ticker.*")  # Pattern subscription for KR/US
+        logger.info("🔧 DEBUG: psubscribe() completed")
         await pubsub.subscribe("market_orderbook")
+        logger.info("🔧 DEBUG: subscribe() completed")
         logger.info("📡 Subscribed to: ticker.* (pattern), market_orderbook")
         
         # 3. Flush Task
         asyncio.create_task(self.periodic_flush())
 
         # 4. Listen Loop
+        logger.info("🔧 DEBUG: Entering listen loop...")
         async for message in pubsub.listen():
             msg_type = message["type"]
+
             
             if msg_type == "pmessage":  # Pattern message
                 try:
