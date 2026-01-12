@@ -64,3 +64,13 @@ yarn-error.log
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Temporary & Debug
+.venv_test/
+debug_*.py
+logs.txt
+*.jsonl
+data/raw/*.jsonl
+
+# Experiments
+docs/experiments/
