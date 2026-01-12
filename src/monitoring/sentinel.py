@@ -147,9 +147,11 @@ class Sentinel:
     async def run(self):
         self.redis = await redis.from_url(REDIS_URL, decode_responses=True)
         pubsub = self.redis.pubsub()
-        await pubsub.subscribe("market_ticker", "market_orderbook")
+        # 패턴 구독: ticker.kr, ticker.us 모두 수신
+        await pubsub.psubscribe("ticker.*")
+        await pubsub.subscribe("market_orderbook")  # orderbook은 직접 구독 유지
         
-        logger.info("Sentinel started. Monitoring 'market_ticker' and 'market_orderbook'...")
+        logger.info("Sentinel started. Monitoring 'ticker.*' pattern and 'market_orderbook'...")
         
         # Start heartbeat monitor
         asyncio.create_task(self.monitor_heartbeat())
@@ -158,15 +160,26 @@ class Sentinel:
         asyncio.create_task(self.monitor_resources())
         
         async for message in pubsub.listen():
-            if message['type'] == 'message':
+            msg_type = message['type']
+            
+            if msg_type == 'pmessage':  # 패턴 구독 메시지 (ticker.*)
+                try:
+                    channel = message['channel']  # ticker.kr 또는 ticker.us
+                    raw_data = message['data']
+                    
+                    # ticker.* 채널은 모두 MarketData 포맷
+                    data = MarketData.model_validate_json(raw_data)
+                    await self.process_ticker(data)
+                    
+                except Exception as e:
+                    logger.error(f"Error processing pattern message {channel} in Sentinel: {e}")
+                    
+            elif msg_type == 'message':  # 직접 구독 메시지
                 try:
                     channel = message['channel']
                     raw_data = message['data']
                     
-                    if channel == "market_ticker":
-                        data = MarketData.model_validate_json(raw_data)
-                        await self.process_ticker(data)
-                    elif channel == "market_orderbook":
+                    if channel == "market_orderbook":
                         data = json.loads(raw_data)
                         await self.process_orderbook(data)
                         
