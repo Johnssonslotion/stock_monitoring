@@ -23,7 +23,10 @@
   - *US Config*: `HDFSCNT0` + `/HDFSCNT0` (Dual-Socket Ready)
 - **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
 - **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
-- **Phase 3 (Selective Orderbook)**: 1초 단위 호가 스냅샷 구현. (✅ DONE)
+- **Phase 3 (Hybrid Ingestion Strategy)**: 🆕 **2026-01-14**
+  - **Strategy**: **Ticks (Real-time WS)** + **Orderbook (1s Polling REST)** 혼합 운용.
+  - **Standard**: **FI-2010 Format** 준수 (10-level Ask/Bid Depth) 학습용 정밀 데이터 확보.
+  - **Constraints**: Single-Key 환경에서의 최적화된 동시 수집 모델.
 - **Phase 4 (Quality Guardrail)**:
   - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
   - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)

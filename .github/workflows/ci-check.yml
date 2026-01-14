@@ -11,6 +11,31 @@ jobs:
       matrix:
         python-version: ["3.12"]
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      timescaledb:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+          POSTGRES_DB: stockval
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v3
 
@@ -19,24 +44,26 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Install Poetry
+      run: |
+        pip install poetry
+        poetry config virtualenvs.create false
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install black isort pytest pytest-asyncio httpx redis asyncpg plotly pandas
+        poetry install --no-interaction --no-ansi
 
     - name: Lint with Black
       run: |
-        black --check src tests
+        poetry run black --check src tests
 
     - name: Check Imports with Isort
       run: |
-        isort --check-only --profile black src tests
+        poetry run isort --check-only --profile black src tests
 
     - name: Run Unit Tests
       env:
         APP_ENV: test
         REDIS_URL: redis://localhost:6379/0
-      # Note: For full E2E, we need services. Here we run unit tests only.
       run: |
-        # pytest tests/unit -v (Unit Test path if exists, otherwise skip for now)
-        echo "Unit tests pending structure separation. Skipping execution for now."
+        poetry run pytest tests/ -v
