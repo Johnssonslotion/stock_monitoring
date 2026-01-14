@@ -36,6 +36,16 @@ function App() {
   // Dashboard Data State
   const [candles, setCandles] = useState<CandleData[]>([]);
 
+  // Electron IPC Listener
+  useEffect(() => {
+    if (window.ipcRenderer) {
+      console.log("🚀 Running in Electron environment");
+      window.ipcRenderer.on('main-process-message', (_event, message) => {
+        console.log("📩 [Main Process]:", message);
+      });
+    }
+  }, []);
+
   // Fetch Candles when symbol changes (Only if on dashboard)
   useEffect(() => {
     if (activeTab === 'dashboard') {
