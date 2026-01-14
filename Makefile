@@ -90,3 +90,39 @@ debug-pubsub:
 ## debug-channels: List all active channels
 debug-channels:
 	docker exec stock-redis redis-cli PUBSUB CHANNELS
+
+# --- Backtest Environment Commands ---
+.PHONY: backtest-up backtest-down backtest-logs backtest-clean backtest-shell
+
+backtest-up: ## Start backtest environment (Isolated)
+	@echo "🧪 Starting Backtest Environment..."
+	@echo "   - Redis: 6380"
+	@echo "   - TimescaleDB: 5433"
+	@echo "   - API: 8001"
+	docker compose -f deploy/docker-compose.backtest.yml --env-file .env.backtest up -d
+	@echo "✅ Backtest environment is running!"
+
+backtest-down: ## Stop backtest environment
+	@echo "🛑 Stopping Backtest Environment..."
+	docker compose -f deploy/docker-compose.backtest.yml down
+
+backtest-logs: ## View backtest logs
+	docker compose -f deploy/docker-compose.backtest.yml logs -f
+
+backtest-clean: ## Clean backtest data and volumes
+	@echo "⚠️  This will remove ALL backtest data!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose -f deploy/docker-compose.backtest.yml down -v; \
+		echo "✅ All backtest data has been removed"; \
+	else \
+		echo "❌ Cancelled"; \
+	fi
+
+backtest-shell: ## Enter backtest engine container
+	docker exec -it backtest-engine /bin/sh
+
+backtest-verify: ## Verify backtest database
+	@echo "=== Checking Backtest DB ==="
+	@docker exec backtest-timescale psql -U postgres -d backtest_db -c "SELECT COUNT(*) as tick_count FROM ticks;" || echo "Table not created yet"
