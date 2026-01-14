@@ -36,14 +36,36 @@ class DualWebSocketManager:
         self.active_markets = set()
         
         # Raw Logger (Shared)
-        self.raw_logger = RawWebSocketLogger(retention_hours=24)
+        self.raw_logger = RawWebSocketLogger(retention_hours=120)  # 5일 보존
         
         # Current URL (Both sockets use the same endpoint, just separate sessions)
         self.current_ws_url: Optional[str] = None
 
-        # TR_ID Classification
         self.tick_tr_ids = {'H0STCNT0', 'HDFSCNT0'}
         self.orderbook_tr_ids = {'H0STASP0', 'HDFSASP0', 'HHDFS00000300'} # Add legacy/fallback IDs if needed
+        
+        # Auto-Refresh Callback
+        self.key_refresh_callback = None
+        self.last_refresh_time = 0
+
+    def set_refresh_callback(self, callback):
+        """Set callback for auto key refresh"""
+        self.key_refresh_callback = callback
+        
+    async def trigger_refresh(self):
+        """Trigger key refresh with cooldown"""
+        import time
+        now = time.time()
+        if now - self.last_refresh_time < 60: # 60s Cooldown
+            logger.warning("⏳ Key refresh cooldown active. Skipping.")
+            return
+
+        if self.key_refresh_callback:
+            self.last_refresh_time = now
+            logger.info("♻️  Executing Key Refresh Callback...")
+            await self.key_refresh_callback()
+        else:
+            logger.error("❌ No key_refresh_callback set!")
 
     async def connect_redis(self):
         self.redis = await redis.from_url(self.redis_url, decode_responses=True)
@@ -80,7 +102,11 @@ class DualWebSocketManager:
                         msg = body_data.get('msg1') or body_data.get('msg_cd')
                         if msg:
                             logger.error(f"🚨 PROTOCOL ERROR [{source.upper()}]: {msg} | Raw: {message}")
-                            # TODO: Trigger Key Refresh if 'invalid tr_key' in msg
+                            
+                            # 🚨 KEY EXPIRED DETECTION
+                            if "invalid tr_key" in msg or "Expired" in msg:
+                                logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
+                                asyncio.create_task(self.trigger_refresh())
                             return "ERROR"
                 except json.JSONDecodeError:
                     pass

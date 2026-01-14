@@ -69,13 +69,25 @@ def check_docstrings(directory="src"):
     print("✅ [Governance] Docstring Check Passed (Pragmatic)")
     return True
 
+def run_tests():
+    """Rule: Unit Test 통과 여부 확인"""
+    print("🧪 [Governance] Verifying Unit Tests...")
+    try:
+        # Run only unit tests for speed in audit
+        subprocess.check_call("python3 -m pytest tests/test_schema_integrity.py", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("✅ [Governance] Core Unit Tests Passed")
+        return True
+    except:
+        print("❌ [Governance] Unit Tests FAILED! You cannot merge broken code.")
+        return False
+
 def run_audit():
     print("🛡️ [Governance] Starting Audit...")
     
     checks = [
         check_branch_naming(),
-        # check_docstrings(), # Temporary disable or warning only
-        check_uncommitted_changes()
+        check_uncommitted_changes(),
+        run_tests()
     ]
     
     if all(checks):
