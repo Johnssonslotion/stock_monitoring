@@ -28,6 +28,9 @@ graph TD
     Strategy -->|Signal| Rebalance[섹터 리밸런싱]
     Strategy -->|Signal| Scalping[단타 실행]
     
+    Strategy -->|Backtest| BT[Backtesting Engine]
+    BT -->|Results| Reports[Experiment Reports]
+    
     Rebalance --> Web[웹 대시보드]
     Scalping --> Web
     
@@ -89,4 +92,5 @@ make test
 - **Phase 4: Optimization** ✅ [Completed] (TimescaleDB Hypertable)
 - **Phase 5: Safety** ✅ [Completed] (Environment Separation)
 - **Phase 6: Verification** ✅ [Completed] (E2E Test & Data Rescue)
-- **Phase 7: Intelligence** 🚧 [Planned] (SLM Log Analysis)
+- **Phase 7: Strategy & Experimentation** ✅ [Completed] (Isolated Backtest Infrastructure)
+- **Phase 8: Intelligence** 🚧 [Planned] (SLM Log Analysis)
