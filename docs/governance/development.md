@@ -22,6 +22,38 @@
     -   `.env` 파일은 절대 공유하지 않는다. (Git Ignore)
     -   새로운 키 추가 시 `.env.example` 동기화 필수.
     -   장비 간 이동 시 Secrets Manager(1Password 등)나 보안 채널을 통해 개별 주입.
+4.  **Tailscale Access (SSH Config)**:
+    -   **MagicDNS**: Tailscale 사용 시 IP 대신 기기 이름(`monitor-prod`)을 사용할 수 있습니다.
+    -   **SSH Config Setup (`~/.ssh/config`)**:
+        ```ssh
+        # ~/.ssh/config 예시
+        Host stock-monitor-prod
+            HostName 100.x.y.z  # Tailscale IP 또는 MagicDNS 이름
+            User ubuntu
+            IdentityFile ~/.ssh/id_rsa_stock
+        ```
+    -   *Makefile*: 위 설정이 되어 있다면 `make sync-db-prod` 실행 시 자동으로 연결됩니다.
+    -   *Override*: 설정이 다르다면 `make sync-db-prod PROD_HOST=my-server`로 실행 가능합니다.
+
+5.  **DB Snapshot Workflow ("임시 DB 떠오기")**:
+    -   **목적**: 로컬 개발 시 '빈 깡통 DB'가 아닌 '실제 데이터' 기반으로 테스트하기 위함.
+    -   **Command**: `make sync-db-prod` (구현 예정)
+    -   **Logic**: `ssh | pg_dump | gunzip | psql` 스트리밍 파이프라인 사용.
+    -   **Note**: 대용량 데이터 전송 시 비용 발생 주의(Outbound Traffic). 필요 시 `pg_dump`에 `--schema-only` 또는 `LIMIT` 옵션 사용 고려.
+
+### 1.4 UI 개발 및 원격 접속 전략 (UI & Remote Strategy)
+**"GUI는 로컬에서, 로직은 서버에서."**
+
+1.  **Web Dashboard**:
+    -   SSH 환경에서는 브라우저 실행이 불가능하므로, **Port Forwarding**을 사용한다.
+    -   *Cmd*: `ssh -L 5173:localhost:5173 -L 8000:localhost:8000 monitor-prod`
+    -   *Access*: 로컬 브라우저에서 `localhost:5173` 접속.
+2.  **Electron App**:
+    -   **실행 위치**: 반드시 **로컬 머신(Mac/Windows)**에서 실행한다. (SSH X11 Forwarding 금지)
+    -   **Hybrid Dev**: 로컬 앱이 **원격 백엔드(Remote API)**를 바라보게 설정한다.
+        -   `VITE_API_URL=http://localhost:8000` (w/ Tunnel)
+3.  **Browser Automation (E2E)**:
+    -   서버/CI 환경에서는 반드시 **Headless Mode**(`--headless`)로 구동한다.
 
 ## 2. 코딩 컨벤션 (Coding Standard)
 -   **언어**: Python 3.10+ (Type Hinting 필수).
