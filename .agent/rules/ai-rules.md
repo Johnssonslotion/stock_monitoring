@@ -14,9 +14,12 @@ trigger: always_on
 ## 1. Governance Navigation
 | 영역 | 문서 | 핵심 내용 |
 | :--- | :--- | :--- |
+## 1. Governance Navigation
+| 영역 | 문서 | 핵심 내용 |
+| :--- | :--- | :--- |
 | **의사결정** | [Personas & Council](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md) | 6인의 페르소나, 협의 프로토콜, Auto-Proceed 원칙 |
-| **개발 & QA** | [Development & Quality](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/development.md) | 코딩 컨벤션, Git Flow, **Deep Verification**, 품질 게이트 |
-| **인프라 & DB** | [Infrastructure](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/infrastructure.md) | 리소스 원칙, DB 스키마, 보안(Auth), **Doomdsay Protocol** |
+| **개발 표준** | [Development & Quality](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/development.md) | **Strict Git Flow**, 멀티 디바이스 프로토콜, 테스트 게이트 |
+| **인프라 & DB** | [Infrastructure](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/infrastructure.md) | **Tailscale**, DB 격리(Snapshot), **Zero Cost** 원칙 |
 
 ## 2. 절대 헌법 (The Immutable Laws)
 다음 5가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
