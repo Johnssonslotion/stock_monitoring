@@ -56,6 +56,22 @@ verify: ## Verify data collection (run after 2-3 minutes)
 	@echo "\n=== Checking News Data ==="
 	@docker exec news-collector python -c "import duckdb; conn = duckdb.connect('data/market_data.duckdb'); print('News:', conn.execute('SELECT count(*) FROM news').fetchone()[0])" || echo "No news yet"
 
+# --- Data Sync (Hybrid Workflow) ---
+PROD_HOST ?= stock-monitor-prod  # Can be overridden: make sync-db-prod PROD_HOST=myserver
+
+.PHONY: sync-db-prod
+sync-db-prod: ## [Local] Fetch Snapshot from Production (Requires Tailscale/SSH)
+	@echo "🔄 Syncing TimescaleDB from Production ($(PROD_HOST))..."
+	@# 1. Dump Remote(Zip) -> Stream -> Unzip -> Restore Local
+	ssh $(PROD_HOST) "docker exec stock-db pg_dump -U postgres stockval --clean --if-exists | gzip" | \
+		gunzip | docker compose $(COMPOSE_ARGS) exec -T stock-db psql -U postgres stock_dev
+	@echo "✅ TimescaleDB Synced!"
+	@echo "🔄 Syncing DuckDB from Production..."
+	@# 2. Rsync DuckDB Files
+	rsync -avz --progress $(PROD_HOST):/app/data/market_data.duckdb ./data/dev_market_data.duckdb
+	@echo "✅ DuckDB Synced!"
+	@echo "🎉 Development environment is now running with REAL Data."
+
 audit: ## Run governance checks (Branch, Commit, Docstrings)
 	@echo "🛡️ Governance Check..."
 	@python3 scripts/governance.py

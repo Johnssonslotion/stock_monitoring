@@ -2,17 +2,16 @@ services:
   # Mac (Apple Silicon) Compatibility & Local Dev Optimization
 
   redis:
-    platform: linux/arm64
+    # platform: linux/arm64 (Auto-detect)
     ports:
       - "6379:6379"
 
   timescaledb:
-    platform: linux/amd64 # Some images might not have arm64, but emulation works well for DBs
+    # platform: linux/amd64 (Auto-detect)
     ports:
       - "5432:5432"
 
   real-collector:
-    platform: linux/arm64
     build:
       context: .
       dockerfile: Dockerfile
@@ -25,7 +24,6 @@ services:
       - local
 
   api-server:
-    platform: linux/arm64
     build:
       context: .
       dockerfile: Dockerfile
@@ -38,7 +36,6 @@ services:
       - local
 
   dashboard-ui:
-    platform: linux/arm64
     volumes:
       - ./src/web:/app/src/web # Hot Reload for Frontend
     profiles:
