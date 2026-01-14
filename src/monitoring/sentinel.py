@@ -23,6 +23,7 @@ class Sentinel:
         self.redis = None
         self.last_prices = {}  # {symbol: price}
         self.last_arrival = {} # {market: timestamp}
+        self.startup_time = datetime.now()
         self.is_running = True
         self.config = self.load_config()
 
@@ -82,10 +83,16 @@ class Sentinel:
             
             for market in ["KR", "US"]: # Distinct checks
                 last_time = self.last_arrival.get(market)
+                gap = 0
+                
                 if not last_time:
-                    continue # Startup grace period or no data yet
-
-                gap = (now - last_time).total_seconds()
+                    # Cold Start Check
+                    uptime = (now - self.startup_time).total_seconds()
+                    if uptime < 60:
+                        continue # Grace period
+                    gap = uptime # Treat uptime as gap if no data yet
+                else:
+                    gap = (now - last_time).total_seconds()
                 
                 # Trigger: 60s Silence
                 if gap > 60:

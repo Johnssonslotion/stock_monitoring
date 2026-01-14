@@ -77,9 +77,10 @@ class USRealCollector(BaseCollector):
         
         # 섹터별
         for sector_data in symbols_data.get('sectors', {}).values():
-            etf = sector_data['etf']
-            prefix = get_prefix(etf.get('exchange'))
-            us_targets.append(f"{prefix}{etf['symbol']}")
+            if 'etf' in sector_data:
+                etf = sector_data['etf']
+                prefix = get_prefix(etf.get('exchange'))
+                us_targets.append(f"{prefix}{etf['symbol']}")
             
             for stock in sector_data.get('top3', []):
                 prefix = get_prefix(stock.get('exchange'))
@@ -102,11 +103,19 @@ class USRealCollector(BaseCollector):
         fields = body_str.split('^')
         try:
             # US Format: HDFSCNT0
-            # Field 1: 심볼, Field 11: 가격, Field 13: 거래량
+            # Field 1: 심볼, Field 11: 가격, Field 12: 전일대비(diff), Field 13: 거래량
+            price = float(fields[11])
+            diff = float(fields[12])
+            
+            # (현재가 - 전일종가) / 전일종가 * 100
+            # 전일종가 = 현재가 - 전일대비
+            prev_close = price - diff
+            change_pct = (diff / prev_close * 100) if prev_close != 0 else 0.0
+            
             return MarketData(
                 symbol=fields[1],
-                price=float(fields[11]),
-                change=0.0,
+                price=price,
+                change=round(change_pct, 2),
                 volume=float(fields[13]),
                 timestamp=datetime.now()
             )

@@ -6,7 +6,7 @@ KR/US 통합 실시간 수집기 엔트리포인트 (Unified Realtime Collector)
 import asyncio
 import logging
 import os
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import pytz
 
 from src.data_ingestion.price.common import KISAuthManager
@@ -32,9 +32,58 @@ auth_manager = KISAuthManager()
 TZ_KST = pytz.timezone('Asia/Seoul')
 
 async def schedule_key_refresh(manager):
-    """일일 Approval Key 갱신 스케줄러"""
-    # NOTE: Simplistic implementation, can be enhanced later
-    pass
+    """
+    일일 Approval Key 갱신 스케줄러
+    - 08:00 KST: 한국장 시작 1시간 전 갱신
+    - 22:00 KST: 미국장 시작 1.5시간 전 갱신
+    """
+    while True:
+        try:
+            now_kst = datetime.now(TZ_KST)
+            
+            # 오늘의 두 갱신 시각
+            kr_refresh = now_kst.replace(hour=8, minute=0, second=0, microsecond=0)
+            us_refresh = now_kst.replace(hour=22, minute=0, second=0, microsecond=0)
+            
+            # 다음 갱신 시각 찾기
+            candidates = []
+            if kr_refresh > now_kst:
+                candidates.append(kr_refresh)
+            else:
+                candidates.append(kr_refresh + timedelta(days=1))
+            
+            if us_refresh > now_kst:
+                candidates.append(us_refresh)
+            else:
+                candidates.append(us_refresh + timedelta(days=1))
+            
+            next_refresh = min(candidates)
+            wait_seconds = (next_refresh - now_kst).total_seconds()
+            
+            logger.info(f"⏰ Next API key refresh: {next_refresh.strftime('%Y-%m-%d %H:%M')} KST (in {wait_seconds/3600:.1f}h)")
+            
+            await asyncio.sleep(wait_seconds)
+            
+            # 갱신 실행
+            logger.warning(f"🔑 [SCHEDULED] API Key Refresh at {next_refresh.strftime('%H:%M')}")
+            new_key = await auth_manager.get_approval_key()
+            
+            # Manager에 새 키 주입
+            if hasattr(manager, 'approval_key'):
+                manager.approval_key = new_key
+            
+            # Alert 발송
+            r = await redis.from_url(REDIS_URL, decode_responses=True)
+            await r.publish("system:alerts", json.dumps({
+                "timestamp": datetime.now(TZ_KST).isoformat(),
+                "level": "INFO",
+                "message": f"✅ API Key Refreshed at {next_refresh.strftime('%H:%M')} KST"
+            }))
+            await r.close()
+            
+        except Exception as e:
+            logger.error(f"Key refresh scheduler error: {e}")
+            await asyncio.sleep(300)  # 에러 시 5분 후 재시도
 
 async def market_scheduler(manager: DualWebSocketManager):
     """
@@ -69,7 +118,7 @@ async def market_scheduler(manager: DualWebSocketManager):
                     await manager.switch_url(kr_url)
                     current_mode = 'KR'
                 
-                # Subscription Check (Idempotent)
+                # Subscription Check (Retry Loop)
                 if 'KR' not in manager.active_markets:
                      # Wait for socket availability implicitly handled by manager retry
                      await manager.subscribe_market('KR')
@@ -78,6 +127,16 @@ async def market_scheduler(manager: DualWebSocketManager):
                 # Switch to US Mode
                 if current_mode != 'US':
                     logger.info("🔁 Market Switch Detected: KR/Idle -> US")
+                    
+                    # [Policy] Unconditional Key Refresh at US Start
+                    logger.warning("🔑 [POLICY] Force Key Refresh for US Market Start")
+                    try:
+                        new_key = await auth_manager.get_approval_key()
+                        await manager.update_key(new_key)
+                        logger.info("✅ Key Refreshed for US Session")
+                    except Exception as e:
+                        logger.error(f"Failed to refresh key at US start: {e}")
+
                     us_url = f"{KIS_WS_URL}/HDFSCNT0" # Use Tick Endpoint as Base
                     await manager.switch_url(us_url)
                     current_mode = 'US'
@@ -91,6 +150,7 @@ async def market_scheduler(manager: DualWebSocketManager):
                 
         except Exception as e:
             logger.error(f"Scheduler Error: {e}")
+            await asyncio.sleep(5) # Error Backoff
         
         await asyncio.sleep(10)
 
@@ -155,10 +215,39 @@ async def main():
     
     # Default URL (will be corrected by scheduler immediately)
     ws_url = f"{KIS_WS_URL}/HDFSCNT0"
-
-    # 4. 실행 (WebSocket Loop + Scheduler)
-    asyncio.create_task(market_scheduler(manager))
     
+    # 3.6 Define Auto-Refresh Callback
+    async def refresh_logic():
+        logger.warning("♻️  Reactive Key Refresh Triggered!")
+        try:
+            new_key = await auth_manager.get_approval_key()
+            if hasattr(manager, 'set_refresh_callback'): # Dual/Unified both have this
+                # Manager update_key is async
+                await manager.update_key(new_key)
+            
+            # Redis Alert
+            r = await redis.from_url(REDIS_URL, decode_responses=True)
+            await r.publish("system:alerts", json.dumps({
+                "timestamp": datetime.now(TZ_KST).isoformat(),
+                "level": "WARNING",
+                "message": "♻️ Auto-Refreshed Approval Key (Reactive Fix)"
+            }))
+            await r.close()
+        except Exception as e:
+            logger.error(f"Failed to auto-refresh key: {e}")
+
+    # Wire up the callback
+    if hasattr(manager, 'set_refresh_callback'):
+        manager.set_refresh_callback(refresh_logic)
+
+    # 4. 실행 (WebSocket Loop + Scheduler + Key Refresh)
+    asyncio.create_task(market_scheduler(manager))
+    asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
+    
+    asyncio.create_task(market_scheduler(manager))
+    asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
+    
+    # Run Manager (Block)
     await manager.run(ws_url, approval_key)
 
 if __name__ == "__main__":

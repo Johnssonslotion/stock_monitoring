@@ -6,8 +6,9 @@ import json
 import os
 import logging
 import asyncpg
+import yaml
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -63,10 +64,48 @@ async def verify_api_key(x_api_key: str = Header(..., alias="x-api-key")):
         raise HTTPException(status_code=403, detail="Invalid API Key")
     return x_api_key
 
+# Global Configuration Cache
+SYMBOLS_CACHE: Dict[str, Dict] = {}
+
+def load_config():
+    """로드된 YAML 설정 파일들로부터 심볼 정보를 읽어옴"""
+    global SYMBOLS_CACHE
+    try:
+        config_dir = "configs"
+        for filename in ["kr_symbols.yaml", "us_symbols.yaml"]:
+            path = os.path.join(config_dir, filename)
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    config = yaml.safe_load(f)
+                    market = config.get("market", "UNKNOWN")
+                    
+                    # 1. Indices
+                    for item in config.get("symbols", {}).get("indices", []):
+                        SYMBOLS_CACHE[item["symbol"]] = {**item, "category": "MARKET"}
+                    
+                    # 2. Leverage
+                    for item in config.get("symbols", {}).get("leverage", []):
+                        SYMBOLS_CACHE[item["symbol"]] = {**item, "category": "MARKET"}
+                        
+                    # 3. Stocks (from sectors)
+                    for sector_name, sector_data in config.get("symbols", {}).get("sectors", {}).items():
+                        # Sector ETF also MARKET (if present)
+                        if "etf" in sector_data:
+                            SYMBOLS_CACHE[sector_data["etf"]["symbol"]] = {**sector_data["etf"], "category": "MARKET"}
+                        
+                        for stock in sector_data.get("top3", []):
+                            SYMBOLS_CACHE[stock["symbol"]] = {**stock, "category": "STOCK"}
+        
+        logger.info(f"✅ Loaded {len(SYMBOLS_CACHE)} symbols from configuration files.")
+    except Exception as e:
+        logger.error(f"❌ Failed to load config: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     global db_pool
     logger.info("🚀 Starting API server...")
+    # 0. Load Symbols
+    load_config()
     # Redis 구독 타스크 시작
     asyncio.create_task(redis_subscriber())
     # DB 커넥션 풀 초기화
@@ -134,130 +173,237 @@ async def get_latest_orderbook(symbol: str):
         return data
 
 @app.get("/api/v1/candles/{symbol}", dependencies=[Depends(verify_api_key)])
-async def get_recent_candles(symbol: str, limit: int = 200):
-    """최근 분봉(Candle) 데이터 조회"""
+async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"):
+    """최근 분봉/일봉(Candle) 데이터 조회"""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
     
     async with db_pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT time, open, high, low, close, volume
-            FROM market_minutes
-            WHERE symbol = $1
+            FROM market_candles
+            WHERE symbol = $1 AND interval = $3
             ORDER BY time DESC
             LIMIT $2
-        """, symbol, limit)
+        """, symbol, limit, interval)
         
         # 반환 포맷: Frontend(Plotly)에서 쓰기 편하게 리스트 형태로 변환
         # 시간순 정렬 (과거 -> 현재)로 뒤집어서 반환
         return [dict(r) for r in reversed(rows)]
 
+@app.get("/api/v1/inspector/latest", dependencies=[Depends(verify_api_key)])
+async def get_latest_inserts(limit: int = 50):
+    """최근 DB에 적재된 틱/로그 데이터 조회 (Data Inspector)"""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    async with db_pool.acquire() as conn:
+        # market_ticks 테이블에서 최근 데이터 조회
+        # 주의: market_ticks는 Hypertable이므로 time 컬럼 기준 정렬이 빠름
+        rows = await conn.fetch("""
+            SELECT time, symbol, price, volume, change 
+            FROM market_ticks 
+            ORDER BY time DESC 
+            LIMIT $1
+        """, limit)
+        
+        return [dict(r) for r in rows]
+
 @app.get("/api/v1/market-map/{market}", dependencies=[Depends(verify_api_key)])
 async def get_market_map(market: str = "us"):
     """
-    시장별 Treemap 데이터 조회 (시가총액, 등락률, Active 여부)
-    
-    Args:
-        market (str): 시장 구분 ('kr' = KOSPI, 'us' = NASDAQ)
+    시장별 Treemap 데이터 조회 (DB 기반, 수집된 데이터 한정)
     """
-    import yfinance as yf
-    from datetime import datetime
-    
-    # 시장별 종목 리스트 정의
-    if market.lower() == "kr":
-        # KOSPI 시가총액 상위 30개 종목
-        symbols = [
-            "005930.KS",  # 삼성전자
-            "000660.KS",  # SK하이닉스
-            "035420.KS",  # NAVER
-            "051910.KS",  # LG화학
-            "005380.KS",  # 현대차
-            "006400.KS",  # 삼성SDI
-            "000270.KS",  # 기아
-            "035720.KS",  # 카카오
-            "068270.KS",  # 셀트리온
-            "207940.KS",  # 삼성바이오로직스
-            "105560.KS",  # KB금융
-            "055550.KS",  # 신한지주
-            "096770.KS",  # SK이노베이션
-            "012330.KS",  # 현대모비스
-            "028260.KS",  # 삼성물산
-            "017670.KS",  # SK텔레콤
-            "066570.KS",  # LG전자
-            "033780.KS",  # KT&G
-            "003670.KS",  # 포스코퓨처엠
-            "009150.KS",  # 삼성전기
-            "034730.KS",  # SK
-            "018260.KS",  # 삼성에스디에스
-            "323410.KS",  # 카카오뱅크
-            "003550.KS",  # LG
-            "000810.KS",  # 삼성화재
-            "086790.KS",  # 하나금융지주
-            "032830.KS",  # 삼성생명
-            "011200.KS",  # HMM
-            "010130.KS",  # 고려아연
-            "051900.KS",  # LG생활건강
-        ]
-        currency = "KRW"
-        market_cap_unit = 1e12  # 조(Trillion)
-    else:
-        # NASDAQ 100 대표 종목 (기본값)
-        symbols = [
-            "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "AVGO", "ASML", "COST",
-            "NFLX", "AMD", "PEP", "ADBE", "CSCO", "TMUS", "CMCSA", "INTC", "QCOM", "TXN",
-            "INTU", "AMGN", "HON", "AMAT", "SBUX", "ISRG", "BKNG", "GILD", "MDLZ", "VRTX"
-        ]
-        currency = "USD"
-        market_cap_unit = 1e9  # 십억(Billion)
-    
-    # DB에서 Active 심볼 조회 (실시간 데이터 수집 여부)
-    active_symbols = set()
-    if db_pool:
-        async with db_pool.acquire() as conn:
-            rows = await conn.fetch("SELECT DISTINCT symbol FROM market_minutes")
-            active_symbols = {row['symbol'] for row in rows}
-    
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
     results = []
-    for symbol in symbols:
-        try:
-            ticker = yf.Ticker(symbol)
-            info = ticker.info
-            hist = ticker.history(period="1d")
+    
+    async with db_pool.acquire() as conn:
+        # 최근 수집된 일봉 데이터 기준
+        # 1. 대상 심볼 조회 (최근 30일간 1d 캔들이 있는 모든 종목)
+        rows = await conn.fetch("""
+            WITH RecentCandles AS (
+                SELECT 
+                    symbol, 
+                    time, 
+                    close, 
+                    volume,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY time DESC) as rn
+                FROM market_candles 
+                WHERE interval = '1d' AND time > NOW() - INTERVAL '30 days'
+            )
+            SELECT 
+                t1.symbol, 
+                t1.close as current_price, 
+                t1.volume,
+                t2.close as prev_price
+            FROM RecentCandles t1
+            LEFT JOIN RecentCandles t2 ON t1.symbol = t2.symbol AND t2.rn = 2
+            WHERE t1.rn = 1
+        """)
+        
+        for row in rows:
+            symbol = row['symbol']
+            curr = float(row['current_price'])
+            prev = float(row['prev_price']) if row['prev_price'] else curr
             
-            if hist.empty:
-                continue
-                
-            current_price = hist['Close'].iloc[-1]
-            prev_close = info.get('previousClose', current_price)
-            change_percent = ((current_price - prev_close) / prev_close * 100) if prev_close else 0
+            value_factor = float(row['volume']) * curr
+            change_rate = ((curr - prev) / prev * 100) if prev > 0 else 0.0
             
-            # 한국 종목은 .KS 제거한 순수 코드로 매칭
-            clean_symbol = symbol.replace(".KS", "") if ".KS" in symbol else symbol
-            is_active = clean_symbol in active_symbols or symbol in active_symbols or symbol == "QQQ"
-            
+            # Dynamic Info from Cache
+            info = SYMBOLS_CACHE.get(symbol, {"name": symbol, "category": "STOCK"})
+            display_name = info.get("name", symbol)
+            category = info.get("category", "STOCK")
+
             results.append({
                 "symbol": symbol,
-                "name": info.get('shortName', symbol),
-                "marketCap": info.get('marketCap', 0),
-                "price": round(current_price, 2),
-                "change": round(change_percent, 2),
-                "isActive": is_active,
-                "currency": currency
+                "name": display_name, 
+                "marketCap": value_factor, 
+                "price": curr,
+                "prevPrice": prev,
+                "change": round(change_rate, 2), # Keep for legacy compatibility
+                "isActive": True,
+                "currency": "KRW",
+                "category": category
             })
-        except Exception as e:
-            logger.warning(f"Failed to fetch data for {symbol}: {e}")
-            continue
-    
+
     return {
         "symbols": results, 
         "timestamp": datetime.now().isoformat(),
-        "market": market.upper(),
-        "currency": currency
+        "market": "collected",
+        "currency": "KRW"
     }
 
-@app.get("/health")
+@app.get("/api/v1/indices/performance", dependencies=[Depends(verify_api_key)])
+async def get_indices_performance():
+    """지수/ETF 성과 데이터 조회 (SectorPerformance용)"""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    results = []
+    # MARKET 카테고리만 필터링
+    target_symbols = [s for s, info in SYMBOLS_CACHE.items() if info["category"] == "MARKET"]
+    
+    if not target_symbols:
+        return []
+
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH RecentRel AS (
+                SELECT 
+                    symbol, 
+                    time, 
+                    close,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY time DESC) as rn
+                FROM market_candles
+                WHERE interval = '1d' AND symbol = ANY($1)
+            )
+            SELECT t1.symbol, t1.close as curr, t2.close as prev
+            FROM RecentRel t1
+            LEFT JOIN RecentRel t2 ON t1.symbol = t2.symbol AND t2.rn = 2
+            WHERE t1.rn = 1
+        """, target_symbols)
+
+        for row in rows:
+            info = SYMBOLS_CACHE.get(row["symbol"], {})
+            curr = float(row["curr"])
+            prev = float(row["prev"]) if row["prev"] else curr
+            return_rate = ((curr - prev) / prev * 100) if prev > 0 else 0.0
+            
+            results.append({
+                "name": info.get("name", row["symbol"]),
+                "etfSymbol": row["symbol"],
+                "returnRate": round(return_rate, 2)
+            })
+
+    # 정렬: 수익률 내림차순
+    return sorted(results, key=lambda x: x["returnRate"], reverse=True)
+
+@app.get("/api/v1/health")
 async def health_check():
-    return {"status": "ok", "db": db_pool is not None}
+    redis_status = False
+    try:
+        r = redis.from_url(REDIS_URL, socket_timeout=1.0)
+        await r.ping()
+        redis_status = True
+        await r.close()
+    except:
+        pass
+        
+    return {
+        "status": "ok", 
+        "db": db_pool is not None,
+        "redis": redis_status,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/api/v1/analytics/correlation", dependencies=[Depends(verify_api_key)])
+async def get_correlation_matrix(days: int = 30):
+    """
+    최근 N일간 종가 기준 상관관계 매트릭스 계산
+    """
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    import pandas as pd
+    import numpy as np
+    
+    async with db_pool.acquire() as conn:
+        # 최근 N일간의 모든 1d 캔들 가져오기
+        # Pivot을 위해 데이터를 가져와서 Pandas로 처리
+        rows = await conn.fetch("""
+            SELECT time, symbol, close
+            FROM market_candles 
+            WHERE interval = '1d' AND time > NOW() - INTERVAL '60 days' 
+            ORDER BY time ASC
+        """)
+        
+        if not rows:
+             return {"nodes": [], "links": []}
+
+        # Convert to DataFrame
+        df = pd.DataFrame([dict(r) for r in rows], columns=['time', 'symbol', 'close'])
+        
+        # Pivot: Index=Time, Columns=Symbol, Values=Close
+        pivot_df = df.pivot_table(index='time', columns='symbol', values='close')
+        
+        # 최근 'days' 만큼 슬라이싱 (데이터가 충분하지 않을 수 있으므로 60일치 가져와서 뒤에서 자름)
+        pivot_df = pivot_df.tail(days)
+        
+        # Forward fill missing values (휴장일 등) -> Drop duplicate cols if any
+        pivot_df = pivot_df.ffill().dropna(axis=1) # 데이터가 너무 없는 종목은 제외
+
+        # Calculate PCT Change for correlation (가격 절대값이 아닌 변화율의 상관관계가 더 의미있음)
+        pct_df = pivot_df.pct_change().dropna()
+
+        # Calculate Correlation Matrix
+        corr_matrix = pct_df.corr()
+        
+        # Format for D3/Recharts Graph: Nodes & Links
+        # Nodes: Symbols
+        # Links: Significant correlations (|r| > 0.5)
+        
+        nodes = [{"id": sym, "group": 1} for sym in corr_matrix.columns]
+        links = []
+        
+        for i, sym1 in enumerate(corr_matrix.columns):
+            for j, sym2 in enumerate(corr_matrix.columns):
+                if i >= j: continue # Avoid duplicates and self-loop
+                val = corr_matrix.iloc[i, j]
+                if abs(val) > 0.5: # Filter weak correlations
+                    links.append({
+                        "source": sym1,
+                        "target": sym2,
+                        "value": round(val, 2)
+                    })
+                    
+        return {
+            "nodes": nodes,
+            "links": links,
+            "matrix": corr_matrix.reset_index().to_dict(orient='records'), # Full matrix if needed
+            "period": f"Last {days} Days"
+        }
 
 # --- WebSocket Endpoint ---
 

@@ -57,7 +57,8 @@ class KRRealCollector(BaseCollector):
         
         # 섹터별
         for sector_data in symbols_data.get('sectors', {}).values():
-            kr_targets.append(sector_data['etf']['symbol'])
+            if 'etf' in sector_data:
+                kr_targets.append(sector_data['etf']['symbol'])
             for stock in sector_data.get('top3', []):
                 kr_targets.append(stock['symbol'])
         

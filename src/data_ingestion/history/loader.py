@@ -22,7 +22,7 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 DB_NAME = os.getenv("DB_NAME", "stockval")
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "configs", "market_symbols.yaml")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "configs")
 CHECKPOINT_FILE = "/app/data/history_checkpoint.json"
 
 # KIS API Config
@@ -49,6 +49,9 @@ class SmartThrottler:
             return await self.acquire()
             
         self.timestamps.append(time.time())
+
+    def get_max_req_per_sec(self):
+        return self.max_req_per_sec
 
 class CheckpointManager:
     """Save/Load progress"""
@@ -133,39 +136,82 @@ class HistoryLoader:
                 pass
 
     def load_targets(self):
-        with open(CONFIG_PATH, "r") as f:
-            config = yaml.safe_load(f)
-        
         targets = []
-        # KR Market Only for KIS Logic
-        market = config.get('market_data', {})
-        if 'kr' in market:
-            data = market['kr']
-            for item in data.get('indices', []) + data.get('leverage', []):
-                targets.append({'symbol': item['symbol'], 'region': 'kr'})
-            for sector in data.get('sectors', {}).values():
-                targets.append({'symbol': sector['etf']['symbol'], 'region': 'kr'})
-                for stock in sector['top3']:
-                    targets.append({'symbol': stock['symbol'], 'region': 'kr'})
+        # KR
+        kr_path = os.path.join(CONFIG_DIR, "kr_symbols.yaml")
+        if os.path.exists(kr_path):
+            with open(kr_path, "r") as f:
+                config = yaml.safe_load(f)
+                symbols_data = config.get('symbols', {})
+                # Flatten symbols from indices, leverage, sectors
+                flat = []
+                for k in ['indices', 'leverage']:
+                    flat.extend(symbols_data.get(k, []))
+                for sector in symbols_data.get('sectors', {}).values():
+                    if 'etf' in sector: flat.append(sector['etf'])
+                    flat.extend(sector.get('top3', []))
+                
+                for item in flat:
+                    targets.append({'symbol': item['symbol'], 'region': 'kr'})
+
+        # US
+        us_path = os.path.join(CONFIG_DIR, "us_symbols.yaml")
+        if os.path.exists(us_path):
+            with open(us_path, "r") as f:
+                config = yaml.safe_load(f)
+                symbols_data = config.get('symbols', {})
+                flat = []
+                for k in ['indices', 'leverage']:
+                    flat.extend(symbols_data.get(k, []))
+                for sector in symbols_data.get('sectors', {}).values():
+                    if 'etf' in sector: flat.append(sector['etf'])
+                    flat.extend(sector.get('top3', []))
+                
+                for item in flat:
+                    targets.append({'symbol': item['symbol'], 'region': 'us'})
+        
         return targets
 
-    async def fetch_daily_2years(self, symbol):
-        if self.checkpoint.is_daily_done(symbol):
-            logger.info(f"Creating Daily for {symbol} (Skipping - Already Done)")
-            return
+    async def get_last_date(self, symbol, interval='1d'):
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT MAX(time) FROM market_candles WHERE symbol = $1 AND interval = $2",
+                symbol, interval
+            )
+            return row[0] if row else None
 
-        logger.info(f"Fetching Daily 2Y for {symbol}...")
+    async def fetch_daily_data(self, symbol, region):
+        """Fetch Daily data (Initial 2Y or Sync)"""
+        last_date = await self.get_last_date(symbol, '1d')
+        
+        if last_date:
+            # Sync mode: from last_date to today
+            # If last_date is today, skip
+            if last_date.date() >= datetime.now().date():
+                logger.info(f"Daily for {symbol} is up to date ({last_date.date()})")
+                return
+            start_date_str = (last_date + timedelta(days=1)).strftime('%Y-%m-%d')
+            logger.info(f"Syncing Daily for {symbol} from {start_date_str}...")
+        else:
+            # Full mode: last 2 years
+            start_date_str = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
+            logger.info(f"Fetching Initial 2Y Daily for {symbol}...")
+
         try:
-            start_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
-            # Use threading for sync call
-            df = await asyncio.to_thread(fdr.DataReader, symbol, start_date)
+            # fdr.DataReader usually works with symbol directly for KR.
+            # US symbols might need special handling.
+            fetch_symbol = symbol
+            if region == 'us':
+                # US symbols: AAPL, NVDA etc work with fdr.
+                pass
+            
+            df = await asyncio.to_thread(fdr.DataReader, fetch_symbol, start_date_str)
             
             if not df.empty:
                 await self.save_data(symbol, '1d', df)
-                self.checkpoint.mark_daily_done(symbol)
                 logger.info(f"Saved {len(df)} daily rows for {symbol}")
             else:
-                logger.warning(f"No daily data found for {symbol}")
+                logger.warning(f"No daily data found for {symbol} since {start_date_str}")
                 
         except Exception as e:
             logger.error(f"Daily fetch failed for {symbol}: {e}")
@@ -228,6 +274,123 @@ class HistoryLoader:
             await self.save_data(symbol, '1m', df)
             logger.info(f"Backfilled {len(df)} minute rows for {symbol} (Recent)")
 
+    async def fetch_us_minute_backfill(self, symbol):
+        """
+        US Minute Backfill Strategy:
+        1. Try KIS API (HHDFS76200200) - Consistent with real-time
+        2. Fallback to yfinance - Robustness
+        """
+        success = await self._fetch_us_minute_kis(symbol)
+        if not success:
+            logger.warning(f"⚠️ KIS Backfill failed for {symbol}. Falling back to yfinance...")
+            await self._fetch_us_minute_kf(symbol)
+
+    async def _fetch_us_minute_kis(self, symbol):
+        import requests
+        url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-itemchartprice"
+        headers = {
+            "content-type": "application/json; charset=utf-8",
+            "authorization": f"Bearer {self.kiss_token}",
+            "appkey": KIS_APP_KEY,
+            "appsecret": KIS_APP_SECRET,
+            "tr_id": "HHDFS76200200",
+            "custtype": "P"
+        }
+        
+        # KIS US symbol might need exchange code (e.g. NASD, NYSE, AMEX)
+        # Assuming typical major stocks are NAS/NYS.
+        # Simple lookup or trial?
+        # For now, let's try 'NAS' first (most tech stocks) or 'NYS'.
+        # Actually KIS uses specific exchange codes: NAS, NYS, AMS.
+        # We need a mapper or Try-Error.
+        exchanges = ["NAS", "NYS", "AMS"] 
+        
+        df_final = pd.DataFrame()
+        
+        for exch in exchanges:
+            await self.throttler.acquire()
+            params = {
+                "AUTH": "",
+                "EXCD": exch,
+                "SYMB": symbol,
+                "NMIN": "1", # 1 minute
+                "PINC": "1", # 1 means no gap?
+                "NEXT": "",  # Next key
+                "NREC": "120", # Max 120?
+                "FILL": "",
+                "KEYB": ""
+            }
+            
+            def _req():
+                return requests.get(url, headers=headers, params=params)
+            
+            res = await asyncio.to_thread(_req)
+            data = res.json()
+            
+            if data.get("rt_cd") == "0":
+                output2 = data.get("output2", [])
+                if output2:
+                    df = pd.DataFrame(output2)
+                    # KIS US format: kymd(date), khms(time), last(close), open, high, low, svol(vol)
+                    # Time is local or KST? Typically KST or Local.
+                    # US market in KST: 22:30 ~ 05:00.
+                    # kymd: 20240112, khms: 050000
+                    df['time'] = pd.to_datetime(df['kymd'] + df['khms'], format='%Y%m%d%H%M%S')
+                    
+                    # Convert column names
+                    df = df.rename(columns={
+                        'open': 'Open', 'high': 'High', 'low': 'Low', 'last': 'Close', 'svol': 'Volume'
+                    })
+                    df = df[['time', 'Open', 'High', 'Low', 'Close', 'Volume']]
+                    df_final = df
+                    break # Success
+            else:
+                 logger.debug(f"KIS Backfill Debug {symbol}/{exch}: {data.get('msg1')}")
+        
+        if not df_final.empty:
+            df_final.set_index('time', inplace=True)
+            # Remove duplicated index just in case
+            df_final = df_final[~df_final.index.duplicated(keep='first')]
+            await self.save_data(symbol, '1m', df_final)
+            logger.info(f"✅ KIS US Backfill success: {symbol} ({len(df_final)} rows)")
+            return True
+            
+        return False
+
+    async def _fetch_us_minute_kf(self, symbol):
+        """Fallback using yfinance"""
+        try:
+            # yfinance creates a new thread for download usually
+            df = await asyncio.to_thread(
+                yf.download, 
+                tickers=symbol, 
+                period="5d", # Max for 1m is 7d usually
+                interval="1m", 
+                progress=False,
+                auto_adjust=False # We want raw OHLC
+            )
+            
+            if not df.empty:
+                # yfinance returns MultiIndex if 1 symbol? No, usually simple index if 1 symbol.
+                # Columns: Open, High, Low, Close, Adj Close, Volume
+                # Timezone: localized to US/Eastern usually.
+                
+                # Check index timezone
+                if df.index.tz is None:
+                    # Assume NYC
+                    df.index = df.index.tz_localize('America/New_York')
+                
+                # Convert to UTC for DB consistency
+                df.index = df.index.tz_convert('UTC')
+                
+                await self.save_data(symbol, '1m', df)
+                logger.info(f"✅ yfinance Backfill success: {symbol} ({len(df)} rows)")
+                return True
+        except Exception as e:
+            logger.error(f"yfinance fallback failed for {symbol}: {e}")
+            
+        return False
+
     async def save_data(self, symbol, interval, df):
         if df.empty: return
         records = []
@@ -242,6 +405,33 @@ class HistoryLoader:
 
         async with self.db_pool.acquire() as conn:
             try:
+                # [Fix] Filter out duplicates to prevent batch failure
+                last_time = await self.get_last_date(symbol, interval)
+                if last_time:
+                     # Ensure timezone awareness (UTC)
+                    if last_time.tzinfo is None:
+                        last_time = last_time.replace(tzinfo=datetime.timezone.utc)
+                    
+                    original_len = len(df)
+                    df = df[df.index > last_time]
+                    if len(df) < original_len:
+                        logger.info(f"Filtered {original_len - len(df)} duplicate rows for {symbol} (Last: {last_time})")
+                
+                if df.empty:
+                    logger.info(f"No new data to save for {symbol}")
+                    return
+
+                # Re-generate records after filtering
+                records = []
+                for index, row in df.iterrows():
+                    ts = pd.to_datetime(index, utc=True)
+                    o = row.get('Open', 0)
+                    h = row.get('High', 0)
+                    l = row.get('Low', 0)
+                    c = row.get('Close', 0)
+                    v = row.get('Volume', 0)
+                    records.append((ts, symbol, interval, float(o), float(h), float(l), float(c), float(v)))
+
                 await conn.copy_records_to_table(
                     'market_candles',
                     records=records,
@@ -263,16 +453,26 @@ class HistoryLoader:
         
         for idx, target in enumerate(targets):
             symbol = target['symbol']
-            logger.info(f"[{idx+1}/{len(targets)}] Processing {symbol}...")
+            region = target['region']
+            logger.info(f"[{idx+1}/{len(targets)}] Processing {symbol} ({region})...")
             
-            # 1. Daily Backfill (Priority)
-            await self.fetch_daily_2years(symbol)
+            # 1. Daily Sync (Incremental)
+            await self.fetch_daily_data(symbol, region)
             
-            # 2. Minute Backfill (Best Effort)
-            if self.kiss_token:
+            # 2. Minute Backfill (KR Only for now via KIS)
+            if region == 'kr' and self.kiss_token:
                 await self.fetch_minute_backfill(symbol)
+            elif region == 'us':
+                # US Backfill (Hybrid)
+                if self.kiss_token:
+                    await self.fetch_us_minute_backfill(symbol)
+                else:
+                    # Even if KIS token missing, try yfinance
+                    await self._fetch_us_minute_kf(symbol)
                 
-            await asyncio.sleep(0.5)
+            # Extra sleep for US symbols to avoid 429
+            sleep_time = 2.0 if region == 'us' else 0.5
+            await asyncio.sleep(sleep_time)
 
         logger.info("🎉 2-Year Backfill & Recovery Complete!")
 

@@ -69,14 +69,10 @@ class TimescaleArchiver:
         logger.info("TimescaleArchiver started. Connected to Redis & DB.")
 
 
-        # 2. Subscribe to pattern (ticker.kr, ticker.us, market_orderbook)
+        # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us)
         pubsub = self.redis.pubsub()
-        logger.info("🔧 DEBUG: Created pubsub object")
-        await pubsub.psubscribe("ticker.*")  # Pattern subscription for KR/US
-        logger.info("🔧 DEBUG: psubscribe() completed")
-        await pubsub.subscribe("market_orderbook")
-        logger.info("🔧 DEBUG: subscribe() completed")
-        logger.info("📡 Subscribed to: ticker.* (pattern), market_orderbook")
+        await pubsub.psubscribe("ticker.*", "orderbook.*")
+        logger.info("📡 Subscribed to: ticker.*, orderbook.* (patterns)")
         
         # 3. Flush Task
         asyncio.create_task(self.periodic_flush())
@@ -92,21 +88,25 @@ class TimescaleArchiver:
                     channel = message["channel"]
                     data = json.loads(message["data"])
                     
-                    # Extract market from channel (ticker.kr -> KR, ticker.us -> US)
-                    market = channel.split('.')[-1].upper()
+                    if channel.startswith("ticker."):
+                        # Extract market from channel (ticker.kr -> KR, ticker.us -> US)
+                        market = channel.split('.')[-1].upper()
+                        
+                        # Ticks
+                        ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
+                        row = (ts, data['symbol'], float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
+                        self.batch.append(row)
+                        
+                        if len(self.batch) >= BATCH_SIZE:
+                            await self.flush()
                     
-                    # Ticks
-                    ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
-                    row = (ts, data['symbol'], float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
-                    self.batch.append(row)
-                    
-                    if len(self.batch) >= BATCH_SIZE:
-                        await self.flush()
+                    elif channel.startswith("orderbook."):
+                        await self.save_orderbook(data)
                         
                 except Exception as e:
                     logger.error(f"Parse/Queue Error (pattern): {e}")
             
-            elif msg_type == "message":  # Direct message (orderbook)
+            elif msg_type == "message":  # Direct message (fallback/legacy)
                 try:
                     channel = message["channel"]
                     data = json.loads(message["data"])

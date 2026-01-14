@@ -62,6 +62,14 @@ class UnifiedWebSocketManager:
         # Dynamic URL State
         self.current_ws_url: Optional[str] = None
         
+        # Auto-Refresh Callback
+        self.key_refresh_callback = None
+        self.last_refresh_time = 0
+        
+    def set_refresh_callback(self, callback):
+        """Set callback for auto key refresh"""
+        self.key_refresh_callback = callback
+        
     async def connect_redis(self):
         self.redis = await redis.from_url(self.redis_url, decode_responses=True)
         logger.info("✅ Redis Connected")
@@ -84,7 +92,14 @@ class UnifiedWebSocketManager:
             try:
                 data = json.loads(message)
                 if 'body' in data and 'msg1' in data['body']:
-                     logger.warning(f"[API MSG] {data['body']['msg1']}")
+                     msg1 = data['body']['msg1']
+                     logger.warning(f"[API MSG] {msg1}")
+                     
+                     # 🚨 KEY EXPIRED DETECTION
+                     if "invalid tr_key" in msg1 or "Expired" in msg1:
+                         logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
+                         asyncio.create_task(self.trigger_refresh())
+                         
             except:
                 pass
             return None
@@ -110,7 +125,11 @@ class UnifiedWebSocketManager:
                 # Redis 발행 (동적 채널)
                 channel = collector.get_channel()
                 await self.redis.publish(channel, data_obj.model_dump_json())
-                logger.info(f"📤 PUBLISHED: {channel} | {data_obj.symbol} @ {data_obj.price}")
+                price = getattr(data_obj, 'price', None)
+                if price is not None:
+                    logger.info(f"📤 PUBLISHED: {channel} | {data_obj.symbol} @ {price}")
+                else:
+                    logger.info(f"📤 PUBLISHED: {channel} | {data_obj.symbol} (Type: {data_obj.type})")
             elif not data_obj:
                 logger.warning(f"⚠️  PARSE FAILED: tr_id={tr_id}")
         else:
@@ -118,12 +137,27 @@ class UnifiedWebSocketManager:
         
         return tr_id
 
+    async def trigger_refresh(self):
+        """Trigger key refresh with cooldown"""
+        import time
+        now = time.time()
+        if now - self.last_refresh_time < 60: # 60s Cooldown
+            logger.warning("⏳ Key refresh cooldown active. Skipping.")
+            return
+
+        if self.key_refresh_callback:
+            self.last_refresh_time = now
+            logger.info("♻️  Executing Key Refresh Callback...")
+            await self.key_refresh_callback()
+        else:
+            logger.error("❌ No key_refresh_callback set!")
+
     async def _send_request(self, tr_id: str, tr_key: str, tr_type: str):
         """내부 요청 전송 헬퍼"""
         async with self.ws_lock:
             if not self.websocket or not self.approval_key:
                 logger.warning("WebSocket not connected or no key")
-                return
+                return False
             
             req = {
                 "header": {
@@ -140,6 +174,7 @@ class UnifiedWebSocketManager:
                 }
             }
             await self.websocket.send(json.dumps(req))
+            return True
     
     async def subscribe_market(self, market: str):
         """특정 시장(KR/US)의 모든 Collectors 구독"""
@@ -156,12 +191,15 @@ class UnifiedWebSocketManager:
                     collector.load_symbols()
                 
                 for sym in collector.symbols:
-                    await self._send_request(tr_id, sym, "1") # 1=Subscribe
+                    if await self._send_request(tr_id, sym, "1"): # 1=Subscribe
+                        count += 1
                     await asyncio.sleep(0.2) # Rate Limit
-                    count += 1
         
-        self.active_markets.add(market)
-        logger.info(f"[{market}] Subscribed {count} symbols.")
+        if count > 0:
+            self.active_markets.add(market)
+            logger.info(f"[{market}] Subscribed {count} symbols.")
+        else:
+            logger.warning(f"[{market}] Subscription FAILED (No packets sent). Will retry.")
 
     async def unsubscribe_market(self, market: str):
         """특정 시장(KR/US)의 모든 Collectors 구독 해제"""
@@ -174,9 +212,9 @@ class UnifiedWebSocketManager:
         for tr_id, collector in self.collectors.items():
             if collector.market == market:
                 for sym in collector.symbols:
-                    await self._send_request(tr_id, sym, "2") # 2=Unsubscribe
+                    if await self._send_request(tr_id, sym, "2"): # 2=Unsubscribe
+                        count += 1
                     await asyncio.sleep(0.2)
-                    count += 1
         
         self.active_markets.discard(market)
         logger.info(f"[{market}] Unsubscribed {count} symbols.")
@@ -201,9 +239,66 @@ class UnifiedWebSocketManager:
                 self.websocket = None
                 self.active_markets.clear()
 
+    async def _watchdog_loop(self):
+        """🐶 Traffic Watchdog: Monitors data flow and triggers recovery"""
+        import time
+        logger.info("🐶 Watchdog started.")
+        self.last_traffic_time = time.time()
+        
+        while True:
+            try:
+                await asyncio.sleep(10)
+                
+                # Pre-checks
+                if not self.websocket or not self.active_markets:
+                    self.last_traffic_time = time.time() # Reset timer if not active
+                    continue
+                    
+                elapsed = time.time() - self.last_traffic_time
+                
+                # Level 1: Warning (60s)
+                if 60 <= elapsed < 120:
+                     # Log only once per minute roughly
+                    if int(elapsed) % 60 < 10: 
+                        logger.warning(f"🐶 [Watchdog] No traffic for {int(elapsed)}s! (Active Markets: {self.active_markets})")
+
+                # Level 2: Resubscribe (120s)
+                elif 120 <= elapsed < 180:
+                    logger.warning(f"🐶 [Watchdog] traffic dead for {int(elapsed)}s -> ♻️ Triggering RESUBSCRIBE")
+                    # Update traffic time to prevent spamming resubscribe immediately, but keep it high enough to hit Level 3 if it fails
+                    # actually, we should just let it run. But we need to be careful not to spam.
+                    # Let's try resubscribing all active markets
+                    current_subs = list(self.active_markets)
+                    self.active_markets.clear() # Clear state to force subscribe logic to run
+                    for market in current_subs:
+                        await self.subscribe_market(market)
+                    
+                    # Give it some grace period? No, simply resetting traffic time slightly effectively gives grace
+                    # But if we reset, we might miss Level 3. 
+                    # Instead, we rely on the fact that if data comes in, traffic_time updates.
+                    # If not, execution continues and will eventually hit 180s.
+                    await asyncio.sleep(10) # Wait a bit before checking again
+
+                # Level 3: Hard Reconnect (180s)
+                elif elapsed >= 180:
+                    logger.error(f"🐶 [Watchdog] traffic dead for {int(elapsed)}s -> 🔌 KILLING SOCKET")
+                    if self.websocket:
+                        await self.websocket.close()
+                    # Resetting traffic time here isn't strictly necessary as loop will restart/socket is gone
+                    self.last_traffic_time = time.time()
+                    await asyncio.sleep(5) 
+                    
+            except asyncio.CancelledError:
+                logger.info("🐶 Watchdog stopped.")
+                break
+            except Exception as e:
+                logger.error(f"🐶 Watchdog Error: {e}")
+                await asyncio.sleep(10)
+
     async def run(self, ws_url: str, approval_key: str):
         """메인 실행 루프"""
         import websockets
+        import time
         
         self.approval_key = approval_key
         await self.connect_redis()
@@ -215,38 +310,58 @@ class UnifiedWebSocketManager:
 
         # Set initial URL
         self.current_ws_url = ws_url
+        
+        # Start Watchdog
+        self._watchdog_task = asyncio.create_task(self._watchdog_loop())
 
-        while True:
-            try:
-                # Use current dynamic URL
-                target_url = self.current_ws_url
-                logger.info(f"Connecting to {target_url}...")
-                
-                async with websockets.connect(
-                    target_url,
-                    ping_interval=20, 
-                    ping_timeout=10, 
-                    close_timeout=10
-                ) as websocket:
-                    logger.info("Connected.")
+        try:
+            while True:
+                try:
+                    # Use current dynamic URL
+                    target_url = self.current_ws_url
+                    logger.info(f"Connecting to {target_url}...")
                     
-                    async with self.ws_lock:
-                        self.websocket = websocket
-                        self.active_markets.clear() # Reset state on reconnect
-                    
-                    # Note: 구독은 외부 스케줄러(schedule_market_switch)가 수행함.
-                    # 하지만 최초 연결 시 빠른 복구를 위해 스케줄러가 '즉시' 깨어나야 함.
-                    # 여기서는 그냥 대기.
-                    
-                    # 메시지 루프
-                    async for message in websocket:
-                        res = await self.handle_message(message)
-                        if res == "PONG":
-                            await websocket.send(message)
+                    async with websockets.connect(
+                        target_url,
+                        ping_interval=20, 
+                        ping_timeout=10, 
+                        close_timeout=10
+                    ) as websocket:
+                        logger.info("Connected.")
+                        
+                        async with self.ws_lock:
+                            self.websocket = websocket
+                            self.active_markets.clear() # Reset state on reconnect
+                            self.last_traffic_time = time.time() # Reset watchdog timer
+                        
+                        # Note: 구독은 외부 스케줄러(schedule_market_switch)가 수행함.
+                        
+                        # 메시지 루프
+                        async for message in websocket:
+                            res = await self.handle_message(message)
                             
-            except Exception as e:
-                logger.error(f"WS Connection Error: {e}")
-                async with self.ws_lock:
-                    self.websocket = None
-                    self.active_markets.clear()
-                await asyncio.sleep(5)
+                            # Watchdog Feed: Only feed on valid data or PONG? 
+                            # PINGPONG keeps connection alive, but we want DATA.
+                            # So we update only if 'res' is tr_id (data) OR 'PONG' (connection)
+                            # WAIT, our goal is "Data Flow". If only PingPong, it's a zombie.
+                            # So we should ONLY update on Data (tr_id).
+                            # handle_message returns: "PONG", tr_id (data), or None (error/skip)
+                            
+                            if res and res != "PONG":
+                                self.last_traffic_time = time.time()
+                            
+                            if res == "PONG":
+                                await websocket.send(message)
+                                # NOTE: We do NOT update last_traffic_time on PONG. 
+                                # This enforces actual data reception.
+                                
+                except Exception as e:
+                    logger.error(f"WS Connection Error: {e}")
+                    async with self.ws_lock:
+                        self.websocket = None
+                        self.active_markets.clear()
+                    await asyncio.sleep(5)
+        finally:
+            if self._watchdog_task:
+                self._watchdog_task.cancel()
+
