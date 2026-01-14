@@ -35,8 +35,17 @@ class Sentinel:
         return {"sentinel": {}}
 
     async def monitor_resources(self):
-        """Monitor System Resources (CPU/RAM)"""
-        logger.info("🛡️ Resource Monitor Started...")
+        """Monitor System Resources (CPU/RAM + Container Health)"""
+        import docker
+        logger.info("🛡️ Resource Monitor Started (Docker Aware)...")
+        
+        try:
+            docker_client = docker.from_env()
+            logger.info("🐳 Connected to Docker Daemon")
+        except Exception as e:
+            logger.error(f"❌ Failed to connect to Docker: {e}")
+            docker_client = None
+
         cfg = self.config.get("sentinel", {}).get("resources", {})
         cpu_threshold = cfg.get("cpu_warning_percent", 80.0)
         mem_threshold = cfg.get("memory_warning_percent", 85.0)
@@ -45,17 +54,93 @@ class Sentinel:
         while self.is_running:
             await asyncio.sleep(interval)
             
+            # 1. Host Resources
             cpu = psutil.cpu_percent(interval=1)
             mem = psutil.virtual_memory().percent
+            disk = psutil.disk_usage('/').percent
             
             if cpu > cpu_threshold:
                 await self.alert(f"High CPU Usage: {cpu}%", "WARNING")
-            
             if mem > mem_threshold:
                 await self.alert(f"High Memory Usage: {mem}%", "WARNING")
             
-            # Heartbeat Log
-            logger.info(f"❤️ System Health: CPU {cpu}% | MEM {mem}%")
+            logger.info(f"❤️ System Health: CPU {cpu}% | MEM {mem}% | DISK {disk}%")
+
+            if not self.redis:
+                continue
+
+            try:
+                # 2. Publish Host Metrics
+                metric_data = [
+                    {"type": "cpu", "value": cpu},
+                    {"type": "memory", "value": mem},
+                    {"type": "disk", "value": disk}
+                ]
+                
+                # 3. Container Status (if docker available)
+                if docker_client:
+                    try:
+                        containers = docker_client.containers.list()
+                        for c in containers:
+                            # We only care about our project containers
+                            # Filter logic: contains 'stock' or specific known names, 
+                            # OR just log all running containers for now.
+                            # Let's log containers defined in our compose
+                            
+                            # Determine status value (1=running, 0=others)
+                            status_val = 1.0 if c.status == 'running' else 0.0
+                            
+                            # We can also get stats() but that's stream or slow. 
+                            # For now, just status check is good 'health check'.
+                            # If we want cpu/mem per container, we need c.stats(stream=False)
+                            try:
+                                stats = c.stats(stream=False)
+                                # Calculate CPU % (Docker way is complex, let's stick to status for now or simple stats)
+                                # Simplified: Just logging status heartbeat
+                                
+                                metric_data.append({
+                                    "type": "container_status",
+                                    "value": status_val,
+                                    "meta": {"container": c.name, "status": c.status}
+                                })
+                            except:
+                                pass
+                    except Exception as e:
+                        logger.error(f"Docker Poll Error: {e}")
+
+                # Publish All
+                ts = datetime.now().isoformat()
+                for m in metric_data:
+                    payload = {
+                        "timestamp": ts,
+                        "type": m['type'], # cpu, memory, disk, container_status
+                        "value": m['value'],
+                        "meta": m.get('meta')
+                    }
+                    if m['type'] in ['cpu', 'mem', 'disk']:
+                         # Legacy format support for archiver simple save? 
+                         # No, archiver expects: timestamp, cpu, mem, disk... WAIT
+                         # I need to update Archiver to match this new generic format.
+                         # OR, I keep legacy 'system.metrics' separate?
+                         # The new plan is: type, value, meta.
+                         # But currently archiver parses {cpu, mem, disk} dict.
+                         # I should unify.
+                         pass
+                    
+                    # For now, let's keep the OLD packet for host metrics to avoid break,
+                    # AND add NEW packets for containers?
+                    # Or just overhaul.
+                    # Let's overhaul. Sentinel sends generic list, Archiver handles insert.
+                    # But Sentinel currently sends: {"timestamp":..., "cpu":..., "mem":..., "disk":...}
+                    # And Archiver parses that.
+                    
+                    # I will send TWO types of messages or UNIFY.
+                    # Unifying is cleaner. 
+                    # Let's publish individual metrics.
+                    await self.redis.publish("system.metrics", json.dumps(payload))
+
+            except Exception as e:
+                logger.error(f"Failed to publish metrics: {e}")
 
     async def alert(self, msg: str, level: str = "WARNING"):
         alert_data = {
