@@ -8,6 +8,19 @@ symbols:
     - symbol: "102110"
       name: "TIGER 200"
       type: "etf_main"
+    # Sector Indices
+    - symbol: "091230"
+      name: "TIGER 반도체"
+      type: "index_sector"
+    - symbol: "305540"
+      name: "TIGER 2차전지테마"
+      type: "index_sector"
+    - symbol: "091210"
+      name: "TIGER 헬스케어"
+      type: "index_sector"
+    - symbol: "091180"
+      name: "KODEX 자동차"
+      type: "index_sector"
 
   leverage:
     - symbol: "122630"
@@ -22,9 +35,6 @@ symbols:
 
   sectors:
     semiconductor:
-      etf:
-        symbol: "091230"
-        name: "TIGER 반도체"
       top3:
         - symbol: "005930"
           name: "삼성전자"
@@ -34,9 +44,6 @@ symbols:
           name: "한미반도체"
 
     battery:
-      etf:
-        symbol: "305540"
-        name: "TIGER 2차전지테마"
       top3:
         - symbol: "373220"
           name: "LG에너지솔루션"
@@ -46,9 +53,6 @@ symbols:
           name: "에코프로비엠"
 
     biotech:
-      etf:
-        symbol: "091210"
-        name: "TIGER 헬스케어"
       top3:
         - symbol: "207940"
           name: "삼성바이오로직스"
@@ -58,9 +62,6 @@ symbols:
           name: "유한양행"
     
     auto:
-      etf:
-        symbol: "091180"
-        name: "KODEX 자동차"
       top3:
         - symbol: "005380"
           name: "현대차"

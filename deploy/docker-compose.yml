@@ -79,6 +79,8 @@ services:
         condition: service_started
     networks:
       - default
+    volumes:
+      - ../src:/app/src
 
   # History Loader (One-off)
   history-loader:
@@ -131,6 +133,9 @@ services:
         condition: service_healthy
     networks:
       - default
+    volumes:
+      - ../configs:/app/configs
+      - ../src:/app/src
 
   # Data Ingestion: News
   news-collector:
@@ -170,27 +175,6 @@ services:
     networks:
       - default
 
-  # Data Ingestion: Ticker (Mock)
-  ticker-gen:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: ticker-gen
-    command: python -m src.data_ingestion.price.ticker
-    environment:
-      - REDIS_URL=redis://stock-redis:6379/0
-      - APP_ENV=${APP_ENV}
-      - ENABLE_MOCK_TICKER=false # 실제 데이터 수집 시에는 비활성화
-      - PYTHONUNBUFFERED=1
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ../configs:/app/configs
-    networks:
-      - default
-
   # Unified Realtime Collector (KR + US)
   real-collector:
     build:
@@ -216,52 +200,6 @@ services:
       - default
     profiles:
       - real
-
-  # Orderbook Collector (KR) - NEW
-  asp-collector-kr:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: asp-collector-kr
-    command: python -m src.data_ingestion.price.asp_collector
-    env_file:
-      - ../${ENV_FILE:-.env}
-    environment:
-      - REDIS_URL=redis://stock-redis:6379/0
-      - APP_ENV=${APP_ENV}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ../configs:/app/configs
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - default
-      # profiles:
-      # - real
-
-      # Orderbook Collector (US) - NEW
-  asp-collector-us:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: asp-collector-us
-    command: python -m src.data_ingestion.price.asp_collector_us
-    env_file:
-      - ../${ENV_FILE:-.env}
-    environment:
-      - REDIS_URL=redis://stock-redis:6379/0
-      - APP_ENV=${APP_ENV}
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ../configs:/app/configs
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - default
-      # profiles:
-      # - real
 
   history-collector:
     build:
@@ -315,7 +253,7 @@ services:
   dashboard-ui:
     image: node:20-slim
     container_name: dashboard-ui
-    working_dir: /app/src/viewer/dashboard
+    working_dir: /app/src/web
     volumes:
       - ..:/app
     # dev 서버 실행 (host 0.0.0.0으로 외부 접근 허용)

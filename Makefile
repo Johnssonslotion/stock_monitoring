@@ -8,6 +8,9 @@ help: ## Display this help message
 up: ## Start all services (default .env)
 	docker compose -f deploy/docker-compose.yml up -d
 
+build-api: ## Rebuild API Server
+	docker compose -f deploy/docker-compose.yml build api-server
+
 up-dev: ## Start development environment
 	docker compose --env-file .env.dev -f deploy/docker-compose.yml --profile real up -d
 

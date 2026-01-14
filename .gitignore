@@ -73,4 +73,8 @@ logs.txt
 data/raw/*.jsonl
 
 # Experiments
-docs/experiments/
+!/.agent/rules/ai-rules.md
+
+# Runtime data
+data/
+logs/
