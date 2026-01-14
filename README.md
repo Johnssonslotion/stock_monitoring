@@ -40,7 +40,8 @@ graph TD
 
 ## 📡 현재 시스템 상태 (Current Status)
 - **Data Ingestion**: KR/US 실시간 틱 수집 및 뉴스(RSS) 수집 가동 중 (`src/data_ingestion`).
-- **Database**: 
+  - 🆕 **구독 확인 로직**: 서버 응답(SUCCESS/FAILED) 파싱 및 재시도 (2026-01-14)
+- **Database**:
   - **TimescaleDB**: 실시간 틱 데이터 저장 (Hot/Warm).
   - **DuckDB**: 분석용 데이터 레이크 (Cold).
 - **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch).
