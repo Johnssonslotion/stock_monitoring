@@ -526,6 +526,51 @@ websocket.onmessage = (msg) => {
 
 ---
 
+## 11. Electron Client Design Specs (Phase 3 Spec)
+ 
+데스크탑 네이티브 경험을 제공하기 위한 Electron 클라이언트 디자인 사양입니다.
+ 
+### 11.1 System Tray Integration
+ 
+**Status Bar Icon**:
+- 🟢 **Green Dot**: 정상 연결 (Real-time)
+- 🔴 **Red Dot**: 연결 끊김 (Disconnected)
+- 🟡 **Yellow Dot**: 지연 발생 (Delayed > 3s)
+ 
+**Tray Popup UI (Mini Dashboard)**:
+- **Dimensions**: 300px (Width) x 400px (Height)
+- **Background**: `.glass` (Blur 20px)
+- **Layout**:
+    1.  **Header (40px)**: 주요 지수 (KOSPI, S&P500) 등락률 롤링 배너.
+    2.  **Watchlist (200px)**: 사용자 지정 관심종목 3개의 미니 차트 (Sparkline).
+    3.  **Status (Bottom)**: "Antigravity Active" + 연결 상태 텍스트.
+ 
+### 11.2 Desktop Notifications (Toast)
+ 
+OS 네이티브 알림을 사용하지 않고, 커스텀 렌더링된 윈도우를 우측 상단/하단에 띄웁니다.
+ 
+**Specification**:
+- **Size**: 320px x 80px
+- **Duration**: 5초 후 자동 소멸 (Hover 시 유지)
+- **Animation**: Slide-in from Right
+ 
+**Visual Hierarchy (Color Coding)**:
+ 
+| Type | Color | Icon | Example Message |
+| :--- | :--- | :--- | :--- |
+| **Surge (급등)** | `bg-red-500/10` `border-red-500` | 🚀 | **AAPL** +3.5% 급등 발생! |
+| **Plunge (급락)** | `bg-blue-500/10` `border-blue-500` | 📉 | **BTC** -5.0% 급락 경보. |
+| **Signal (매매)** | `bg-green-500/10` `border-green-500` | 💰 | **NVDA** Scalping 매수 체결 |
+| **System** | `bg-gray-500/10` `border-gray-500` | ⚠️ | KIS Socket 재접속 중... |
+ 
+### 11.3 Settings Window (Preference)
+ 
+- **Tab 1: Alert Rules**: 가격/등락률 알림 조건 설정.
+- **Tab 2: Overlay**: "Always on Top" 미니 티커 설정.
+- **Tab 3: Application**: 자동 실행, 트레이 최소화 옵션.
+ 
+---
+ 
 ## 10. 참고 자료
 
 ### 외부 문서

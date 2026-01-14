@@ -1,26 +1,46 @@
 .PHONY: help up down restart logs verify clean
 
-help: ## Display this help message
-	@echo "Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-15s %s\n", $$1, $$2}'
+# Smart OS Detection
+OS_NAME := $(shell uname -s)
 
-up: ## Start all services (default .env)
-	docker compose -f deploy/docker-compose.yml up -d
+# Default Settings (Server/Linux)
+COMPOSE_BASE := -f deploy/docker-compose.yml
+PROFILE := real
+ENV_FILE := .env.dev
+COMPOSE_ARGS := $(COMPOSE_BASE) --env-file $(ENV_FILE)
+
+# Mac (Darwin) Override
+ifeq ($(OS_NAME),Darwin)
+	PROFILE := local
+	ENV_FILE := .env.local
+	COMPOSE_ARGS := $(COMPOSE_BASE) -f deploy/docker-compose.local.yml
+endif
+
+.PHONY: help up up-dev up-prod down logs ps clean test lint
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+up: ## Start environment (Smart Detect: Mac=Local, Linux=Real)
+	@echo "🍎/🐧 Detected OS: $(OS_NAME)"
+	@echo "🚀 Starting Profile: $(PROFILE) using $(ENV_FILE)"
+	docker compose $(COMPOSE_ARGS) --profile $(PROFILE) up -d
 
 build-api: ## Rebuild API Server
 	docker compose -f deploy/docker-compose.yml build api-server
 
-up-dev: ## Start development environment
+up-dev: ## Force start development environment (Linux mode)
+	@./scripts/preflight_check.sh dev
 	docker compose --env-file .env.dev -f deploy/docker-compose.yml --profile real up -d
 
-up-prod: ## Start production environment
+up-prod: ## Start production environment (Danger Zone)
+	@./scripts/preflight_check.sh production
 	docker compose --env-file .env.prod -f deploy/docker-compose.yml --profile real up -d
 	@echo "Cleaning up unused Docker resources for Stability..."
 	docker system prune -af
 
-test: ## Run unit tests in isolated test environment
-	docker run --rm -v $$(pwd):/app -w /app --env-file .env.test deploy-real-collector /bin/sh -c "pip install pytest && export PYTHONPATH=. && python3 -m pytest tests/"
+test: ## Run unit tests in isolated test environment (Resource Limited)
+	docker run --rm --cpus="0.5" --memory="512m" -v $$(pwd):/app -w /app --env-file .env.test deploy-api-server /bin/sh -c "pip install pytest pytest-asyncio httpx<0.28 && export PYTHONPATH=. && python3 -m pytest tests/"
 
 down: ## Stop all services
 	docker compose -f deploy/docker-compose.yml down

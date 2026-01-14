@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CandleChart } from './components/CandleChart';
 import { LogsView } from './components/LogsView';
 import { MarketMap } from './components/MarketMap';
-import { StatusPanel } from './components/StatusPanel';
+// import { StatusPanel } from './components/StatusPanel'; // Deprecated
+import { SystemDashboard } from './components/SystemDashboard';
 import { SymbolSelector } from './components/SymbolSelector';
 import { SectorPerformance } from './components/SectorPerformance';
 
@@ -188,11 +189,11 @@ function App() {
                 </div>
               )}
 
+
+
               {activeTab === 'system' && (
                 <div className="w-full h-full flex items-center justify-center">
-                  <div className="glass p-1 rounded-2xl">
-                    <StatusPanel />
-                  </div>
+                  <SystemDashboard />
                 </div>
               )}
             </motion.div>
