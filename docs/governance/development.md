@@ -68,9 +68,11 @@
         """
     ```
 -   **Git**: Conventional Commits + **Strict Git Flow**.
-    -   **Rule**: 모든 작업은 `master`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
-    -   **Prohibited**: `master` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
-    -   **Workflow**: `git checkout -b feat/new-feature` -> Work -> `git push` -> Merge Request.
+    -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
+    -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
+    -   **Workflow**: `git checkout -b feat/new-feature` → Work → `git push` → Pull Request → `develop` 머지.
+    -   **배포**: `develop` 머지 시 운영 서버(`oracle-a1:/workspace/stock_monitoring`)에 **자동 배포**됨.
+    -   **상세**: [배포 전략 문서](./deployment_strategy.md) 참조.
 
 ## 3. 디버깅 및 검증 전략 (Debugging & Validation Strategy)
 
