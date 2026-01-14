@@ -59,6 +59,20 @@
 
 ---
 
+## 5. 📊 Monitoring Priorities (모니터링 우선순위)
+**Defined by**: 🔧 **Infra Engineer** & 👔 **PM**
+
+시스템 리소스 제약(Zero Cost)과 비즈니스 연속성을 고려한 메트릭 중요도 등급입니다.
+
+| Priority | Metric | Condition | Action Required |
+| :--- | :--- | :--- | :--- |
+| **P0 (Critical)** | **Container Status** | `status != running` | **즉시 복구**. Doomsday Protocol 발동 및 관리자 호출. |
+| **P1 (High)** | **Disk Usage** | `> 90%` | 데이터 유실 임박. `make prune-logs` 실행 및 Retention 정책 긴급 수정. |
+| **P2 (Medium)** | **Memory Usage** | `> 85%` | OOM Kill 위험. 메모리 누수 점검 및 불필요 서비스 중단. |
+| **P3 (Low)** | **CPU Usage** | `> 80%` | 처리 지연 가능성. 코드 최적화 또는 수집 주기 조정 검토. |
+
+---
+
 ## ✅ Council Review Summary
 1.  **Architect**: "현재 로직(`.py`)과 설정(`.yaml`)이 혼재되어 있음. 장기적으로 모든 Policy를 `configs/`로 이동시키는 리팩토링이 필요함."
 2.  **Dev**: "Watchdog 임계값(60/120/180s)은 경험적 수치임. 운영 데이터 쌓이면 조정 필요."
