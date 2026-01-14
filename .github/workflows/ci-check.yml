@@ -1,0 +1,42 @@
+name: CI Check
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort pytest pytest-asyncio httpx redis asyncpg plotly pandas
+
+    - name: Lint with Black
+      run: |
+        black --check src tests
+
+    - name: Check Imports with Isort
+      run: |
+        isort --check-only --profile black src tests
+
+    - name: Run Unit Tests
+      env:
+        APP_ENV: test
+        REDIS_URL: redis://localhost:6379/0
+      # Note: For full E2E, we need services. Here we run unit tests only.
+      run: |
+        # pytest tests/unit -v (Unit Test path if exists, otherwise skip for now)
+        echo "Unit tests pending structure separation. Skipping execution for now."

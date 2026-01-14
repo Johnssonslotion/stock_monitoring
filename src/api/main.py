@@ -9,12 +9,17 @@ import asyncpg
 import yaml
 from datetime import datetime
 from typing import List, Optional, Dict
+from .auth import verify_api_key
+from .routes import system
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api")
 
 app = FastAPI(title="Antigravity API", version="1.0.0")
+
+# Register Routers
+app.include_router(system.router)
 
 # CORS 설정 (로컬 개발 및 Electron 앱 지원)
 app.add_middleware(
@@ -57,12 +62,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 db_pool: Optional[asyncpg.Pool] = None
-
-async def verify_api_key(x_api_key: str = Header(..., alias="x-api-key")):
-    """API-Key 기반 보안 인증 미들웨어"""
-    if x_api_key != API_AUTH_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid API Key")
-    return x_api_key
 
 # Global Configuration Cache
 SYMBOLS_CACHE: Dict[str, Dict] = {}
@@ -114,6 +113,8 @@ async def startup_event():
         db_pool = await asyncpg.create_pool(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
+        # Attach to app state for routers
+        app.state.db_pool = db_pool
         logger.info("✅ Database Pool initialized successfully!")
     except Exception as e:
         logger.error(f"❌ DB Pool Init Failed: {e}")

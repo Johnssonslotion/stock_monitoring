@@ -70,9 +70,21 @@ docker compose -f deploy/docker-compose.yml --profile real up -d --build
 make test
 ```
 
-## 📚 주요 문서 바로가기
-- [Master Roadmap](docs/strategies/master_roadmap.md)
-- [UI Design Master Document](docs/ui_design_master.md) 🆕
-- [Test Registry](docs/testing/test_registry.md)
-- [AI 협업 규칙 (.ai-rules.md)](.ai-rules.md)
-- [환경 분리 로드맵](docs/strategies/env_separation_roadmap.md)
+## 📚 문서 허브 (Documentation Hub)
+
+이 프로젝트는 3대 핵심 문서로 관리됩니다.
+
+| 문서 (Document) | 역할 (Role) | 타겟 (Target) |
+| :--- | :--- | :--- |
+| **[MASTER_BUILD_GUIDE](file:///home/ubuntu/.gemini/antigravity/brain/ee8eaf5b-a6b8-4374-ab9b-277a200222dc/MASTER_BUILD_GUIDE.kr.md)** | **구축 가이드 (How)** | 0부터 시스템을 다시 만들려는 엔지니어 |
+| **[Master Roadmap](docs/strategies/master_roadmap.md)** | **전략 로드맵 (What/When)** | 프로젝트의 미래와 마일스톤을 확인하려는 PM |
+| **[Governance Rules](docs/governance/personas.md)** | **운영 원칙 (Rules)** | 개발자가 따라야 할 헌법과 프로토콜 |
+
+## 📡 현재 시스템 상태 (As of 2026-01-14)
+- **Phase 1: Infrastructure** ✅ [Completed]
+- **Phase 2: Data Pipeline** ✅ [Completed] (Tick/News/Orderbook)
+- **Phase 3: Monitoring** ✅ [Completed] (Sentinel Deadman's Switch)
+- **Phase 4: Optimization** ✅ [Completed] (TimescaleDB Hypertable)
+- **Phase 5: Safety** ✅ [Completed] (Environment Separation)
+- **Phase 6: Verification** ✅ [Completed] (E2E Test & Data Rescue)
+- **Phase 7: Intelligence** 🚧 [Planned] (SLM Log Analysis)

@@ -23,6 +23,11 @@
 -   **코드 분리**: 로직(Code)과 설정(Config)을 완벽히 분리한다. 하드코딩된 숫자는 허용하지 않는다.
 -   **Config 관리**: 모든 파라미터는 `configs/` 디렉토리 내의 YAML/JSON 파일로 관리하며, `Pydantic` 모델로 검증한다.
 
+### 2.3 테스트 리소스 제한 (Test Resource Limits) [NEW]
+- **원칙**: 테스트는 운영 서비스(Prod)의 가용성을 침해해서는 안 된다.
+- **제한값**: 모든 CI/Test 컨테이너는 **CPU 50% (0.5 vCPU)**, **Memory 512MB**를 초과할 수 없다.
+- **강제**: `Makefile` 또는 CI 스크립트에서 `--cpus` 및 `--memory` 플래그로 강제한다.
+
 ## 3. 관찰 가능성 및 복구 (Observability & Recovery)
 ### 3.1 관찰 가능성 원칙 (Observability Principle)
 **규칙**: 데이터 흐름 시스템은 **각 단계마다 측정 가능한 메트릭** 필수.
