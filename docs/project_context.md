@@ -35,16 +35,29 @@
 ## 3. 아키텍처 개요
 ```mermaid
 graph TD
-    News[뉴스/텍스트 데이터] -->|Crawling/API| Analysis[분석 모듈]
-    Tick[틱 데이터] -->|Websocket| Analysis
+    News[뉴스/텍스트 데이터] -->|RSS/API| NewsCol[News Collector]
+    NewsCol -->|Redis| Analysis[분석 모듈]
+    Tick[틱/호가 데이터] -->|Websocket| TickCol[Tick Collector]
+    TickCol -->|Redis| Analysis
+    TickCol -->|DB| TimescaleDB[(TimescaleDB)]
+    
     Analysis -->|NLP/Sentiment| Strategy[전략 엔진]
-    Strategy -->|Long-term| Rebalance[섹터 리밸런싱]
-    Strategy -->|Short-term| Scalping[단타 실행]
+    Strategy -->|Signal| Rebalance[섹터 리밸런싱]
+    Strategy -->|Signal| Scalping[단타 실행]
+    
     Rebalance --> Web[웹 대시보드]
     Scalping --> Web
+    
+    subgraph Observability
+        Sentinel[Sentinel 감시자] -->|Monitor| TickCol
+        Sentinel -->|Monitor| NewsCol
+        Sentinel -->|Alert| Web
+    end
 ```
 
 ## 4. 운영 원칙
 1.  **비용 효율성**: 오라클 프리티어 범위 내에서 운영. 무거운 모델은 로컬 또는 API 활용 고려.
 2.  **보안**: 민감 정보(API Key 등)는 절대 코드에 하드코딩하지 않음.
+    -   *KIS Auth*: API Key는 매일 장 시작 전(08:30) 강제 갱신하며, Single Socket 원칙을 준수한다.
 3.  **문서화**: 모든 산출물은 한글로 작성하며, `docs/` 및 `task.md`를 최신화 유지.
+    -   *Governance*: [ai-rules.md](file:///home/ubuntu/workspace/stock_monitoring/.ai-rules.md) 및 `docs/governance/` 하위 규칙 준수.

@@ -19,7 +19,7 @@
 - **Phase 2**: `Makefile` & `docker-compose.override.yml` 도입.
 
 ### Pillar 2: 고정밀 데이터 인입 파이프라인 (Data Ingestion) [IN-PROGRESS]
-- **Phase 1 (Ticks)**: KR(Unverified)/US(✅ Verified) 실시간 체결가 수집기 구축.
+- **Phase 1 (Ticks)**: KR(Unverified)/US(✅ Verified) 실시간 체결가 수집기 구축. (✅ DONE)
   - *US Config*: `HDFSCNT0` + `/HDFSCNT0` (Dual-Socket Ready)
 - **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
 - **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
@@ -32,6 +32,17 @@
 - **목표**: 초저지연 시각화 및 알고리즘 인터랙션.
 - **Phase 1**: FastAPI 기반 시계열 쿼리 엔진 및 **Tier 3 품질 보고서** 체계 수립. (✅ DONE)
 - **Phase 2**: React + Vite 기반 대시보드 및 하드웨어 가속 시각화. (✅ DONE)
+- **Phase 3A (Map-First Layout)**: 🆕 **APPROVED 2026-01-12**
+  - Dashboard 탭 재설계: Map 70% → Chart 30% (클릭 시 반전)
+  - Multi-Timeframe Support: 일봉 → 1분봉 전환 UI
+  - 사용자 온보딩: 첫 방문 툴팁 + Classic Layout 토글
+  - **Timeline**: Week 1-2 (Phase 2A)
+- **Phase 3B (Tick Streaming)**: 🆕 **CONDITIONAL** (Load Testing 필수)
+  - WebSocket `/ws/ticks/{symbol}` 실시간 스트리밍
+  - Lightweight Charts 기반 Canvas 렌더링
+  - Data Quality Badge + Statistical Summary (VWAP, Spread, Velocity)
+  - **Prerequisite**: Locust 성능 검증 (CPU < 80%, Latency < 100ms p95)
+  - **Timeline**: Week 5-8 (Phase 3)
 
 ### Pillar 4: 운영 및 관측성 (Operations & Observability)
 - **목표**: 무중지 시스템 및 카오스 엔진(Chaos Engine)을 통한 복원력 강화.
@@ -46,7 +57,8 @@
 | :--- | :--- | :--- |
 | **Q1-A** | 환경 분리 및 데이터 파이프라인 안정화 | 장애 없는 상시 수집 및 실시간 분봉 자동 생성 |
 | **Q1-B** | **품질 게이트(Tier 2) 통과** 및 호가 수집 | 기술 부채 없는 고순도 데이터셋 확보 |
-| **Q2-A** | **Web-based Viewer 출시** | 실시간 대시보드 및 지표 시각화 (Phase 1) |
+| **Q2-A** | **Map-First UI 출시** (Phase 3A) 🆕 | 탐색적 데이터 분석 워크플로우 구현 |
+| **Q2-B** | **Tick 스트리밍** (Phase 3B) + Electron 앱 | 실시간 시장 미시구조 모니터링 |
 
 ---
 

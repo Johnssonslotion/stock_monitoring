@@ -14,15 +14,37 @@
 - **High Performance**: 비동기(Async) 처리와 뱌치 인서트(Batch Insert)로 틱 단위 데이터를 유실 없이 처리합니다.
 - **Observability**: **Sentinel** 감시자가 24시간 데이터의 정합성과 시스템 상태를 체크합니다.
 
-## 🗺️ 기술 기반 이정표 (5-Pillars Roadmap)
+## 🏗️ 아키텍처 (Architecture)
 
-프로젝트의 상세한 진화 방향은 **[Master Roadmap](docs/strategies/master_roadmap.md)**에서 확인할 수 있습니다.
+```mermaid
+graph TD
+    News[뉴스/텍스트 데이터] -->|RSS/API| NewsCol[News Collector]
+    NewsCol -->|Redis| Analysis[분석 모듈]
+    Tick[틱/호가 데이터] -->|Websocket| TickCol[Tick Collector]
+    TickCol -->|Redis| Analysis
+    TickCol -->|DB| TimescaleDB[(TimescaleDB)]
+    
+    Analysis -->|NLP/Sentiment| Strategy[전략 엔진]
+    Strategy -->|Signal| Rebalance[섹터 리밸런싱]
+    Strategy -->|Signal| Scalping[단타 실행]
+    
+    Rebalance --> Web[웹 대시보드]
+    Scalping --> Web
+    
+    subgraph Observability
+        Sentinel[Sentinel 감시자] -->|Monitor| TickCol
+        Sentinel -->|Monitor| NewsCol
+        Sentinel -->|Alert| Web
+    end
+```
 
-1.  **Pillar 1: 인프라 & 격리 (Infra/HA)** - Dev/Prod 분리 및 데이터 영속성.
-2.  **Pillar 2: 고정밀 수집 (Ingestion)** - KR/US/Crypto 틱 및 1s 호가 스냅샷 수집. (✅ Tier 2 Gate PASSED)
-3.  **Pillar 3: 시각화 터미널 (Viewer)** - Web Dashboard (✅ DONE, Latency Optimized) 및 macOS Electron 터미널.
-4.  **Pillar 4: 운영 및 복원력 (Ops)** - Sentinel 감시 및 카오스 엔지니어링.
-5.  **Pillar 5: 전략 및 분석 (Strategy)** - 백테스팅 엔진 및 실시간 성과 추적.
+## 📡 현재 시스템 상태 (Current Status)
+- **Data Ingestion**: KR/US 실시간 틱 수집 및 뉴스(RSS) 수집 가동 중 (`src/data_ingestion`).
+- **Database**: 
+  - **TimescaleDB**: 실시간 틱 데이터 저장 (Hot/Warm).
+  - **DuckDB**: 분석용 데이터 레이크 (Cold).
+- **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch).
+- **Dashboard**: React 기반 웹 대시보드 (`port: 5173`) 및 FastAPI 백엔드 가동 중.
 
 ## 🧪 TDD 기반 무결성 보장
 
@@ -49,6 +71,7 @@ make test
 
 ## 📚 주요 문서 바로가기
 - [Master Roadmap](docs/strategies/master_roadmap.md)
+- [UI Design Master Document](docs/ui_design_master.md) 🆕
 - [Test Registry](docs/testing/test_registry.md)
 - [AI 협업 규칙 (.ai-rules.md)](.ai-rules.md)
 - [환경 분리 로드맵](docs/strategies/env_separation_roadmap.md)
