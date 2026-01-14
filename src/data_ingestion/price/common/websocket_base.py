@@ -55,7 +55,12 @@ class UnifiedWebSocketManager:
         
         # Subscription State (to prevent redundant requests)
         self.active_markets = set()
-        
+
+        # 구독 확인 상태 추적 (NEW)
+        self.pending_subscriptions: Dict[str, asyncio.Event] = {}  # tr_key -> Event
+        self.subscription_results: Dict[str, bool] = {}  # tr_key -> success
+        self.connection_ready = asyncio.Event()  # 연결 완료 신호
+
         # Raw Logger
         self.raw_logger = RawWebSocketLogger(retention_hours=120)  # 5일 보존
         
@@ -88,18 +93,34 @@ class UnifiedWebSocketManager:
             if '"tr_id":"PINGPONG"' in message:
                 return "PONG"
             
-            # JSON 메시지 로깅 (에러 확인용)
+            # JSON 메시지 로깅 및 구독 응답 처리
             try:
                 data = json.loads(message)
                 if 'body' in data and 'msg1' in data['body']:
-                     msg1 = data['body']['msg1']
-                     logger.warning(f"[API MSG] {msg1}")
-                     
-                     # 🚨 KEY EXPIRED DETECTION
-                     if "invalid tr_key" in msg1 or "Expired" in msg1:
-                         logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
-                         asyncio.create_task(self.trigger_refresh())
-                         
+                    msg1 = data['body']['msg1']
+                    header = data.get('header', {})
+                    tr_id = header.get('tr_id', '')
+                    tr_key = header.get('tr_key', '')
+
+                    logger.info(f"[API MSG] tr_id={tr_id}, tr_key={tr_key}, msg={msg1}")
+
+                    # 🎯 구독 응답 처리 (NEW)
+                    if tr_key and tr_key in self.pending_subscriptions:
+                        if "SUCCESS" in msg1.upper() or msg1 == "SUBSCRIBE SUCCESS":
+                            self.subscription_results[tr_key] = True
+                            logger.info(f"✅ SUBSCRIBE CONFIRMED: {tr_key}")
+                        else:
+                            self.subscription_results[tr_key] = False
+                            logger.error(f"❌ SUBSCRIBE FAILED: {tr_key} - {msg1}")
+
+                        # 대기 중인 구독 요청에 신호
+                        self.pending_subscriptions[tr_key].set()
+
+                    # 🚨 KEY EXPIRED DETECTION
+                    if "invalid tr_key" in msg1 or "Expired" in msg1:
+                        logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
+                        asyncio.create_task(self.trigger_refresh())
+
             except:
                 pass
             return None
@@ -152,13 +173,29 @@ class UnifiedWebSocketManager:
         else:
             logger.error("❌ No key_refresh_callback set!")
 
-    async def _send_request(self, tr_id: str, tr_key: str, tr_type: str):
-        """내부 요청 전송 헬퍼"""
+    async def _send_request(self, tr_id: str, tr_key: str, tr_type: str, wait_confirm: bool = True) -> bool:
+        """
+        내부 요청 전송 헬퍼 (응답 확인 포함)
+
+        Args:
+            tr_id: 거래 ID
+            tr_key: 심볼 키
+            tr_type: "1"=Subscribe, "2"=Unsubscribe
+            wait_confirm: 서버 응답 대기 여부 (기본 True)
+
+        Returns:
+            bool: 성공 여부 (응답 확인 포함)
+        """
         async with self.ws_lock:
             if not self.websocket or not self.approval_key:
                 logger.warning("WebSocket not connected or no key")
                 return False
-            
+
+            # 구독 요청인 경우 응답 대기 준비
+            if tr_type == "1" and wait_confirm:
+                self.pending_subscriptions[tr_key] = asyncio.Event()
+                self.subscription_results[tr_key] = False
+
             req = {
                 "header": {
                     "approval_key": self.approval_key,
@@ -173,33 +210,101 @@ class UnifiedWebSocketManager:
                     }
                 }
             }
-            await self.websocket.send(json.dumps(req))
-            return True
+
+            try:
+                await self.websocket.send(json.dumps(req))
+            except Exception as e:
+                logger.error(f"Failed to send request: {e}")
+                if tr_key in self.pending_subscriptions:
+                    del self.pending_subscriptions[tr_key]
+                return False
+
+        # 구독 요청인 경우 응답 대기 (최대 5초)
+        if tr_type == "1" and wait_confirm:
+            try:
+                await asyncio.wait_for(
+                    self.pending_subscriptions[tr_key].wait(),
+                    timeout=5.0
+                )
+                success = self.subscription_results.get(tr_key, False)
+            except asyncio.TimeoutError:
+                logger.warning(f"⏰ SUBSCRIBE TIMEOUT: {tr_key} (no response in 5s)")
+                success = False
+            finally:
+                # 정리
+                self.pending_subscriptions.pop(tr_key, None)
+                self.subscription_results.pop(tr_key, None)
+
+            return success
+
+        return True
     
-    async def subscribe_market(self, market: str):
-        """특정 시장(KR/US)의 모든 Collectors 구독"""
+    async def subscribe_market(self, market: str, max_retries: int = 3) -> bool:
+        """
+        특정 시장(KR/US)의 모든 Collectors 구독 (재시도 포함)
+
+        Args:
+            market: 시장 코드 (KR/US)
+            max_retries: 심볼당 최대 재시도 횟수
+
+        Returns:
+            bool: 전체 구독 성공 여부
+        """
         if market in self.active_markets:
             logger.info(f"[{market}] Already subscribed. Skipping.")
-            return
+            return True
 
-        logger.info(f"[{market}] Starting SUBSCRIPTION...")
-        count = 0
+        # 연결 대기 (최대 10초)
+        if not self.websocket:
+            logger.warning(f"[{market}] Waiting for WebSocket connection...")
+            try:
+                await asyncio.wait_for(self.connection_ready.wait(), timeout=10.0)
+            except asyncio.TimeoutError:
+                logger.error(f"[{market}] WebSocket connection timeout!")
+                return False
+
+        logger.info(f"[{market}] Starting SUBSCRIPTION (with confirmation)...")
+        success_count = 0
+        fail_count = 0
+        failed_symbols = []
+
         for tr_id, collector in self.collectors.items():
             if collector.market == market:
                 # 심볼 로드가 안되어 있으면 로드
                 if not collector.symbols:
                     collector.load_symbols()
-                
+
                 for sym in collector.symbols:
-                    if await self._send_request(tr_id, sym, "1"): # 1=Subscribe
-                        count += 1
-                    await asyncio.sleep(0.2) # Rate Limit
-        
-        if count > 0:
+                    # 재시도 루프
+                    subscribed = False
+                    for attempt in range(1, max_retries + 1):
+                        if await self._send_request(tr_id, sym, "1"):
+                            subscribed = True
+                            success_count += 1
+                            break
+                        else:
+                            logger.warning(f"[{market}] Retry {attempt}/{max_retries} for {sym}")
+                            await asyncio.sleep(1.0)  # 재시도 전 대기
+
+                    if not subscribed:
+                        fail_count += 1
+                        failed_symbols.append(sym)
+
+                    await asyncio.sleep(0.2)  # Rate Limit
+
+        # 결과 판정
+        total = success_count + fail_count
+        if fail_count == 0:
             self.active_markets.add(market)
-            logger.info(f"[{market}] Subscribed {count} symbols.")
+            logger.info(f"✅ [{market}] ALL SUBSCRIBED: {success_count}/{total} symbols confirmed.")
+            return True
+        elif success_count > 0:
+            self.active_markets.add(market)
+            logger.warning(f"⚠️ [{market}] PARTIAL: {success_count}/{total} OK, {fail_count} FAILED: {failed_symbols[:5]}...")
+            return True
         else:
-            logger.warning(f"[{market}] Subscription FAILED (No packets sent). Will retry.")
+            logger.error(f"❌ [{market}] SUBSCRIPTION FAILED: 0/{total} symbols confirmed.")
+            return False
 
     async def unsubscribe_market(self, market: str):
         """특정 시장(KR/US)의 모든 Collectors 구독 해제"""
@@ -212,7 +317,7 @@ class UnifiedWebSocketManager:
         for tr_id, collector in self.collectors.items():
             if collector.market == market:
                 for sym in collector.symbols:
-                    if await self._send_request(tr_id, sym, "2"): # 2=Unsubscribe
+                    if await self._send_request(tr_id, sym, "2", wait_confirm=False):  # 2=Unsubscribe
                         count += 1
                     await asyncio.sleep(0.2)
         
@@ -230,7 +335,10 @@ class UnifiedWebSocketManager:
         """WebSocket URL 동적 변경 및 재연결 요청"""
         logger.info(f"🔄 Switching WebSocket URL to: {new_url}")
         self.current_ws_url = new_url
-        
+
+        # 연결 대기 이벤트 초기화
+        self.connection_ready.clear()
+
         # 현재 연결 강제 종료 -> run() 루프에서 재연결 유도
         async with self.ws_lock:
             if self.websocket:
@@ -323,17 +431,21 @@ class UnifiedWebSocketManager:
                     
                     async with websockets.connect(
                         target_url,
-                        ping_interval=20, 
-                        ping_timeout=10, 
-                        close_timeout=10
+                        ping_interval=20,
+                        ping_timeout=30,  # 10 -> 30초로 증가
+                        close_timeout=30   # 10 -> 30초로 증가
                     ) as websocket:
-                        logger.info("Connected.")
-                        
+                        logger.info("✅ WebSocket Connected.")
+
                         async with self.ws_lock:
                             self.websocket = websocket
-                            self.active_markets.clear() # Reset state on reconnect
-                            self.last_traffic_time = time.time() # Reset watchdog timer
-                        
+                            self.active_markets.clear()  # Reset state on reconnect
+                            self.last_traffic_time = time.time()  # Reset watchdog timer
+
+                        # 🎯 연결 완료 신호 (NEW)
+                        self.connection_ready.set()
+                        logger.info("🎯 Connection ready signal sent.")
+
                         # Note: 구독은 외부 스케줄러(schedule_market_switch)가 수행함.
                         
                         # 메시지 루프
@@ -360,6 +472,8 @@ class UnifiedWebSocketManager:
                     async with self.ws_lock:
                         self.websocket = None
                         self.active_markets.clear()
+                    # 연결 끊김 -> 대기 상태로 전환
+                    self.connection_ready.clear()
                     await asyncio.sleep(5)
         finally:
             if self._watchdog_task:

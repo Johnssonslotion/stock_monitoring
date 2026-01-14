@@ -24,9 +24,14 @@
 - **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
 - **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
 - **Phase 3 (Selective Orderbook)**: 1초 단위 호가 스냅샷 구현. (✅ DONE)
-- **Phase 4 (Quality Guardrail)**: 
+- **Phase 4 (Quality Guardrail)**:
   - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
   - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)
+- **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**
+  - **구독 응답 확인**: 서버 응답(SUCCESS/FAILED) 파싱 및 성공/실패 판정. (✅ DONE)
+  - **재시도 로직**: 구독 실패 시 심볼당 최대 3회 즉시 재시도. (✅ DONE)
+  - **연결 대기**: switch_url 후 connection_ready 신호 대기 후 구독 시작. (✅ DONE)
+  - **타임아웃 증가**: ping_timeout 10초 → 30초. (✅ DONE)
 
 ### Pillar 3: 데이터 비주얼라이제이션 & 분석 터미널 (Viewer Evolution) [IN-PROGRESS]
 - **목표**: 초저지연 시각화 및 알고리즘 인터랙션.

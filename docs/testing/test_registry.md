@@ -29,6 +29,9 @@
 | US-SCH-01 | `test_us_schema_validation` | `tests/test_schema_integrity.py` | US 데이터의 Pydantic 모델 정합성 검증 | ✅ Pass |
 | DUAL-SOC-01 | `test_concurrent_socket` | `src/data_ingestion/price/common/websocket_dual.py` | Tick/Orderbook 소켓 분리 및 동시 연결 (Logs Verified) | ✅ Pass |
 | DUAL-ISO-01 | `test_socket_isolation` | Manual Verification | 한쪽 소켓 장애 시 다른 소켓 영향 없음 (Logs Verified) | ✅ Pass |
+| SUB-CONF-01 | `test_subscription_confirmation` | Manual (Logs Verified) | 구독 요청 후 서버 응답(SUCCESS/FAILED) 확인 및 재시도 로직 검증 | ✅ Pass |
+| SUB-RETRY-01 | `test_subscription_retry` | Manual (Logs Verified) | 구독 실패 시 최대 3회 즉시 재시도 동작 확인 | ✅ Pass |
+| CONN-READY-01 | `test_connection_ready_signal` | Manual (Logs Verified) | switch_url 후 연결 완료 대기 후 구독 시작 확인 | ✅ Pass |
 
 ### 1.3 가상자산 (Crypto)
 | ID | 테스트명 | 파일명 | 검증 내용 | 상태 |
