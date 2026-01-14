@@ -51,7 +51,10 @@
 
 ### Pillar 4: 운영 및 관측성 (Operations & Observability)
 - **목표**: 무중지 시스템 및 카오스 엔진(Chaos Engine)을 통한 복원력 강화.
-- **Phase 1 (Monitoring)**: Sentinel(0-Data Alarm) 및 인프라 메트릭 수집.
+- **Phase 1 (Monitoring)**: Sentinel(0-Data Alarm) 및 인프라 메트릭 수집. (✅ DONE)
+- **Phase 2 (System Dashboard)**: 🆕 **2026-01-14**
+  - **System Metrics**: CPU, Memory, Disk, Container Health 시각화.
+  - **Log Viewer**: 주요 경고 및 장애 로그 타임라인 뷰.
 - **Phase 3 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
 
 ---
