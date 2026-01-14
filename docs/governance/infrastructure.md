@@ -93,4 +93,22 @@ CREATE INDEX market_ticks_time_idx ON market_ticks (time DESC);
 ### 5.2 보안 및 인증
 - **접근 제어**: **JWT** 또는 **API-Key** 인증 필수.
 - **가용성**: 경량 인증 권장 (Zero-Cost).
-- **CORS**: White-list 방식 유지.
+### 5.3 데이터베이스 연결 및 격리 (Database Isolation) [v0.02+]
+- **원칙**: 개발 환경(Local)과 운영 환경(OCI)의 DB는 **완벽히 격리**된다.
+    - **Local**: `docker volume`을 통한 로컬 DB 사용 (`make up-local`).
+    - **OCI**: 운영 서버 내 `docker volume` 사용. 외부 포트(5432)는 닫혀 있어야 한다.
+- **접속 방식 (Tailscale VPN)**:
+    - **Public IP 접속 금지**: 모든 SSH 및 DB 접속은 **Tailscale VPN**을 통해 이루어져야 한다.
+    - **MagicDNS**: `<OCI_SERVER_IP>` 대신 `ssh ubuntu@stock-monitor-prod` 형식을 사용한다.
+    - **Port Opening**: OCI **Security List(Inbound)**에서 SSH(22)를 제외한 모든 포트를 닫는다.
+
+### 5.4 데이터 동기화 전략 (Data Sync Strategy)
+- **방향**: `Production (Source)` -> `Local (Target)` (단방향).
+- **빈도**: 개발 시작 전 1회 권장 (Daily/Weekly).
+- **방식**:
+    - **TimescaleDB**: `pg_dump` 스트리밍을 통한 Import. (Disk I/O 최소화)
+    - **DuckDB**: `rsync`를 이용한 파일 단위 동기화.
+- **Security**: 동기화된 로컬 DB는 절대 외부로 유출되어서는 안 된다. (Local-Only)
+
+### 5.5 문서 보안 (Documentation Security)
+- **IP Redaction**: Tailscale 도입으로 인해 Public IP 노출 위험이 감소했으나, 여전히 문서에는 **Placeholder**를 사용한다.
