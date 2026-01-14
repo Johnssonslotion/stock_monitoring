@@ -14,7 +14,7 @@ import { SectorPerformance } from './components/SectorPerformance';
 
 // Configure Axios
 axios.defaults.baseURL = '/api/v1'; // Vite Proxy handles the rest
-axios.defaults.headers.common['x-api-key'] = 'super-secret-key';
+axios.defaults.headers.common['x-api-key'] = import.meta.env.VITE_API_KEY || 'default-dev-key';
 
 /* 
   Data interfaces
