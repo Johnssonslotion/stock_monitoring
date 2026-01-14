@@ -322,21 +322,176 @@ async def get_indices_performance():
 
 @app.get("/api/v1/health")
 async def health_check():
+    """
+    기본 헬스 체크 - DB/Redis 연결 상태 및 응답 시간 확인
+    """
+    import time
+
+    # Redis 상태 확인
     redis_status = False
+    redis_ms = 0
     try:
-        r = redis.from_url(REDIS_URL, socket_timeout=1.0)
+        start = time.time()
+        r = redis.from_url(REDIS_URL, socket_timeout=2.0)
         await r.ping()
+        redis_ms = int((time.time() - start) * 1000)
         redis_status = True
         await r.close()
-    except:
+    except Exception:
         pass
-        
+
+    # DB 상태 확인 (실제 쿼리)
+    db_status = False
+    db_ms = 0
+    try:
+        if db_pool:
+            start = time.time()
+            async with db_pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            db_ms = int((time.time() - start) * 1000)
+            db_status = True
+    except Exception:
+        pass
+
+    # 전체 상태 판정
+    if db_status and redis_status:
+        status = "healthy"
+    elif db_status or redis_status:
+        status = "degraded"
+    else:
+        status = "unhealthy"
+
     return {
-        "status": "ok", 
-        "db": db_pool is not None,
-        "redis": redis_status,
+        "status": status,
+        "db": {"connected": db_status, "response_ms": db_ms},
+        "redis": {"connected": redis_status, "response_ms": redis_ms},
         "timestamp": datetime.now().isoformat()
     }
+
+
+@app.get("/api/v1/health/detailed")
+async def health_check_detailed():
+    """
+    상세 헬스 체크 - 시스템 전체 상태 (DB, Redis, Collectors, Sentinel)
+    """
+    import time
+
+    result = {
+        "timestamp": datetime.now().isoformat(),
+        "status": "healthy",
+        "database": {},
+        "redis": {},
+        "collectors": {},
+        "sentinel": {}
+    }
+
+    # 1. Database 상태
+    try:
+        if db_pool:
+            start = time.time()
+            async with db_pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+                db_ms = int((time.time() - start) * 1000)
+
+                # 최근 5분 데이터 수
+                recent_ticks = await conn.fetchval(
+                    "SELECT COUNT(*) FROM market_ticks WHERE time > NOW() - INTERVAL '5 minutes'"
+                )
+
+                # 가장 최근 데이터 시간
+                last_time = await conn.fetchval(
+                    "SELECT MAX(time) FROM market_ticks"
+                )
+                last_age_sec = 0
+                if last_time:
+                    last_age_sec = int((datetime.now(last_time.tzinfo) - last_time).total_seconds())
+
+                result["database"] = {
+                    "status": "connected",
+                    "response_ms": db_ms,
+                    "recent_ticks_5m": recent_ticks or 0,
+                    "last_data_age_sec": last_age_sec
+                }
+        else:
+            result["database"] = {"status": "disconnected", "response_ms": 0}
+            result["status"] = "degraded"
+    except Exception as e:
+        result["database"] = {"status": "error", "error": str(e)}
+        result["status"] = "degraded"
+
+    # 2. Redis 상태
+    try:
+        start = time.time()
+        r = redis.from_url(REDIS_URL, socket_timeout=2.0)
+        await r.ping()
+        redis_ms = int((time.time() - start) * 1000)
+
+        # 메모리 사용량
+        info = await r.info("memory")
+        memory_mb = round(info.get("used_memory", 0) / 1024 / 1024, 2)
+
+        # 활성 채널
+        channels = await r.pubsub_channels()
+        channel_list = [ch.decode() if isinstance(ch, bytes) else ch for ch in channels]
+
+        await r.close()
+
+        result["redis"] = {
+            "status": "connected",
+            "response_ms": redis_ms,
+            "memory_mb": memory_mb,
+            "channels": channel_list
+        }
+    except Exception as e:
+        result["redis"] = {"status": "error", "error": str(e)}
+        result["status"] = "degraded"
+
+    # 3. Collectors 상태 (Redis에서 마지막 업데이트 시간 조회)
+    try:
+        r = redis.from_url(REDIS_URL, socket_timeout=2.0)
+
+        # Sentinel이 저장한 마지막 데이터 시간 조회
+        kr_last = await r.get("collector:kr:last_update")
+        us_last = await r.get("collector:us:last_update")
+
+        result["collectors"] = {
+            "kr": {
+                "active": kr_last is not None,
+                "last_update": kr_last.decode() if kr_last else None
+            },
+            "us": {
+                "active": us_last is not None,
+                "last_update": us_last.decode() if us_last else None
+            }
+        }
+
+        await r.close()
+    except Exception:
+        result["collectors"] = {"kr": {"active": False}, "us": {"active": False}}
+
+    # 4. Sentinel 상태 (Redis에서 조회)
+    try:
+        r = redis.from_url(REDIS_URL, socket_timeout=2.0)
+
+        sentinel_status = await r.get("sentinel:status")
+        circuit_breaker = await r.get("sentinel:circuit_breaker")
+        last_alert = await r.get("sentinel:last_alert")
+
+        result["sentinel"] = {
+            "status": sentinel_status.decode() if sentinel_status else "unknown",
+            "circuit_breaker": circuit_breaker.decode() if circuit_breaker else "unknown",
+            "last_alert": last_alert.decode() if last_alert else None
+        }
+
+        await r.close()
+    except Exception:
+        result["sentinel"] = {"status": "unknown", "circuit_breaker": "unknown"}
+
+    # 전체 상태 최종 판정
+    if result["database"].get("status") != "connected" or result["redis"].get("status") != "connected":
+        result["status"] = "unhealthy" if result["status"] == "degraded" else "degraded"
+
+    return result
 
 @app.get("/api/v1/analytics/correlation", dependencies=[Depends(verify_api_key)])
 async def get_correlation_matrix(days: int = 30):
