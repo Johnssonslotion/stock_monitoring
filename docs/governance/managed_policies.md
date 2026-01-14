@@ -66,3 +66,5 @@
 4.  **Data Scientist**: 
     - "US Market은 자정을 넘어가므로(`Next Day`), DB 조회 시 단순 일자별(`Day`) 집계가 아닌 **'Trading Day' 기준 집계 로직**이 필수적임." 
     - "로그 삭제(Retention) 전, 파싱 에러나 이상 데이터가 포함된 로그는 별도 아카이빙하는 **'Data Rescue' 파이프라인**이 필요함."
+5.  **PM**: "모든 정책 변경은 비즈니스 가치(데이터 무결성)와 비용(Zero Cost) 사이의 균형을 유지해야 함. 과도한 안전장치로 인한 리소스 초과는 불허."
+6.  **Doc Specialist**: "정책 문서(`managed_policies.md`)는 코드가 변경될 때마다 즉시 동기화되어야 하며, 변경 이력(History)이 투명하게 남아야 함."
