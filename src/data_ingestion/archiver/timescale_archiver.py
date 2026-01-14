@@ -54,6 +54,21 @@ class TimescaleArchiver:
             except Exception as e:
                 logger.warning(f"Hypertable creation msg: {e}")
                 
+            # Create system_metrics table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS system_metrics (
+                    time TIMESTAMPTZ NOT NULL,
+                    type TEXT NOT NULL,
+                    value DOUBLE PRECISION NOT NULL,
+                    meta JSONB
+                );
+            """)
+            try:
+                await conn.execute("SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);")
+                logger.info("Hypertable 'system_metrics' ensured.")
+            except Exception as e:
+                logger.warning(f"Hypertable creation msg (system_metrics): {e}")
+
         finally:
             await conn.close()
 
@@ -69,10 +84,10 @@ class TimescaleArchiver:
         logger.info("TimescaleArchiver started. Connected to Redis & DB.")
 
 
-        # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us)
+        # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us, system.*)
         pubsub = self.redis.pubsub()
-        await pubsub.psubscribe("ticker.*", "orderbook.*")
-        logger.info("📡 Subscribed to: ticker.*, orderbook.* (patterns)")
+        await pubsub.psubscribe("ticker.*", "orderbook.*", "system.*")
+        logger.info("📡 Subscribed to: ticker.*, orderbook.*, system.*")
         
         # 3. Flush Task
         asyncio.create_task(self.periodic_flush())
@@ -103,19 +118,53 @@ class TimescaleArchiver:
                     elif channel.startswith("orderbook."):
                         await self.save_orderbook(data)
                         
+                    elif channel == "system.metrics":
+                        await self.save_system_metrics(data)
+                        
                 except Exception as e:
                     logger.error(f"Parse/Queue Error (pattern): {e}")
             
-            elif msg_type == "message":  # Direct message (fallback/legacy)
+            elif msg_type == "message":  # Direct message
                 try:
                     channel = message["channel"]
                     data = json.loads(message["data"])
                     
                     if channel == "market_orderbook":
                         await self.save_orderbook(data)
+                    elif channel == "system.metrics": # Direct message fallback
+                        await self.save_system_metrics(data)
                         
                 except Exception as e:
                     logger.error(f"Parse/Queue Error (direct): {e}")
+
+    async def save_system_metrics(self, data):
+        """시스템 메트릭 저장 (Generic)"""
+        async with self.db_pool.acquire() as conn:
+            try:
+                ts = datetime.fromisoformat(data['timestamp'])
+                
+                # Check if data is legacy dict format (cpu, mem, disk) or new generic format (type, value, meta)
+                if 'cpu' in data and 'mem' in data:
+                     # Handle Legacy (Host Metrics) -> Convert to rows
+                     rows = [
+                         (ts, 'cpu', float(data['cpu']), None),
+                         (ts, 'memory', float(data['mem']), None)
+                     ]
+                     if 'disk' in data:
+                         rows.append((ts, 'disk', float(data['disk']), None))
+                     
+                     await conn.executemany("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", rows)
+                
+                else:
+                    # New Generic Format
+                    m_type = data.get('type')
+                    val = float(data.get('value'))
+                    meta = json.dumps(data.get('meta')) if data.get('meta') else None
+                    
+                    await conn.execute("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", ts, m_type, val, meta)
+
+            except Exception as e:
+                logger.error(f"System Metric Save Error: {e}")
 
     async def save_orderbook(self, data):
         """호가 스냅샷 데이터를 DB에 즉시 저장"""

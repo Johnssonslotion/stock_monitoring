@@ -24,7 +24,8 @@ RUN pip install --no-cache-dir \
     yfinance>=0.2.40 \
     finance-datareader==0.9.60 \
     aiofiles \
-    psutil
+    psutil \
+    docker
 
 # Copy application code
 COPY . .
