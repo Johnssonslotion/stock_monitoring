@@ -6,7 +6,8 @@ import os
 import redis.asyncio as redis
 import yaml
 import psutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+import pytz
 from src.core.schema import MarketData
 
 # Setup Logging
@@ -152,6 +153,27 @@ class Sentinel:
         if self.redis:
             await self.redis.publish("system_alerts", json.dumps(alert_data))
 
+    def is_market_open(self, market: str) -> bool:
+        """Check if specific market is currently open (KST based)"""
+        tz_kst = pytz.timezone('Asia/Seoul')
+        now_kst = datetime.now(tz_kst)
+        current_time = now_kst.time()
+
+        if market == "KR":
+            # 08:30 ~ 16:00 (Buffer included)
+            start = time(8, 30)
+            end = time(16, 0)
+            return start <= current_time <= end
+        elif market == "US":
+            # 17:00 ~ 08:00 (Next day)
+            start = time(17, 0)
+            end = time(8, 0)
+            if start < end:
+                return start <= current_time <= end
+            else: # Cross midnight
+                return start <= current_time or current_time <= end
+        return False
+
     async def monitor_heartbeat(self):
         """Doomsday Protocol: Monitor data flow and trigger failover"""
         logger.info("🛡️ Doomsday Protocol Activated: Monitoring Heartbeat...")
@@ -162,11 +184,12 @@ class Sentinel:
             await asyncio.sleep(10) # Check every 10s
             
             now = datetime.now()
-            # Market Hours Check (Simplified for now - can use same logic as Scheduler later)
-            # For verification, we assume ALWAYS ACTIVE or check basic hours
-            # TODO: Import TZ logic if needed. For now, strict check on data gap.
             
             for market in ["KR", "US"]: # Distinct checks
+                # Check Market Hours First
+                if not self.is_market_open(market):
+                    continue
+
                 last_time = self.last_arrival.get(market)
                 gap = 0
                 
@@ -183,7 +206,6 @@ class Sentinel:
                 if gap > 60:
                     logger.error(f"💀 DEAD MAN'S SWITCH: {market} silent for {gap:.1f}s!")
                     
-                    # Logic: Level 2 (Degrade) vs Level 1 (Restart)
                     # Logic: Level 2 (Degrade) vs Level 1 (Restart)
                     if self.last_restart_time and (now - self.last_restart_time).total_seconds() < 300:
                         # Level 2: Persistent Failure -> Degrade Mode
