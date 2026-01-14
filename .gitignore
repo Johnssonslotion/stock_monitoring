@@ -1,6 +1,9 @@
 # Environment Variables
+# Environment Variables
 .env
 .env.local
+.env.dev
+.env.prod
 .env.*.local
 
 # Python
