@@ -10,6 +10,19 @@
 2.  **정적 분석**: `flake8`, `black` 준수.
 3.  **문서화**: 변경된 로직에 대한 Docstring 및 `README` 업데이트.
 
+### 1.3 멀티 디바이스 및 원격 근무 프로토콜 (Multi-Device Protocol) [v0.02+]
+**배경**: Mac(Apple Silicon), Linux(Server), Windows 등 이기종 환경에서의 동시 작업을 지원한다.
+
+1.  **OS Agnostic**: 모든 스크립트(`Makefile`, `bash`)는 OS를 자동 감지하여 동작해야 한다.
+    -   *Rule*: 하드코딩된 경로(`/home/ubuntu`) 금지. 상대 경로(`.` or `$PWD`) 사용.
+2.  **Docker First**: 로컬 환경 오염 방지를 위해 모든 실행은 Docker 내에서 수행한다.
+    -   *Mac User*: `deploy/docker-compose.local.yml` (Volume Mount, Port Mapping 최적화) 사용.
+    -   *Server*: `deploy/docker-compose.yml` (Resource Limit, Restart Policy) 사용.
+3.  **Secret Management**:
+    -   `.env` 파일은 절대 공유하지 않는다. (Git Ignore)
+    -   새로운 키 추가 시 `.env.example` 동기화 필수.
+    -   장비 간 이동 시 Secrets Manager(1Password 등)나 보안 채널을 통해 개별 주입.
+
 ## 2. 코딩 컨벤션 (Coding Standard)
 -   **언어**: Python 3.10+ (Type Hinting 필수).
 -   **Docstring**: Google Style (`Args`, `Returns`, `Raises` 명시). 언어는 **한국어**.
