@@ -2,7 +2,7 @@ name: CD Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 jobs:
   deploy:
@@ -18,7 +18,11 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         script: |
           cd ~/workspace/stock_monitoring
-          git pull origin main
+          
+          # Pull the branch that triggered this deployment
+          git fetch origin
+          git checkout ${{ github.ref_name }}
+          git pull origin ${{ github.ref_name }}
           
           # Safety Check: Verify Pre-flight
           ./scripts/preflight_check.sh production
