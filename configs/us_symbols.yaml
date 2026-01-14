@@ -14,6 +14,23 @@ symbols:
       name: "SPDR Dow Jones Industrial Average ETF Trust"
       type: "etf_main"
       exchange: "NYSE"
+    # Sector Indices
+    - symbol: "XLK"
+      name: "Technology Select Sector SPDR Fund"
+      type: "index_sector"
+      exchange: "NYSE"
+    - symbol: "SOXX"
+      name: "iShares Semiconductor ETF"
+      type: "index_sector"
+      exchange: "NASDAQ"
+    - symbol: "XLF"
+      name: "Financial Select Sector SPDR Fund"
+      type: "index_sector"
+      exchange: "NYSE"
+    - symbol: "XLV"
+      name: "Health Care Select Sector SPDR Fund"
+      type: "index_sector"
+      exchange: "NYSE"
   
   leverage:
     - symbol: "TQQQ"
@@ -51,10 +68,6 @@ symbols:
 
   sectors:
     technology:
-      etf: 
-        symbol: "XLK"
-        name: "Technology Select Sector SPDR Fund"
-        exchange: "NYSE"
       top3:
         - symbol: "AAPL"
           name: "Apple Inc."
@@ -67,10 +80,6 @@ symbols:
           exchange: "NASDAQ"
     
     semiconductor:
-      etf:
-        symbol: "SOXX"
-        name: "iShares Semiconductor ETF"
-        exchange: "NASDAQ"
       top3:
         - symbol: "NVDA"
           name: "NVIDIA Corporation"
@@ -83,10 +92,6 @@ symbols:
           exchange: "NASDAQ"
 
     finance:
-      etf:
-        symbol: "XLF"
-        name: "Financial Select Sector SPDR Fund"
-        exchange: "NYSE"
       top3:
         - symbol: "JPM"
           name: "JPMorgan Chase & Co."
@@ -99,10 +104,6 @@ symbols:
           exchange: "NYSE"
 
     healthcare:
-      etf:
-        symbol: "XLV"
-        name: "Health Care Select Sector SPDR Fund"
-        exchange: "NYSE"
       top3:
         - symbol: "LLY"
           name: "Eli Lilly and Company"

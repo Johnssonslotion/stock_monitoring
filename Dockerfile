@@ -19,9 +19,9 @@ RUN pip install --no-cache-dir \
     watchdog==6.0.0 \
     fastapi==0.109.2 \
     uvicorn==0.27.1 \
-    websockets==12.0 \
+    websockets>=13.0 \
     asyncpg==0.29.0 \
-    yfinance==0.2.36 \
+    yfinance>=0.2.40 \
     finance-datareader==0.9.60 \
     aiofiles \
     psutil
