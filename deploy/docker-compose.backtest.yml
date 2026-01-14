@@ -1,0 +1,130 @@
+services:
+  # Redis (Isolated)
+  backtest-redis:
+    image: redis:7-alpine
+    container_name: backtest-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - backtest-redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backtest-network
+
+  # TimescaleDB (Isolated)
+  backtest-timescale:
+    image: timescale/timescaledb:latest-pg16
+    container_name: backtest-timescale
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=backtest_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - backtest-timescale-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - backtest-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d backtest_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Server (For backtest results)
+  backtest-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: backtest-api
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - REDIS_URL=redis://backtest-redis:6379/0
+      - APP_ENV=backtest
+      - DB_HOST=backtest-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=backtest_db
+      - API_AUTH_SECRET=${API_AUTH_SECRET:-backtest-secret-key}
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8001:8000"
+    depends_on:
+      backtest-redis:
+        condition: service_healthy
+      backtest-timescale:
+        condition: service_healthy
+    networks:
+      - backtest-network
+    volumes:
+      - ../configs:/app/configs
+      - ../src:/app/src
+      - ../data:/app/data
+
+  # Backtest Engine (Main Service)
+  backtest-engine:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: backtest-engine
+    command: tail -f /dev/null  # Keep container running for manual execution
+    env_file:
+      - ../.env.backtest
+    environment:
+      - REDIS_URL=redis://backtest-redis:6379/0
+      - APP_ENV=backtest
+      - DB_HOST=backtest-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=backtest_db
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ../configs:/app/configs
+      - ../src:/app/src
+      - ../data:/app/data
+      - ../docs/reports:/app/docs/reports
+    depends_on:
+      backtest-timescale:
+        condition: service_healthy
+      backtest-redis:
+        condition: service_healthy
+    networks:
+      - backtest-network
+
+  # Dashboard UI (Optional)
+  backtest-dashboard:
+    image: node:20-slim
+    container_name: backtest-dashboard
+    working_dir: /app/src/web
+    volumes:
+      - ..:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5174:5173"
+    depends_on:
+      - backtest-api
+    networks:
+      - backtest-network
+    profiles:
+      - ui
+    environment:
+      - VITE_API_URL=http://localhost:8001
+
+volumes:
+  backtest-redis-data:
+    name: backtest-redis-data
+  backtest-timescale-data:
+    name: backtest-timescale-data
+
+networks:
+  backtest-network:
+    name: backtest-network
+    driver: bridge

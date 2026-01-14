@@ -1,0 +1,46 @@
+# 백테스트 설정
+backtest:
+  start_date: "2026-01-01"
+  end_date: "2026-01-14"
+  initial_capital: 100000000  # 1억 원
+  
+  # 백테스트 대상 심볼
+  symbols:
+    - "005930"  # 삼성전자
+    - "AAPL"    # Apple Inc.
+  
+  # 시장별 필터 (optional)
+  markets:
+    - "KR"
+    - "US"
+
+# 전략 설정
+strategy:
+  name: "sample_momentum"  # 전략 이름 (strategies/ 디렉토리의 파일명과 매칭)
+  class_name: "SampleMomentumStrategy"  # 전략 클래스 이름
+  
+  # 전략 파라미터
+  params:
+    window: 20            # 이동평균 윈도우
+    threshold: 0.02       # 매수 임계값 (2%)
+    stop_loss: 0.05       # 손절 임계값 (5%)
+    position_size: 10     # 매수 수량
+
+# 리스크 관리
+risk:
+  max_position_size: 0.1      # 포트폴리오의 최대 10%
+  max_positions: 5            # 최대 동시 보유 종목 수
+  max_daily_loss: 0.02        # 일일 최대 손실률 (2%)
+  use_stop_loss: true         # 손절 사용 여부
+
+# 거래 비용
+costs:
+  commission_rate: 0.0015     # 수수료율 (0.15%)
+  slippage_rate: 0.001        # 슬리피지 (0.1%)
+
+# 로깅 설정
+logging:
+  level: "INFO"
+  save_trades: true           # 거래 내역 저장 여부
+  save_equity_curve: true     # 자산 곡선 저장 여부
+  output_dir: "data/backtest_results"
