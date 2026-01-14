@@ -126,3 +126,12 @@ backtest-shell: ## Enter backtest engine container
 backtest-verify: ## Verify backtest database
 	@echo "=== Checking Backtest DB ==="
 	@docker exec backtest-timescale psql -U postgres -d backtest_db -c "SELECT COUNT(*) as tick_count FROM ticks;" || echo "Table not created yet"
+
+# --- Electron Client Commands ---
+.PHONY: electron-dev electron-build
+
+electron-dev: ## Run Electron client in development mode
+	cd src/web && npm run dev
+
+electron-build: ## Build Electron client for production
+	cd src/web && npm run build
