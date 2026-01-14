@@ -153,10 +153,13 @@ class Sentinel:
         if self.redis:
             await self.redis.publish("system_alerts", json.dumps(alert_data))
 
-    def is_market_open(self, market: str) -> bool:
+    def is_market_open(self, market: str, _mock_time=None) -> bool:
         """Check if specific market is currently open (KST based)"""
         tz_kst = pytz.timezone('Asia/Seoul')
-        now_kst = datetime.now(tz_kst)
+        if _mock_time:
+            now_kst = _mock_time
+        else:
+            now_kst = datetime.now(tz_kst)
         current_time = now_kst.time()
 
         if market == "KR":
