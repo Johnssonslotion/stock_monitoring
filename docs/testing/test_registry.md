@@ -75,9 +75,18 @@
 | UI-CHART-01 | `test_candle_chart_render` | (Manual/Browser) | 분봉 캔들차트 렌더링 및 API 데이터 연동 검증 (QQQ) | ✅ Pass |
 | UI-CHART-02 | `test_professional_chart_features` | (Manual/Browser) | 볼륨 서브플롯, MA5/MA20, 가격 패널, 시간 범위 선택 검증 | ✅ Pass |
 
+## 📈 4. 전략 및 백테스팅 (Strategy & Backtesting) [NEW]
+
+| ID | 테스트명 | 시나리오 | 검증 목표 | 상태 |
+| :--- | :--- | :--- | :--- | :--- |
+| BT-INF-01 | `test_backtest_isolation` | 원본과 백테스트 환경 동시 실행 | 포트 충돌(6380, 5433, 8001) 없음 확인 | ✅ Pass |
+| BT-ENG-01 | `test_engine_runtime` | 샘플 전략(Momentum) 실행 | 엔진 초기화 및 틱 프로세싱 루프 무결성 | ✅ Pass |
+| BT-DB-01 | `test_backtest_db_init` | `backtest-engine` 실행 시 DB 초기화 | `backtest_db.market_ticks` 하이퍼테이블 생성 확인 | ✅ Pass |
+| BT-MET-01 | `test_metrics_calculation` | 가상 자산 변화 데이터 입력 | Return, MDD, SharpeRatio 계산 정확성 | ✅ Pass |
+
 ---
 
-## 🛡️ 4. 품질 가디언 (Quality Guardian)
+## 🛡️ 5. 품질 가디언 (Quality Guardian)
 | ID | 테스트명 | 검증 상황 | 목표 지표 | 상태 |
 | :--- | :--- | :--- | :--- | :--- |
 | QG-UT-01 | `Unit Coverage` | 핵심 파싱 함수 라인 커버리지 | 100% | 🟡 90% |

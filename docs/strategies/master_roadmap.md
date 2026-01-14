@@ -52,13 +52,19 @@
   - **Prerequisite**: Locust 성능 검증 (CPU < 80%, Latency < 100ms p95)
   - **Timeline**: Week 5-8 (Phase 3)
 
-### Pillar 4: 운영 및 관측성 (Operations & Observability)
+### Pillar 4: 운영 및 관측성 (Operations & Observability) [IN-PROGRESS]
 - **목표**: 무중지 시스템 및 카오스 엔진(Chaos Engine)을 통한 복원력 강화.
 - **Phase 1 (Monitoring)**: Sentinel(0-Data Alarm) 및 인프라 메트릭 수집. (✅ DONE)
 - **Phase 2 (System Dashboard)**: 🆕 **2026-01-14**
   - **System Metrics**: CPU, Memory, Disk, Container Health 시각화. (✅ DONE)
   - **Log Viewer**: 주요 경고 및 장애 로그 타임라인 뷰. (✅ DONE)
 - **Phase 3 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
+
+### Pillar 5: 전략 및 실험 (Strategy & Experimentation) [DONE] 🆕
+- **목표**: 과거 데이터를 활용한 전략 가속 검증 및 최적화.
+- **Phase 1 (Backtest Infrastructure)**: 원본과 격리된 백테스팅 전용 워크트리 및 Docker 인프라 구축. (✅ DONE)
+- **Phase 2 (Engine Core)**: Event-driven 방식의 백테스팅 엔진 및 성과 측정(Sharpe, MDD 등) 모듈 구현. (✅ DONE)
+- **Phase 3 (Worktree Strategy)**: `exp/*` 브랜치를 활용한 실험 관리 및 결과 리포트 자동화 프로세스 정립. (✅ DONE)
 
 ---
 
