@@ -150,8 +150,9 @@ text-shadow: 0 0 10px currentColor;
 ### 4.1 App.tsx (루트 컴포넌트)
 
 > [!IMPORTANT]
-> **Map-First Layout (2026-01-12 승인)**
-> Council of Six 만장일치로 승인된 새 레이아웃. Phase 2A에서 구현 예정.
+> **Tab Separation Layout (2026-01-14 승인)**
+> 사용자 피드백을 반영하여 Map과 Analysis를 독립된 탭으로 분리.
+> Map 클릭 시 Analysis 탭으로 자동 전환.
 
 ```tsx
 App
@@ -165,19 +166,20 @@ App
 │       └── TimeframeSelector (Dashboard 확장 시)
 │
 └── Main Content (AnimatePresence)
-    ├── Tab: Dashboard (NEW LAYOUT)
-    │   ├── MarketMapPanel (70%, collapsible to 30%)
-    │   │   └── MarketMap (STOCK + MARKET 통합)
-    │   └── DetailPanel (0 → 70% on symbol click)
-    │       ├── TimeframeSelector [1D|5M|1M|Tick]
-    │       ├── Chart (CandleChart or TickChart)
-    │       └── StatisticalSummary (Tick mode only)
+└── Main Content (AnimatePresence)
+    ├── Tab: Dashboard (Full MAP)
+    │   └── MarketMap (100% Width/Height)
     │
-    ├── Tab: Map (레거시, Phase 3에서 통합 예정)
-    │   ├── MarketMap (STOCK 필터) (50%)
-    │   ├── MarketMap (MARKET 필터) (50%)
-    │   └── SectorPerformance (하단 30%)
+    ├── Tab: Analysis (Focus View)
+    │   ├── Left: Main Chart (70%)
+    │   │   ├── Header Overlay
+    │   │   └── CandleChart
+    │   └── Right: Context Panel (30%)
+    │       ├── Orderbook (Top)
+    │       └── Related Context (Bottom) [NEW]
+    │           └── RelatedAssets (ETF/Sector)
     │
+    ├── Tab: Logs
     ├── Tab: Logs
     │   └── LogsView (전체)
     │
@@ -199,6 +201,7 @@ interface CandleChartProps {
 ```typescript
 interface MarketMapProps {
   filterType?: 'ALL' | 'STOCK' | 'ETF' | 'MARKET';
+  onSymbolClick?: (symbol: string, name: string) => void;
 }
 ```
 
@@ -206,7 +209,7 @@ interface MarketMapProps {
 ```typescript
 interface SymbolSelectorProps {
   currentSymbol: string;
-  onChange: (newSymbol: string) => void;
+  onChange: (symbol: string, name: string) => void;
 }
 ```
 
@@ -295,11 +298,12 @@ sequenceDiagram
 
 ### 7.1 Dashboard (대시보드) - Map-First Layout
 
-**레이아웃**: 70/30 비율 (Map / Chart) → 30/70 (확장 시)
+**레이아웃**: 독립 탭 구조 (Full Map / Analysis)
 
 **사용자 흐름**:
-1. **Initial State**: Market Map 70% (전체 시장 Overview)
-2. **On Symbol Click**: Map 축소 (30%), Chart 슬라이드업 (70%)
+1. **Dashboard Tab**: 전체 시장 조망 (Market Map 100%)
+2. **On Symbol Click**: **Analysis 탭**으로 자동 이동 & 종목 로딩
+3. **Analysis Tab**: 차트 + 호가 + 연관 섹터 정보 동시 확인
 3. **Timeframe Switch**: 일봉 → 1분봉 → 틱 순차 전환
 
 **디자인 원칙**: "Overview First, Zoom and Filter, Details on Demand" (Shneiderman)
@@ -366,13 +370,14 @@ sequenceDiagram
 | **1-Minute (1M)** | 1일 | ~400 | `/api/v1/candles?interval=1m` |
 | **Tick (Live)** | 1시간 | ~5,000 | `/ws/ticks/{symbol}` (WebSocket) |
 
-**Data Quality Indicator** (차트 상단 배지):
+**Data Quality Indicator** (차트 헤더 오버레이):
 
 ```
-✅ Live Data | 1,234 ticks | 3s ago    ← 초록색: 정상
-⚠️ Delayed 15s | Last: 14:35:22        ← 노란색: 지연
-⛔ No Data (5min) | Reconnecting...     ← 빨간색: 연결 끊김
+[ 삼성전자 (005930) ] [ ANALYSIS ]       [ 1M | 5M | 1D ]
 ```
+- **좌측**: 종목명 및 코드, 현재 뷰 모드(PREVIEW/ANALYSIS)
+- **우측**: Timeframe Selector (즉시 전환)
+
 
 **Statistical Summary Layer** (Tick Mode Only):
 
