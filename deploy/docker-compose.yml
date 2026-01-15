@@ -265,6 +265,30 @@ services:
       - real
       - ui
 
+  # Recovery Worker (New)
+  recovery-worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: recovery-worker
+    command: python scripts/recovery/validate_and_recover.py
+    env_file:
+      - ../${ENV_FILE:-.env}
+    environment:
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - REDIS_URL=redis://stock-redis:6379/0
+    depends_on:
+      - timescaledb
+    networks:
+      - default
+    restart: always
+    profiles:
+      - real
+
 volumes:
   redis-data:
   timescale-data:
