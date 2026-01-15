@@ -13,20 +13,6 @@ services:
       timeout: 3s
       retries: 5
 
-  tick-collector:
-    build: ..
-    container_name: tick-collector
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - APP_ENV=${APP_ENV}
-    command: python -m src.data_ingestion.ticks.collector
-    restart: unless-stopped
-    volumes:
-      - ../data:/app/data
-
   tick-archiver:
     build: ..
     container_name: tick-archiver
@@ -175,7 +161,7 @@ services:
     networks:
       - default
 
-  # Unified Realtime Collector (KR + US)
+  # Unified Realtime Collector (KIS Korean Stock - Primary)
   real-collector:
     build:
       context: ..
@@ -198,8 +184,7 @@ services:
         condition: service_healthy
     networks:
       - default
-    profiles:
-      - real
+    restart: unless-stopped
 
   history-collector:
     build:
