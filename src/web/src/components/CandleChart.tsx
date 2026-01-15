@@ -25,94 +25,131 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
     useEffect(() => {
         if (!chartContainerRef.current) return;
 
-        const chart = createChart(chartContainerRef.current, {
-            layout: {
-                background: { type: ColorType.Solid, color: 'transparent' }, // Transparent for Glassmorphism
-                textColor: '#9CA3AF',
-            },
-            grid: {
-                vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
-            },
-            width: chartContainerRef.current.clientWidth,
-            height: chartContainerRef.current.clientHeight,
-            timeScale: {
-                timeVisible: true,
-                secondsVisible: false,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-            },
-            rightPriceScale: {
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-            },
-        });
+        // Cleanup function ref
+        let chart: IChartApi | null = null;
+        let resizeObserver: ResizeObserver | null = null;
 
-        const candlestickSeries = chart.addCandlestickSeries({
-            upColor: '#ef4444', // Red for Up (Korean Style)
-            downColor: '#3b82f6', // Blue for Down
-            borderVisible: false,
-            wickUpColor: '#ef4444',
-            wickDownColor: '#3b82f6',
-        });
+        const initChart = () => {
+            if (!chartContainerRef.current) return;
+            const { clientWidth, clientHeight } = chartContainerRef.current;
 
-        seriesRef.current = candlestickSeries;
-        chartRef.current = chart;
+            // Guard: Do not initialize if dimensions are invalid
+            if (clientWidth <= 0 || clientHeight <= 0) return;
 
-        const handleResize = () => {
-            if (chartContainerRef.current) {
-                chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+            if (chart) {
+                // If chart exists, just resize
+                chart.applyOptions({ width: clientWidth, height: clientHeight });
+                return;
+            }
+
+            // Create Chart
+            chart = createChart(chartContainerRef.current, {
+                layout: {
+                    background: { type: ColorType.Solid, color: 'transparent' },
+                    textColor: '#9CA3AF',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                width: clientWidth,
+                height: clientHeight,
+                timeScale: {
+                    timeVisible: true,
+                    secondsVisible: false,
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                },
+            });
+
+            const candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#ef4444',
+                downColor: '#3b82f6',
+                borderVisible: false,
+                wickUpColor: '#ef4444',
+                wickDownColor: '#3b82f6',
+            });
+
+            seriesRef.current = candlestickSeries;
+            chartRef.current = chart;
+
+            // Trigger data update if data exists
+            if (data.length > 0) {
+                updateData(data);
             }
         };
 
-        window.addEventListener('resize', handleResize);
+        // Observer to handle resize and delayed init
+        resizeObserver = new ResizeObserver(() => {
+            initChart();
+        });
+        resizeObserver.observe(chartContainerRef.current);
 
         return () => {
-            window.removeEventListener('resize', handleResize);
-            chart.remove();
+            if (resizeObserver) resizeObserver.disconnect();
+            if (chart) chart.remove();
+            chartRef.current = null;
+            seriesRef.current = null;
         };
-    }, []);
+    }, []); // Run once on mount, internal logic handles deps
 
-    useEffect(() => {
-        if (seriesRef.current && data.length > 0) {
-            // Step 1: Format time values first
-            const formattedData = data.map((item: any) => {
-                // Handle time format: Prefer YYYY-MM-DD for daily data to avoid timezone shift
-                let time: any = item.time;
-                if (typeof item.time === 'string' && item.time.includes('T')) {
-                    const date = new Date(item.time);
-                    // Convert to YYYY-MM-DD string
-                    // Note: Using UTC methods to align with the +00:00 offset from API
-                    const year = date.getUTCFullYear();
-                    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-                    const day = date.getUTCDate().toString().padStart(2, '0');
-                    time = `${year}-${month}-${day}`;
-                } else if (typeof item.time === 'string') {
-                    time = new Date(item.time).getTime() / 1000;
-                }
+    // Helper to update data safely
+    const updateData = (newData: CandleData[]) => {
+        if (!seriesRef.current || newData.length === 0) return;
 
-                return {
-                    ...item,
-                    time: time
-                };
-            });
+        try {
+            const formattedData = newData
+                .map((item: any) => {
+                    let time: any = item.time;
+                    // Robust time parsing
+                    if (typeof item.time === 'string') {
+                        if (item.time.includes('T')) {
+                            const date = new Date(item.time);
+                            if (isNaN(date.getTime())) return null; // Skip invalid
+                            const year = date.getUTCFullYear();
+                            const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+                            const day = date.getUTCDate().toString().padStart(2, '0');
+                            time = `${year}-${month}-${day}`;
+                        } else {
+                            // Assume simplified string or timestamp
+                            const date = new Date(item.time);
+                            if (!isNaN(date.getTime())) {
+                                time = date.getTime() / 1000;
+                            }
+                        }
+                    }
+                    if (!item.open || !item.high || !item.low || !item.close) return null;
 
-            // Step 2: Deduplicate based on formatted time (keep last occurrence)
+                    return { ...item, time: time };
+                })
+                .filter(item => item !== null); // Filter invalid
+
+            // Deduplicate
             const uniqueMap = new Map();
-            formattedData.forEach(item => uniqueMap.set(item.time, item));
+            formattedData.forEach((item: any) => uniqueMap.set(item.time, item));
 
-            // Step 3:Sort by time
             const sortedData = Array.from(uniqueMap.values())
                 .sort((a: any, b: any) => {
-                    // For YYYY-MM-DD strings, use string comparison
                     if (typeof a.time === 'string' && typeof b.time === 'string') {
                         return a.time.localeCompare(b.time);
                     }
-                    // For timestamps, numeric comparison
                     return Number(a.time) - Number(b.time);
                 });
 
-            console.log(`📊 Setting ${sortedData.length} candles for ${symbol}`);
+            console.log(`📊 Rendering ${sortedData.length} valid candles`);
             seriesRef.current.setData(sortedData);
             chartRef.current?.timeScale().fitContent();
+        } catch (e) {
+            console.error("Chart Rendering Error:", e);
+        }
+    };
+
+    // React to data changes
+    useEffect(() => {
+        if (chartRef.current && seriesRef.current) {
+            updateData(data);
         }
     }, [data, symbol]);
 
