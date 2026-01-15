@@ -116,6 +116,16 @@ async def startup_event():
         # Attach to app state for routers
         app.state.db_pool = db_pool
         logger.info("✅ Database Pool initialized successfully!")
+        
+        # Diagnostic: Check tables
+        async with db_pool.acquire() as conn:
+            tables = await conn.fetch("""
+                SELECT table_schema, table_name 
+                FROM information_schema.tables 
+                WHERE table_name LIKE '%candle%'
+            """)
+            logger.info(f"🔍 Found {len(tables)} candle-related tables: {[dict(r) for r in tables]}")
+            
     except Exception as e:
         logger.error(f"❌ DB Pool Init Failed: {e}")
 
@@ -175,22 +185,45 @@ async def get_latest_orderbook(symbol: str):
 
 @app.get("/api/v1/candles/{symbol}", dependencies=[Depends(verify_api_key)])
 async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"):
-    """최근 분봉/일봉(Candle) 데이터 조회"""
+    """최근 분봉/일봉(Candle) 데이터 조회 (Continuous Aggregates 활용)"""
     if not db_pool:
         raise HTTPException(status_code=503, detail="Database not available")
     
+    # Dynamic table/view selection based on interval
+    # Updated: 2026-01-15 to use TimescaleDB Continuous Aggregates
+    # Dynamic table/view selection based on interval
+    # Updated: 2026-01-15 - Matching LOCAL DB schema (logs show market_candles_*)
+    table_map = {
+        "1m": "market_candles",      # Raw table (Local)
+        "5m": "market_candles_5m",   # CA (Local name)
+        "15m": "market_candles_15m",
+        "1h": "market_candles_1h",
+        "1d": "market_candles_1d"
+    }
+    
+    table_name = table_map.get(interval)
+    if not table_name:
+        raise HTTPException(status_code=400, detail=f"Invalid interval: {interval}. Supported: 1m, 5m, 15m, 1h, 1d")
+    
     async with db_pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT time, open, high, low, close, volume
-            FROM market_candles
-            WHERE symbol = $1 AND interval = $3
-            ORDER BY time DESC
-            LIMIT $2
-        """, symbol, limit, interval)
-        
-        # 반환 포맷: Frontend(Plotly)에서 쓰기 편하게 리스트 형태로 변환
-        # 시간순 정렬 (과거 -> 현재)로 뒤집어서 반환
-        return [dict(r) for r in reversed(rows)]
+        try:
+            # Check if target is raw table or aggregate (Raw uses 'time', Agg uses 'bucket')
+            time_col = 'time' if table_name == 'market_candles' else 'bucket'
+            
+            query = f"""
+                SELECT {time_col} as time, open, high, low, close, volume
+                FROM {table_name}
+                WHERE symbol = $1
+                ORDER BY {time_col} DESC
+                LIMIT $2
+            """
+            logger.info(f"Executing query on {table_name} for {symbol}")
+            rows = await conn.fetch(query, symbol, limit)
+            
+            return [dict(r) for r in reversed(rows)]
+        except Exception as e:
+            logger.error(f"Failed to query {table_name}: {e}")
+            raise e
 
 @app.get("/api/v1/inspector/latest", dependencies=[Depends(verify_api_key)])
 async def get_latest_inserts(limit: int = 50):
