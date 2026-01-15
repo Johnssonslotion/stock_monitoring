@@ -12,6 +12,7 @@ import { SystemDashboard } from './components/SystemDashboard';
 import { SymbolSelector } from './components/SymbolSelector';
 import { SectorPerformance } from './components/SectorPerformance';
 import { TimeframeSelector, type Timeframe } from './components/TimeframeSelector';
+import { ServerStatus } from './components/ServerStatus';
 
 
 /* 
@@ -133,6 +134,8 @@ function App() {
           {/* Controls */}
           {activeTab === 'dashboard' && (
             <div className="flex items-center gap-4 bg-black/20 p-1 pl-4 rounded-lg border border-white/5">
+              <ServerStatus />
+              <div className="w-px h-6 bg-white/10 mx-2" />
               <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Asset</span>
               <SymbolSelector
                 currentSymbol={selectedSymbol}
