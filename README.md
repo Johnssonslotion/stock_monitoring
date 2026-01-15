@@ -75,7 +75,7 @@ make test
 
 ## 📚 문서 허브 (Documentation Hub)
 
-이 프로젝트는 3대 핵심 문서로 관리됩니다.
+### 핵심 거버넌스 문서
 
 | 문서 (Document) | 역할 (Role) | 타겟 (Target) |
 | :--- | :--- | :--- |
@@ -85,7 +85,54 @@ make test
 | **[Development Standard](docs/governance/development.md)** | **개발 표준 (Method)** | GitHub Flow, 멀티 디바이스, 테스트 정책 |
 | **[Infrastructure Policy](docs/governance/infrastructure.md)** | **인프라 정책 (Tech)** | DB 격리, 보안(Tailscale), 리소스 제한 |
 
-## 📡 현재 시스템 상태 (As of 2026-01-14)
+---
+
+### 🚨 운영 문서 (Operations) - 장애 대응
+
+**데이터가 수집되지 않나요?**
+- 📘 [Runbook: Data Collection Recovery](docs/runbooks/data_collection_recovery.md)
+  - Quick Diagnosis (SQL 명령어 포함)
+  - Recovery Steps (Collector/Archiver별)
+  - Verification Checklist
+
+**알려진 이슈 확인**:
+- 📋 [Known Issues](docs/KNOWN_ISSUES.md)
+  - 최근 해결: ALREADY_IN_SUBSCRIBE 에러 (2026-01-15)
+  - 최근 해결: Archiver restart policy 누락 (2026-01-15)
+
+**장애 발생 시 보고**:
+- 📊 [Incident Reports](docs/incidents/)
+  - 최신: [2026-01-15 Data Collection Failures](docs/incidents/2026-01-15_data_collection_failures.md)
+
+---
+
+### 🚀 배포 문서 (Deployment)
+
+**배포 전 필수 체크리스트**:
+- ✅ [Deployment Checklist](docs/deployment/CHECKLIST.md)
+  - Pre-deployment: 코드 리뷰, 테스트, 롤백 계획
+  - **Critical**: Post-deployment 검증 (서비스 상태, 데이터 흐름, 5분 안정성 체크)
+
+**모니터링 구현 가이드**:
+- 📈 [Monitoring Requirements](docs/infrastructure/monitoring_requirements.md)
+  - Prometheus 메트릭 정의
+  - Alertmanager 알림 규칙
+  - Grafana 대시보드 설계
+
+---
+
+### 📖 빠른 참조 (Quick Reference)
+
+| 상황 | 문서 |
+|------|------|
+| 🔴 프로덕션 장애 | [Data Collection Runbook](docs/runbooks/data_collection_recovery.md) |
+| 🚀 코드 배포 | [Deployment Checklist](docs/deployment/CHECKLIST.md) |
+| 📊 모니터링 구현 | [Monitoring Requirements](docs/infrastructure/monitoring_requirements.md) |
+| 🐛 버그 확인 | [Known Issues](docs/KNOWN_ISSUES.md) |
+| 🏛️ 아키텍처 이해 | [UI Design Master](docs/ui_design_master.md) |
+| 👥 의사결정 방식 | [Personas & Council](docs/governance/personas.md) |
+
+## 📡 현재 시스템 상태 (As of 2026-01-15)
 - **Phase 1: Infrastructure** ✅ [Completed]
 - **Phase 2: Data Pipeline** ✅ [Completed] (Tick/News/Orderbook)
 - **Phase 3: Monitoring** ✅ [Completed] (Sentinel Deadman's Switch)
