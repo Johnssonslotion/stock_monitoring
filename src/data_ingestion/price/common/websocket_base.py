@@ -324,6 +324,36 @@ class UnifiedWebSocketManager:
         self.active_markets.discard(market)
         logger.info(f"[{market}] Unsubscribed {count} symbols.")
 
+    async def cleanup_subscriptions(self):
+        """
+        🧹 EMERGENCY FIX: Explicit cleanup before reconnect
+        
+        재연결 전에 모든 활성 구독을 KIS 서버에서 명시적으로 해제합니다.
+        이것은 "ALREADY IN SUBSCRIBE" 에러를 방지하기 위한 핵심 수정사항입니다.
+        
+        Council Decision: 2026-01-15 Phase 1 Emergency Response
+        """
+        if not self.websocket or not self.active_markets:
+            logger.debug("🧹 No active subscriptions to cleanup.")
+            return
+        
+        logger.warning(f"🧹 CLEANUP: Unsubscribing {len(self.active_markets)} active markets before reconnect...")
+        
+        # Copy to avoid mutation during iteration
+        markets_to_cleanup = list(self.active_markets)
+        
+        for market in markets_to_cleanup:
+            try:
+                await self.unsubscribe_market(market)
+            except Exception as e:
+                logger.error(f"🧹 Cleanup failed for {market}: {e}")
+        
+        # Grace period for KIS server to process unsubscribe requests
+        logger.info("🧹 Waiting 3 seconds for server cleanup...")
+        await asyncio.sleep(3)
+        
+        logger.info("✅ Cleanup complete. Ready for reconnect.")
+
     async def update_key(self, new_key: str):
         """Approval Key 동적 업데이트 (Thread-safe)"""
         async with self.ws_lock:
@@ -469,6 +499,13 @@ class UnifiedWebSocketManager:
                                 
                 except Exception as e:
                     logger.error(f"WS Connection Error: {e}")
+                    
+                    # 🧹 EMERGENCY FIX: Explicit cleanup before reconnect
+                    try:
+                        await self.cleanup_subscriptions()
+                    except Exception as cleanup_error:
+                        logger.error(f"Cleanup error (non-fatal): {cleanup_error}")
+                    
                     async with self.ws_lock:
                         self.websocket = None
                         self.active_markets.clear()
