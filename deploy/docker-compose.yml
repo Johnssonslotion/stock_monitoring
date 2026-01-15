@@ -67,6 +67,7 @@ services:
       - default
     volumes:
       - ../src:/app/src
+    restart: unless-stopped # CRITICAL: Auto-restart on crash
 
   # History Loader (One-off)
   history-loader:
