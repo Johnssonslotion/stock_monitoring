@@ -192,13 +192,14 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
     # Dynamic table/view selection based on interval
     # Updated: 2026-01-15 to use TimescaleDB Continuous Aggregates
     # Dynamic table/view selection based on interval
-    # Updated: 2026-01-15 - Matching LOCAL DB schema (logs show market_candles_*)
+    # Updated: 2026-01-15 - Target Server Schema (Continuous Aggregates) with Local Fallback
     table_map = {
-        "1m": "market_candles",      # Raw table (Local)
-        "5m": "market_candles_5m",   # CA (Local name)
-        "15m": "market_candles_15m",
-        "1h": "market_candles_1h",
-        "1d": "market_candles_1d"
+        "1m": "public.candles_1m",
+        "5m": "public.candles_5m",
+        # 15m, 1h, 1d views not yet confirmed in DB, fallback to 5m/1d or TODO
+        "15m": "public.candles_15m", 
+        "1h": "public.candles_1h",
+        "1d": "public.candles_1d"
     }
     
     table_name = table_map.get(interval)
