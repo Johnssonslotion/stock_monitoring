@@ -81,3 +81,4 @@ data/raw/*.jsonl
 # Runtime data
 data/
 logs/
+scripts/**/*.csv
