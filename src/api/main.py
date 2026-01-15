@@ -624,6 +624,17 @@ async def get_correlation_matrix(days: int = 30):
 
 # --- WebSocket Endpoint ---
 
+@app.get("/system/info")
+async def get_system_info():
+    """시스템 기본 정보 조회 (Environment Identifier)"""
+    import socket
+    return {
+        "env": os.getenv("APP_ENV", "development"),
+        "hostname": socket.gethostname(),
+        "version": "1.0.0",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -632,3 +643,4 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
