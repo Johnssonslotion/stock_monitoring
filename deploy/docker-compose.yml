@@ -269,7 +269,7 @@ services:
   recovery-worker:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
+      dockerfile: Dockerfile
     container_name: recovery-worker
     command: python scripts/recovery/validate_and_recover.py
     env_file:
