@@ -209,16 +209,43 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
     async with db_pool.acquire() as conn:
         try:
             # Check if target is raw table or aggregate (Raw uses 'time', Agg uses 'bucket')
-            time_col = 'time' if table_name == 'market_candles' else 'bucket'
+            # Updated: 2026-01-15 - Dual Source Strategy (View + Fallback Table)
+            # If interval is 1m, we query BOTH and UNION them to fill gaps
             
-            query = f"""
-                SELECT {time_col} as time, open, high, low, close, volume
-                FROM {table_name}
-                WHERE symbol = $1
-                ORDER BY {time_col} DESC
-                LIMIT $2
-            """
-            logger.info(f"Executing query on {table_name} for {symbol}")
+            if interval == '1m':
+                query = f"""
+                    WITH combined_data AS (
+                        SELECT bucket as time, open, high, low, close, volume, 1 as priority
+                        FROM public.candles_1m
+                        WHERE symbol = $1
+                        
+                        UNION ALL
+                        
+                        SELECT time, open, high, low, close, volume, 2 as priority
+                        FROM market_candles
+                        WHERE symbol = $1 AND interval = '1m'
+                    )
+                    SELECT time, open, high, low, close, volume
+                    FROM (
+                        SELECT *, ROW_NUMBER() OVER (PARTITION BY time ORDER BY priority ASC) as rn
+                        FROM combined_data
+                    ) sub
+                    WHERE rn = 1
+                    ORDER BY time DESC
+                    LIMIT $2
+                """
+            else:
+                # Existing logic for other intervals (or strictly table mapped)
+                time_col = 'time' if table_name == 'market_candles' else 'bucket'
+                query = f"""
+                    SELECT {time_col} as time, open, high, low, close, volume
+                    FROM {table_name}
+                    WHERE symbol = $1
+                    ORDER BY {time_col} DESC
+                    LIMIT $2
+                """
+                
+            logger.info(f"Executing query on {table_name} (Hybrid) for {symbol}")
             rows = await conn.fetch(query, symbol, limit)
             
             return [dict(r) for r in reversed(rows)]
