@@ -65,6 +65,7 @@ function App() {
           setCandles(response.data);
         } catch (error) {
           console.error("❌ Failed to fetch candles:", error);
+          setCandles([]); // Clear data on error to match Disconnected state
         } finally {
           setIsLoading(false);
         }

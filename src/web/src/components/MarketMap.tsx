@@ -72,10 +72,12 @@ interface MarketMapProps {
 export const MarketMap: React.FC<MarketMapProps> = ({ filterType = 'ALL' }) => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [useLogScale, setUseLogScale] = useState(false);
 
     const fetchMap = async () => {
         try {
+            // Check connection first or rely on axios failure
             const res = await axios.get('/market-map/kr');
 
             // Filter by Category
@@ -93,15 +95,16 @@ export const MarketMap: React.FC<MarketMapProps> = ({ filterType = 'ALL' }) => {
                 return {
                     ...item,
                     change: parseFloat(calcChange.toFixed(2)),
-                    // Apply Log Scale if enabled, otherwise Linear (Market Cap)
                     size: useLogScale ? Math.log(item.marketCap + 1) : item.marketCap
                 };
             });
 
-            // Recharts Treemap requires a single root object
             setData([{ name: filterType, children: formatted }]);
+            setError(false);
         } catch (e) {
-            console.error(e);
+            console.error("Market Map Fetch Error:", e);
+            setError(true);
+            setData([]); // Clear data on error to avoid stale state if requested
         } finally {
             setLoading(false);
         }
@@ -111,9 +114,19 @@ export const MarketMap: React.FC<MarketMapProps> = ({ filterType = 'ALL' }) => {
         fetchMap();
         const interval = setInterval(fetchMap, 5000);
         return () => clearInterval(interval);
-    }, [useLogScale, filterType]); // Refetch when scale or filter changes
+    }, [useLogScale, filterType]);
 
-    if (loading) return <div className="text-gray-500 p-4">Loading Modern Market Map...</div>;
+    if (loading && data.length === 0) return <div className="text-gray-500 p-4 text-xs">Loading Market Map...</div>;
+
+    if (error || data.length === 0 || (data[0]?.children?.length === 0)) {
+        return (
+            <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
+                <div className="text-4xl mb-2 opacity-30">🗺️</div>
+                <div className="text-sm font-bold text-gray-400">Map Unavailable</div>
+                <div className="text-xs text-gray-600 mt-1">Disconnected or No Data</div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-full w-full relative group">
