@@ -84,6 +84,14 @@ CREATE INDEX market_ticks_time_idx ON market_ticks (time DESC);
 - **Retention**: 120시간. 최소 48시간(2일) 보존 필수.
 - **규칙**: 디스크 부족 시에도 최소 2일치 로그 삭제 금지.
 
+### 4.5 데이터베이스 마이그레이션 전략 (Database Migration Strategy) [NEW]
+**원칙**: "Code와 DB Schema의 생명주기 분리"
+- **Single Source of Truth**: 스키마 변경은 오직 `migrations/*.sql` 파일을 통해서만 수행한다.
+- **Git Tracking**: 모든 마이그레이션 파일(`001_initial.sql` 등)은 Git에 커밋되어야 한다. (`.applied` 제외)
+- **Zero Cost Tooling**: `scripts/db/migrate.sh` (Pure Bash + psql) 사용.
+- **Integrity**: `psql --single-transaction` 필수 사용 (Atomic Apply/Rollback).
+- **Prohibited**: Python 코드 내 DDL (`CREATE TABLE`, `ALTER TABLE`) 사용 금지. 검증(`SELECT to_regclass`)만 허용.
+
 ### 4.4 브로커별 소켓 및 유량 제약사항 (v2.2)
 | 브로커 | 소켓 세션 | 구독 종목수 | REST 유량 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |

@@ -172,3 +172,52 @@ class BrokerOrchestrator:
             # 이미 실행 중이면 추가 심볼만 구독
             await broker.start_realtime_subscribe(symbols)
             logger.info(f"✅ Added symbols to running backup broker {backup_broker}")
+
+    async def restore_primary(self, primary_broker: str):
+        """
+        Primary 브로커 복구 시 원래 상태로 복귀
+        """
+        if primary_broker not in self.active_brokers:
+            return
+
+        primary = self.active_brokers[primary_broker]
+        
+        # Primary가 실행 중이 아니라면 재시도
+        if not primary.is_running:
+            logger.info(f"🚑 Attempting to restore primary {primary_broker}...")
+            if await primary.connect():
+                symbols = self.symbol_assignments.get(primary_broker, [])
+                if await primary.start_realtime_subscribe(symbols):
+                    self.tasks.append(asyncio.create_task(primary.run()))
+                    logger.info(f"✅ Primary {primary_broker} restored!")
+                    
+                    # Backup에서 중복 구독 해제 (Optional: 정책에 따라 유지할 수도 있음)
+                    # 여기서는 'Zero Cost' 원칙상 중복 리소스 방지를 위해 해제 권장
+                    if primary_broker in self.backup_mappings:
+                        backup_name = self.backup_mappings[primary_broker]
+                        if backup_name in self.active_brokers:
+                            backup = self.active_brokers[backup_name]
+                            await backup.stop_realtime_subscribe(symbols)
+                            logger.info(f"🧹 Removed fallback symbols from {backup_name}")
+            else:
+                logger.error(f"❌ Failed to restore {primary_broker}")
+
+    async def monitor_health(self):
+        """
+        주기적 브로커 상태 점검 (Health Check Loop)
+        """
+        try:
+            for name, broker in self.active_brokers.items():
+                # 브로커가 실행 중이어야 하는데 실행 중이 아니라면 (Crash 등)
+                if not broker.is_running:
+                    logger.warning(f"⚠️ Broker {name} is down!")
+                    
+                    # Failover 설정 확인
+                    if name in self.backup_mappings:
+                        backup_name = self.backup_mappings[name]
+                        affected_symbols = self.symbol_assignments.get(name, [])
+                        
+                        logger.warning(f"🔄 Triggering Failover: {name} -> {backup_name} for {len(affected_symbols)} symbols")
+                        await self.activate_backup(backup_name, affected_symbols)
+        except Exception as e:
+            logger.error(f"❌ Error in monitor_health: {e}")

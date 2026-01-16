@@ -49,6 +49,7 @@ graph TD
   - **DuckDB**: 분석용 데이터 레이크 (Cold).
 - **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch).
 - **Dashboard**: React 기반 웹 대시보드 (`port: 5173`) 및 FastAPI 백엔드 가동 중.
+- **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
 
 ## 🧪 TDD 기반 무결성 보장
 

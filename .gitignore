@@ -57,6 +57,7 @@ data/*.wal
 data/*.parquet
 data/*.csv
 data/timescale/
+migrations/.applied
 
 # Node.js
 node_modules/

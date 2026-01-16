@@ -5,9 +5,16 @@
 
 -- 1. market_ticks 테이블에 타임스탬프 계층 추가
 ALTER TABLE market_ticks
-    ADD COLUMN IF NOT EXISTS broker_time TIMESTAMPTZ COMMENT '브로커가 제공한 원본 시간',
-    ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ DEFAULT NOW() COMMENT '서버 수신 시간 (Primary Key 기준)',
-    ADD COLUMN IF NOT EXISTS sequence_number BIGINT COMMENT '브로커별 시퀀스 번호 (중복 방지용)';
+    ADD COLUMN IF NOT EXISTS broker TEXT,
+    ADD COLUMN IF NOT EXISTS broker_time TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS sequence_number BIGINT;
+
+ALTER TABLE market_ticks ALTER COLUMN received_time SET DEFAULT NOW();
+
+COMMENT ON COLUMN market_ticks.broker_time IS '브로커가 제공한 원본 시간';
+COMMENT ON COLUMN market_ticks.received_time IS '서버 수신 시간 (Primary Key 기준)';
+COMMENT ON COLUMN market_ticks.sequence_number IS '브로커별 시퀀스 번호 (중복 방지용)';
 
 -- 2. 기존 time 컬럼을 stored_time으로 의미 변경
 COMMENT ON COLUMN market_ticks.time IS 'DB 저장 시간 (TimescaleDB Hypertable 파티션 키)';
@@ -18,8 +25,9 @@ CREATE SEQUENCE IF NOT EXISTS market_ticks_seq_mirae START 1;
 CREATE SEQUENCE IF NOT EXISTS market_ticks_seq_kiwoom_re START 1;
 
 -- 4. 중복 방지 유니크 인덱스 (broker + symbol + sequence_number)
+-- TimescaleDB Hypertable constraint: Unique index must include the partitioning column (time)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_ticks_dedup
-    ON market_ticks(broker, symbol, sequence_number)
+    ON market_ticks(time, broker, symbol, sequence_number)
     WHERE sequence_number IS NOT NULL;
 
 -- 5. received_time 기반 조회 성능 최적화 인덱스
@@ -37,12 +45,15 @@ CREATE INDEX IF NOT EXISTS idx_market_ticks_broker_latency
 
 -- 8. market_orderbook 테이블에도 동일 구조 적용
 ALTER TABLE market_orderbook
+    ADD COLUMN IF NOT EXISTS broker TEXT,
     ADD COLUMN IF NOT EXISTS broker_time TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS sequence_number BIGINT;
 
+ALTER TABLE market_orderbook ALTER COLUMN received_time SET DEFAULT NOW();
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_market_orderbook_dedup
-    ON market_orderbook(broker, symbol, sequence_number)
+    ON market_orderbook(time, broker, symbol, sequence_number)
     WHERE sequence_number IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_market_orderbook_received_time
