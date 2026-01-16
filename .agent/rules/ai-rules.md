@@ -31,7 +31,7 @@ trigger: always_on
 5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
 
 ## 3. 언어 원칙
--   **Artifacts**: 모든 산출물(Task, Plan, Walkthrough)은 **한국어**로 작성한다.
+-   **Artifacts**: 모든 산출물(Task, Implementation Plan, Walkthrough)은 **반드시 한국어**로 작성한다. (영어 혼용 금지)
 -   **Commit**: 커밋 메시지는 **영어**로 작성한다 (Conventional Commits).
 
 
