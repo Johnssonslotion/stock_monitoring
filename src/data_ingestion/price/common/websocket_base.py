@@ -106,9 +106,15 @@ class UnifiedWebSocketManager:
 
                     # 🎯 구독 응답 처리 (NEW)
                     if tr_key and tr_key in self.pending_subscriptions:
-                        if "SUCCESS" in msg1.upper() or msg1 == "SUBSCRIBE SUCCESS":
+                        is_success = "SUCCESS" in msg1.upper() or msg1 == "SUBSCRIBE SUCCESS"
+                        is_already = "ALREADY IN SUBSCRIBE" in msg1.upper()
+                        
+                        if is_success or is_already:
                             self.subscription_results[tr_key] = True
-                            logger.info(f"✅ SUBSCRIBE CONFIRMED: {tr_key}")
+                            if is_already:
+                                logger.info(f"✅ ALREADY SUBSCRIBED: {tr_key} (treated as success)")
+                            else:
+                                logger.info(f"✅ SUBSCRIBE CONFIRMED: {tr_key}")
                         else:
                             self.subscription_results[tr_key] = False
                             logger.error(f"❌ SUBSCRIBE FAILED: {tr_key} - {msg1}")
@@ -241,7 +247,7 @@ class UnifiedWebSocketManager:
     
     async def subscribe_market(self, market: str, max_retries: int = 3) -> bool:
         """
-        특정 시장(KR/US)의 모든 Collectors 구독 (재시도 포함)
+        특정 시장(KR/US)의 모든 Collectors 구독 (재시도 + Redis 상태 체크)
 
         Args:
             market: 시장 코드 (KR/US)
@@ -251,8 +257,17 @@ class UnifiedWebSocketManager:
             bool: 전체 구독 성공 여부
         """
         if market in self.active_markets:
-            logger.info(f"[{market}] Already subscribed. Skipping.")
+            logger.info(f"[{market}] Already active in memory. Skipping.")
             return True
+
+        # ✅ NEW: Redis 영속 상태 확인 (재시작 시 중복 방지)
+        if self.redis:
+            redis_key = f"subscriber:kis:{market}"
+            is_subscribed_redis = await self.redis.get(redis_key)
+            if is_subscribed_redis:
+                logger.warning(f"⚠️ [{market}] Already subscribed in Redis! Skipping real request.")
+                self.active_markets.add(market)
+                return True
 
         # 연결 대기 (최대 10초)
         if not self.websocket:
@@ -278,6 +293,7 @@ class UnifiedWebSocketManager:
                     # 재시도 루프
                     subscribed = False
                     for attempt in range(1, max_retries + 1):
+                        # "1" = Subscribe
                         if await self._send_request(tr_id, sym, "1"):
                             subscribed = True
                             success_count += 1
@@ -296,10 +312,18 @@ class UnifiedWebSocketManager:
         total = success_count + fail_count
         if fail_count == 0:
             self.active_markets.add(market)
+            # ✅ NEW: 성공 시 Redis에 상태 저장 (TTL 1시간)
+            if self.redis:
+                await self.redis.setex(f"subscriber:kis:{market}", 3600, "1")
+            
             logger.info(f"✅ [{market}] ALL SUBSCRIBED: {success_count}/{total} symbols confirmed.")
             return True
         elif success_count > 0:
             self.active_markets.add(market)
+            # 부분 성공도 일단 저장
+            if self.redis:
+                await self.redis.setex(f"subscriber:kis:{market}", 3600, "1")
+                
             logger.warning(f"⚠️ [{market}] PARTIAL: {success_count}/{total} OK, {fail_count} FAILED: {failed_symbols[:5]}...")
             return True
         else:
