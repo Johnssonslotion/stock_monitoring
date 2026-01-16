@@ -9,6 +9,8 @@
 - **실험 영구화**: 모든 백테스트 및 분석 결과를 `experiments/`에 기록.
 - **품질 보증**: 각 수집 유닛별 독립적인 유닛 테스트(Mock 기반) 수행.
 
-## 3. 검증 계획
-- **CI/CD**: 문서 수정 시 빌드 스킵(`paths-ignore`) 적용.
-- **QA**: Failure Mode(에러 처리) 자동 복구 로직 검증.
+## 3. 검증 계획 (Verification Strategy)
+- **Phase 1 (Static Mock)**: 문서 기반 샘플 패킷으로 Pydantic 스키마 및 파서 검증.
+- **Phase 2 (Traffic Recording)**: 서버 연결 시작 시 모든 Raw Packet을 `.jsonl`로 기록하여 'Golden Dataset' 구축.
+- **Phase 3 (Cross Validation)**: 기록된 실제 데이터를 스키마에 재주입하여 타입 불일치, 누락 필드 등을 자동 검출 (`scripts/validate_recorded_data.py`).
+- **QA**: Chaos Engineering(연결 단절) 및 Failure Mode 대응 로직 검증.
