@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/ubuntu/workspace/stock_backtest/scripts/read_kiwoom_docs.py", line 2, in <module>
+    import openpyxl
+ModuleNotFoundError: No module named 'openpyxl'
