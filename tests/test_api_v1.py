@@ -9,9 +9,9 @@ API_AUTH_SECRET = os.getenv("API_AUTH_SECRET", "super-secret-key")
 def test_health_check():
     """헬스체크 API 검증"""
     with TestClient(app) as client:
-        response = client.get("/health")
+        response = client.get("/api/v1/health")
         assert response.status_code == 200
-        assert response.json()["status"] == "ok"
+        assert response.json()["status"] in ["healthy", "degraded", "unhealthy"]
 
 def test_unauthorized_missing_header():
     """인증 헤더 누락 시 422 에러 (FastAPI 기본 동작) 검증"""

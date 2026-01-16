@@ -5,9 +5,10 @@
 ## 1. 진행 중 (In-Progress)
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| 수집단(Collector) 개편 | Developer | P1 | [/] | 미래/키움 RE 연동 |
-| 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
-| 거버넌스 문서 Git 동기화 | PM | P1 | [/] | 브레인 -> 저장소 이관 |
+| 수집단 통합 (미래/키움) | Developer | P1 | [/] | `feat/collector-integration-v1` |
+| 스키마 정의 및 보완 | Architect | P1 | [/] | 벤더별 호출 스키마 기록 |
+| 실험 레지스트리 구축 | Data Scientist | P1 | [x] | `experiments/` 구조화 완료 |
+| 거버넌스 문서 Git 동기화 | PM | P1 | [x] | 정책 브랜치 머지 대기 |
 
 ## 2. 대기 중 (Todo)
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |

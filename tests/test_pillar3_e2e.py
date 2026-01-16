@@ -8,10 +8,10 @@ from fastapi.testclient import TestClient
 from src.api.main import app
 from datetime import datetime, timezone
 
-# 설정
-REDIS_URL = os.getenv("REDIS_URL", "redis://stock-redis:6379/0")
+# 설정 (Docker 환경과 Local 환경 모두 지원)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 API_AUTH_SECRET = os.getenv("API_AUTH_SECRET", "super-secret-key")
-DB_HOST = os.getenv("DB_HOST", "stock-timescale")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "stockval")
 
 @pytest.mark.asyncio
