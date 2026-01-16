@@ -83,3 +83,4 @@ data/raw/*.jsonl
 data/
 logs/
 scripts/**/*.csv
+.temp_venv/
