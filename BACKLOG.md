@@ -23,6 +23,7 @@
 - [x] 지식 베이스(Knowledge Base) 구축 및 영구화 전략 수립
 - [x] CI/CD 빌드 스킵([skip ci]) 및 paths-ignore 설정 적용
 - [x] 거버넌스 및 정책 업데이트 전용 티켓(`docs/policy-update-v2`) 마무리
+- [x] 정책 변경 시 독립 브랜치(`docs/...`) 필수 원칙 거버넌스(`development.md`) 명문화 (v2.3)
 
 
 ---

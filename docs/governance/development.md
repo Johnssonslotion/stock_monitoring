@@ -69,6 +69,7 @@
     ```
 -   **Git**: Conventional Commits + **Strict Git Flow**.
     -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
+    -   **[STRICT] Policy Change**: 단순 문서 수정이나 거버넌스 정책 변경 또한 반드시 독립적인 **Documentation Branch**(`docs/...`)를 통해 수행하고 PR을 거쳐야 한다. (Traceability 확보)
     -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
     -   **Workflow**: `git checkout -b feat/new-feature` → Work → `git push` → Pull Request → `develop` 머지.
     -   **배포**: `develop` 머지 시 운영 서버(`oracle-a1:/workspace/stock_monitoring`)에 **자동 배포**됨.
@@ -137,6 +138,7 @@ if received_count == 0 and running_time > 300:  # 5분
 
 **문서 동조화 프로토콜 (Sync Protocol)**:
 - AI는 사용자가 `@.ai-rules.md`를 언급하거나 '문서 동기화'를 요청할 경우, 위 3대 문서를 **전수 Read**하여 상호 참조 링크와 태스크 상태가 일치하는지 Audit 수행 필수.
+- **능동적 정책 관리**: 시스템 설계나 정책에 대한 논의가 발생할 경우, AI는 이를 코딩 작업과 분리하여 즉시 `docs/` 브랜치를 생성하고 명문화할 것을 사용자에게 먼저 제안해야 한다.
 - 정합성 위배 발견 시 코딩 작업보다 **문서 동기화 수정을 최우선**으로 수행함.
 
 **품질 보고서 필수 양식**:
