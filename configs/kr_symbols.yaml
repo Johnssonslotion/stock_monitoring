@@ -51,6 +51,8 @@ symbols:
           name: "POSCO홀딩스"
         - symbol: "247540"
           name: "에코프로비엠"
+        - symbol: "006400"
+          name: "삼성SDI"
 
     biotech:
       top3:

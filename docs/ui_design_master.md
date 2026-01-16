@@ -29,7 +29,21 @@
 - **Zero-Cost**: Oracle Free Tier 환경에서 상용 수준의 성능 달성
 - **High-Performance**: 비동기 처리 및 최적화된 렌더링
 
-### 1.2 기술 스택
+### 1.2 Layout Structure
+- **Global Header**: Navigation, System Status, **Real-time Ticker (Scrolling)**
+- **Main Content Area**:
+  - **Dashboard (Market Map)**:
+    - **Font**: 'Noto Sans KR' applied for clear Korean text rendering.
+    - **Visuals**: Distinct stroke styling for Sector blocks to separate them clearly.
+  - **Analysis (Trading)**:
+    - **Left**: Professional Candle Chart (70-75%)
+    - **Right**:
+        - **Top**: Order Book (Jar Style) & Execution Data (Real-time Mock)
+        - **Bottom/Tabbed**: Related Stocks & News Trends
+  - **System (Monitoring)**:
+    - **Logs Console**: Terminal-style text logs (Socket/Polling monitored).
+
+### 1.3 기술 스택
 
 #### Frontend
 - **Framework**: React 18 + TypeScript (Vite 빌드)
@@ -167,17 +181,23 @@ App
 │
 └── Main Content (AnimatePresence)
 └── Main Content (AnimatePresence)
-    ├── Tab: Dashboard (Full MAP)
-    │   └── MarketMap (100% Width/Height)
+    ├── Tab: Dashboard (Independent Map) [UPDATED]
+    │   └── MarketMap (Sector Clustering Applied)
+    │       └── 1st Level: Market (KR/US)
+    │       └── 2nd Level: Sector (Semiconductor, Battery, etc.)
+    │       └── 3rd Level: Symbols
     │
-    ├── Tab: Analysis (Focus View)
-    │   ├── Left: Main Chart (70%)
-    │   │   ├── Header Overlay
-    │   │   └── CandleChart
-    │   └── Right: Context Panel (30%)
-    │       ├── Orderbook (Top)
-    │       └── Related Context (Bottom) [NEW]
-    │           └── RelatedAssets (ETF/Sector)
+    ├── Tab: Analysis (Professional View) [UPDATED]
+    │   ├── Top: Control Bar
+    │   │   ├── Symbol Selector
+    │   │   └── Date Navigator (Calendar + Jump to Date)
+    │   ├── Center: Live Analysis Area
+    │   │   ├── Main Chart (OHLCV + **News Markers** + **VWAP Layer**)
+    │   │   └── Tick Chart Overlay (Real-time Scatter + **Imbalance Meter**)
+    │   ├── Bottom: Data Scrubber & **News Timeline** [NEW]
+    │   └── Right: Execution Sidebar
+    │       ├── Orderbook (Live)
+    │       └── Time & Sales (Tick History List)
     │
     ├── Tab: Logs
     ├── Tab: Logs
@@ -199,10 +219,16 @@ interface CandleChartProps {
 
 #### MarketMap
 ```typescript
+```typescript
 interface MarketMapProps {
   filterType?: 'ALL' | 'STOCK' | 'ETF' | 'MARKET';
   onSymbolClick?: (symbol: string, name: string) => void;
 }
+/* Adaptive LOD Specs (2026-01-16) */
+// Tiny (<30px): No Text
+// Small (<60px): Symbol Only
+// Medium (<100px): Symbol + Change%
+// Large (>100px): Symbol + Name + Change% + Price
 ```
 
 #### SymbolSelector
@@ -298,25 +324,57 @@ sequenceDiagram
 
 ### 7.1 Dashboard (대시보드) - Map-First Layout
 
-**레이아웃**: 독립 탭 구조 (Full Map / Analysis)
+**레이아웃**: 완전 독립형 탭 구조 (Decoupled Dashboard)
 
 **사용자 흐름**:
-1. **Dashboard Tab**: 전체 시장 조망 (Market Map 100%)
-2. **On Symbol Click**: **Analysis 탭**으로 자동 이동 & 종목 로딩
-3. **Analysis Tab**: 차트 + 호가 + 연관 섹터 정보 동시 확인
-3. **Timeframe Switch**: 일봉 → 1분봉 → 틱 순차 전환
+1. **Dashboard Tab**: 섹터별로 묶인 시장 지도를 통해 주도 섹터 파악 (Sector Clustering)
+2. **Analysis Tab**: 특정 시점의 차트 분석에 집중 (Date Navigation)
+3. **Cross-Link**: 맵에서 클릭 시 분석 탭으로 이동하되, 각 탭의 상태(확대 수준 등)는 독립적으로 유지
 
-**디자인 원칙**: "Overview First, Zoom and Filter, Details on Demand" (Shneiderman)
+**디자인 원칙**: "Independent Control, Synchronized Data"
+
+#### Chart Date & News Navigator [NEW]
+- **Calendar Picker**: 특정 일자로 즉시 이동 (Time-travel)
+- **News Markers on Chart**: 차트 캔들 위에 뉴스 아이콘 표시. 마우스 오버 시 뉴스 제목/요약 팝업.
+- **News Impact Color**: 뉴스의 감성 분석 결과에 따라 색상 차등 (긍정: 녹색, 부정: 오렌지)
+- **Go to Live**: 최신 실시간 데이터 시점으로 즉시 복귀
+
+#### Sector Clustering (섹터 클러스터링)
+- **Hierarchical Treemap**: `전체 -> 섹터 -> 종목` 순으로 중첩된 레이아웃
+- **Quant Sorting**: 단순 등락률이 아닌 **'섹터 자금 유입량(Money Flow)'** 기준 정렬 옵션 제공
 
 #### CandleChart (캔들스틱 차트)
 - **라이브러리**: Plotly.js
-- **차트 타입**: `candlestick`
+- **차트 타입**: `candlestick` (Historical) + `scatter` (Tick Overlay)
 - **인터랙션**: 
   - 확대/축소 (Zoom)
   - 시간 범위 선택 (Range Selector)
   - 툴팁 (가격, 거래량 표시)
 
-#### LogsView (실시간 로그)
+### 7.6 실시간 데이터 영역 재정의 (Trading vs Monitoring)
+
+#### **투자 데이터 영역**: Order Book & Execution (Backlog)
+- **위치**: 차트 우측 상단 슬림 패널 (Analysis 탭)
+- **구성**:
+    - **호가창 (Order Book)**: 매수/매도 5단계 호가 잔량 시각화
+    - **체결 내역 (Time & Sales)**: 실시간 개별 체결가, 거래량, 시간 리스트
+    - **거래량 가중**: 평균 대비 5배 이상 대량 체결 시 하이라이트
+- **현재 상태**: 🟡 **BACKLOG** - 백엔드 Quote/Execution API 개발 대기 중
+- **임시 대체**: 플레이스홀더 UI로 기능 부재 명시
+
+#### **시스템 모니터링 영역**: Data Collection Logs
+- **위치**: LOGS 탭 (전용)
+- **목적**: 데이터 수집 파이프라인 및 시스템 리소스 상태 체크
+- **구성**:
+    - WebSocket 연결 상태
+    - 실시간 틱 수신 로그
+    - CPU/메모리 사용률 (향후)
+- **현재 상태**: ✅ **ACTIVE** - LogsView 컴포넌트로 구현됨
+
+#### Quant Analytics Layer (기존 유지)
+- **VWAP**: 거래량 가중 평균가격 라인 (노란색 점선)
+- **News Markers**: 차트 캔들 위 뉴스 이벤트 마커 (감성 분석 색상)
+
 - **데이터 소스**: WebSocket `/ws` (Redis Pub/Sub)
 - **표시 방식**: 역순 정렬 (최신 항목 상단)
 - **스크롤**: Auto-scroll to bottom (신규 항목 도착 시)

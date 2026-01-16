@@ -1,9 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, type IChartApi, type ISeriesApi } from 'lightweight-charts';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import type { IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType } from 'lightweight-charts';
+import { RefreshCcw, Plus, Minus } from 'lucide-react';
 import { streamManager } from '../StreamManager';
 
 interface CandleData {
-    time: string | number; // String date or timestamp
+    time: string | number;
     open: number;
     high: number;
     low: number;
@@ -14,191 +16,266 @@ interface CandleData {
 interface CandleChartProps {
     data: CandleData[];
     symbol: string;
-    interval?: string; // Add interval prop for empty state messaging
+    interval?: string;
 }
 
 export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval = '1d' }) => {
-    const chartContainerRef = useRef<HTMLDivElement>(null);
+    const [container, setContainer] = useState<HTMLElement | null>(null);
     const chartRef = useRef<IChartApi | null>(null);
-    const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+    const mainSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+    const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
-    useEffect(() => {
-        if (!chartContainerRef.current) return;
+    // Track state for zoom/viewport
+    const prevSymbol = useRef<string>(symbol);
+    const prevInterval = useRef<string>(interval);
 
-        // Cleanup function ref
-        let chart: IChartApi | null = null;
-        let resizeObserver: ResizeObserver | null = null;
+    // Helper: Check if market is currently active (Today & < 15:30)
+    const isMarketActive = (lastCandleTime: number): boolean => {
+        const now = new Date();
+        const lastDate = new Date(lastCandleTime * 1000);
 
-        const initChart = () => {
-            if (!chartContainerRef.current) return;
-            const { clientWidth, clientHeight } = chartContainerRef.current;
+        // Check if same day
+        const isSameDay = now.getDate() === lastDate.getDate() &&
+            now.getMonth() === lastDate.getMonth() &&
+            now.getFullYear() === lastDate.getFullYear();
 
-            // Guard: Do not initialize if dimensions are invalid
-            if (clientWidth <= 0 || clientHeight <= 0) return;
+        if (!isSameDay) return false;
 
-            if (chart) {
-                // If chart exists, just resize
-                chart.applyOptions({ width: clientWidth, height: clientHeight });
-                return;
-            }
+        // Check if before close (15:30)
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const closeMinutes = 15 * 60 + 30; // 15:30
 
-            // Create Chart
-            chart = createChart(chartContainerRef.current, {
-                layout: {
-                    background: { type: ColorType.Solid, color: 'transparent' },
-                    textColor: '#9CA3AF',
-                },
-                grid: {
-                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                },
-                width: clientWidth,
-                height: clientHeight,
-                timeScale: {
-                    timeVisible: true,
-                    secondsVisible: false,
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                },
-                rightPriceScale: {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                },
-            });
+        return currentMinutes < closeMinutes;
+    };
 
-            const candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#ef4444',
-                downColor: '#3b82f6',
-                borderVisible: false,
-                wickUpColor: '#ef4444',
-                wickDownColor: '#3b82f6',
-            });
-
-            seriesRef.current = candlestickSeries;
-            chartRef.current = chart;
-
-            // Trigger data update if data exists
-            if (data.length > 0) {
-                updateData(data);
-            }
-        };
-
-        // Observer to handle resize and delayed init
-        resizeObserver = new ResizeObserver(() => {
-            initChart();
-        });
-        resizeObserver.observe(chartContainerRef.current);
-
-        return () => {
-            if (resizeObserver) resizeObserver.disconnect();
-            if (chart) chart.remove();
-            chartRef.current = null;
-            seriesRef.current = null;
-        };
-    }, []); // Run once on mount, internal logic handles deps
-
-    // Helper to update data safely
     const updateData = (newData: CandleData[]) => {
-        if (!seriesRef.current || newData.length === 0) return;
+        if (!mainSeriesRef.current || !volumeSeriesRef.current || newData.length === 0) return;
 
         try {
-            const formattedData = newData
-                .map((item: any) => {
-                    let time: any = item.time;
-                    // Robust time parsing
-                    if (typeof item.time === 'string') {
-                        if (item.time.includes('T')) {
-                            const date = new Date(item.time);
-                            if (isNaN(date.getTime())) return null; // Skip invalid
-                            const year = date.getUTCFullYear();
-                            const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-                            const day = date.getUTCDate().toString().padStart(2, '0');
-                            time = `${year}-${month}-${day}`;
-                        } else {
-                            // Assume simplified string or timestamp
-                            const date = new Date(item.time);
-                            if (!isNaN(date.getTime())) {
-                                time = date.getTime() / 1000;
-                            }
-                        }
+            // Process Data
+            const processedData = newData.map((item: any) => {
+                let time: any = item.time;
+                if (typeof item.time === 'string') {
+                    const date = new Date(item.time);
+                    if (!isNaN(date.getTime())) {
+                        // Use timestamp for uniform sorting
+                        time = Math.floor(date.getTime() / 1000);
                     }
-                    if (!item.open || !item.high || !item.low || !item.close) return null;
+                }
+                return { ...item, time };
+            })
+                .filter(item => item.open !== undefined && item.time !== undefined)
+                .sort((a: any, b: any) => a.time - b.time);
 
-                    return { ...item, time: time };
-                })
-                .filter(item => item !== null); // Filter invalid
-
-            // Deduplicate
+            // Deduplicate timestamps
             const uniqueMap = new Map();
-            formattedData.forEach((item: any) => uniqueMap.set(item.time, item));
+            processedData.forEach((item: any) => uniqueMap.set(item.time, item));
+            const uniqueData = Array.from(uniqueMap.values());
 
-            const sortedData = Array.from(uniqueMap.values())
-                .sort((a: any, b: any) => {
-                    if (typeof a.time === 'string' && typeof b.time === 'string') {
-                        return a.time.localeCompare(b.time);
-                    }
-                    return Number(a.time) - Number(b.time);
-                });
+            // Set Candle Data
+            mainSeriesRef.current.setData(uniqueData);
 
-            console.log(`📊 Rendering ${sortedData.length} valid candles`);
-            seriesRef.current.setData(sortedData);
-            chartRef.current?.timeScale().fitContent();
+            // Set Volume Data
+            const volumeData = uniqueData.map((d: any, i: number) => {
+                const prevClose = i > 0 ? uniqueData[i - 1].close : d.open;
+                const isUp = d.close >= d.open;
+                return {
+                    time: d.time,
+                    value: d.volume || 0,
+                    // Red for Up (Korean standard), Blue for Down
+                    color: isUp ? 'rgba(239, 68, 68, 0.5)' : 'rgba(59, 130, 246, 0.5)'
+                };
+            });
+            volumeSeriesRef.current.setData(volumeData);
+
         } catch (e) {
-            console.error("Chart Rendering Error:", e);
+            console.error("Chart Data Update Error:", e);
         }
     };
 
-    // React to data changes
+    // Container Ref
+    const chartContainerRef = useCallback((node: HTMLDivElement | null) => {
+        if (node) setContainer(node);
+    }, []);
+
+    // Create Chart
     useEffect(() => {
-        if (chartRef.current && seriesRef.current) {
-            updateData(data);
-        }
-    }, [data, symbol]);
+        if (!container) return;
+        if (chartRef.current) return;
 
-    // WebSocket logic for real-time updates
-    useEffect(() => {
-        const handleTick = (tick: any) => {
-            if (tick.symbol !== symbol) return; // Filter by symbol
-            if (!seriesRef.current) return;
+        console.log("Creating Chart Instance");
 
-            // Construct new candle or update existing
-            // Since we only get 'price', this is a pseudo-update (Close price updates)
-            // Ideally backend aggregates ticks into minute bars
-            // Construct new candle or update existing
+        const chart = createChart(container, {
+            layout: {
+                background: { type: ColorType.Solid, color: 'transparent' },
+                textColor: '#9ca3af',
+                fontFamily: 'Inter, sans-serif'
+            },
+            grid: {
+                vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                horzLines: { color: 'rgba(255, 255, 255, 0.05)' }
+            },
+            width: container.clientWidth,
+            height: container.clientHeight,
+            timeScale: {
+                timeVisible: true,
+                secondsVisible: false,
+                borderColor: '#2b2b43',
+                rightOffset: 2,
+            },
+            rightPriceScale: {
+                borderColor: '#2b2b43',
+                scaleMargins: { top: 0.1, bottom: 0.2 } // Leave bottom 20% for volume
+            }
+        });
 
-            // For now, simpler logic: Just verify socket is live by logging
-            console.log('Live Tick:', tick);
+        // Series 1: Candles
+        const mainSeries = chart.addCandlestickSeries({
+            upColor: '#ef4444',
+            downColor: '#3b82f6',
+            borderVisible: false,
+            wickUpColor: '#ef4444',
+            wickDownColor: '#3b82f6',
+        });
+        mainSeriesRef.current = mainSeries;
 
-            // NOTE: Lightweight Charts 'update' method handles appending
-            // But we need Open/High/Low to form a candle. 
-            // For MVP, we'll rely on periodic polling for full history and maybe overlay last price?
-            // Or assume the last candle is mutable.
-            // Complex logic omitted for MVP stability: "Zero Cost" constraint.
+        // Series 2: Volume
+        const volumeSeries = chart.addHistogramSeries({
+            priceFormat: { type: 'volume' },
+            priceScaleId: '', // Same scale but positioned manually
+        });
+        volumeSeries.priceScale().applyOptions({
+            scaleMargins: { top: 0.8, bottom: 0 }, // Bottom 20%
+        });
+        volumeSeriesRef.current = volumeSeries;
+
+        chartRef.current = chart;
+
+        // Resize
+        const resizeObserver = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                if (entry.contentRect.width > 0) {
+                    chart.applyOptions({
+                        width: entry.contentRect.width,
+                        height: entry.contentRect.height
+                    });
+                }
+            }
+        });
+        resizeObserver.observe(container);
+
+        return () => {
+            resizeObserver.disconnect();
+            chart.remove();
+            chartRef.current = null;
         };
+    }, [container]);
 
-        streamManager.on('tick', handleTick);
-        return () => streamManager.off('tick', handleTick);
-    }, [symbol]);
+    // Handle Logic
+    useEffect(() => {
+        if (!chartRef.current || !data || data.length === 0) return;
 
-    // Empty State when no data available
+        updateData(data);
+
+        const isNewContext = prevSymbol.current !== symbol || prevInterval.current !== interval;
+
+        if (isNewContext) {
+            handleViewportReset();
+            prevSymbol.current = symbol;
+            prevInterval.current = interval;
+        }
+
+    }, [data, symbol, interval]);
+
+    const handleViewportReset = () => {
+        if (!chartRef.current || data.length === 0) return;
+
+        const lastCandle = data[data.length - 1];
+        const lastTime = typeof lastCandle.time === 'number'
+            ? lastCandle.time
+            : new Date(lastCandle.time).getTime() / 1000;
+
+        if (interval === '1m') {
+            // 1분봉 전략
+            const isActive = isMarketActive(lastTime);
+
+            if (isActive) {
+                // Active Market: Show whitespace until 15:30
+                const now = new Date();
+                const closeTime = new Date(now);
+                closeTime.setHours(15, 30, 0, 0);
+
+                const diffSec = (closeTime.getTime() / 1000) - lastTime;
+
+                // Extra bars needed to fill until 15:30
+                const extraBars = Math.max(10, Math.floor(diffSec / 60) + 5);
+
+                // Show recent 120 bars (2 hours) + Whitespace
+                chartRef.current.timeScale().setVisibleLogicalRange({
+                    from: data.length - 120,
+                    to: data.length + extraBars
+                });
+            } else {
+                // Closed Market: Align to right (No gap)
+                chartRef.current.timeScale().setVisibleLogicalRange({
+                    from: data.length - 120, // Initial View: Last 2 hours
+                    to: data.length + 2      // Tiny margin
+                });
+            }
+        } else {
+            // Daily/Intervals
+            if (data.length > 200) {
+                chartRef.current.timeScale().setVisibleLogicalRange({
+                    from: data.length - 150,
+                    to: data.length + 5
+                });
+            } else {
+                chartRef.current.timeScale().fitContent();
+            }
+        }
+    };
+
+    // Manual Zoom
+    const handleZoom = (direction: 'in' | 'out') => {
+        if (!chartRef.current) return;
+        const timeScale = chartRef.current.timeScale();
+        const currentRange = timeScale.getVisibleLogicalRange();
+
+        if (!currentRange) return;
+
+        // Simple Logic: Shrink/Expand range by 20%
+        const range = currentRange.to - currentRange.from;
+        const delta = range * 0.2;
+
+        if (direction === 'in') {
+            timeScale.setVisibleLogicalRange({
+                from: currentRange.from + delta,
+                to: currentRange.to
+            });
+        } else {
+            timeScale.setVisibleLogicalRange({
+                from: currentRange.from - delta,
+                to: currentRange.to
+            });
+        }
+    };
+
     if (!data || data.length === 0) {
-        return (
-            <div className="w-full h-full flex items-center justify-center">
-                <div className="glassmorphism p-8 rounded-2xl text-center max-w-md">
-                    <div className="text-6xl mb-4">📊</div>
-                    <h3 className="text-xl font-bold text-white mb-2">No Data Available</h3>
-                    <p className="text-gray-400 mb-4">
-                        No candle data found for <span className="text-blue-400 font-mono">{symbol}</span> at <span className="text-green-400 font-mono">{interval}</span> interval.
-                    </p>
-                    <div className="text-sm text-gray-500 bg-black/20 rounded-lg p-3 border border-white/5">
-                        <strong>Tip:</strong> Try switching to <span className="text-yellow-400">1D</span> (Daily) timeframe for historical data.
-                    </div>
-                </div>
-            </div>
-        );
+        return <div className="w-full h-full flex items-center justify-center text-gray-500">No Data</div>;
     }
 
     return (
-        <div className="w-full h-full flex flex-col">
-            <div ref={chartContainerRef} className="flex-1 w-full relative" />
+        <div className="w-full h-full min-h-[300px] relative group flex-1 flex flex-col">
+            <div ref={chartContainerRef} className="absolute inset-0 z-0" />
+
+            {/* Controls */}
+            <div className="absolute top-3 right-20 z-10 flex gap-1 opacity-100">
+                <button onClick={() => handleZoom('in')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Plus size={16} /></button>
+                <button onClick={() => handleZoom('out')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Minus size={16} /></button>
+                <button onClick={() => chartRef.current?.timeScale().fitContent()} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><RefreshCcw size={16} /></button>
+            </div>
         </div>
     );
 };
+
+export default CandleChart;

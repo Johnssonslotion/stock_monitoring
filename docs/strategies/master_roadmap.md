@@ -56,12 +56,31 @@
 - **목표**: 초저지연 시각화 및 알고리즘 인터랙션.
 - **Phase 1**: FastAPI 기반 시계열 쿼리 엔진 및 **Tier 3 품질 보고서** 체계 수립. (✅ DONE)
 - **Phase 2**: React + Vite 기반 대시보드 및 하드웨어 가속 시각화. (✅ DONE)
-- **Phase 3A (Map-First Layout)**: 🆕 **APPROVED 2026-01-12**
-  - Dashboard 탭 재설계: Map 70% → Chart 30% (클릭 시 반전)
-  - Multi-Timeframe Support: 일봉 → 1분봉 전환 UI
-  - 사용자 온보딩: 첫 방문 툴팁 + Classic Layout 토글
-  - **Timeline**: Week 1-2 (Phase 2A)
-- **Phase 3B (Tick Streaming)**: 🆕 **CONDITIONAL** (Load Testing 필수)
+- **Phase 2-B: Chart Innovation V2 (The Golden Consensus)**: 🆕 **ACTIVE**
+  - **Goal**: "Data that speaks." (정보가 아닌 통찰을 전달)
+  - **Status**:
+      - ✅ **Map-First Layout**: 섹터 맵 중심의 탐색 경험 (Completed)
+      - ✅ **Candle Chart V1**: 기본 캔들, 거래량, 줌 컨트롤 (Completed)
+      - 🔄 **Chart Innovation V2**: 10-Loop Council Consensus 구현 (In Progress)
+          - **Quantitative**: VWAP, Bollinger Bands, Volume MA
+          - **UX**: Smart Floating Legend, Magnet Crosshair
+          - **Visual**: Dynamic Viewport, Reference Lines
+  - **Key Deliverables**:
+      - `CandleChart.tsx` (V2 Upgrade)
+      - `backend_chart_v2_spec.md` Implementation
+- **Phase 3A (Map-First Layout)**: 🆕 **DONE 2026-01-15**
+  - Dashboard 탭 재설계: Map 70% → Chart 30% (클릭 시 반전) (✅ DONE)
+  - Multi-Timeframe Support: 일봉 → 1분봉 전환 UI (✅ DONE)
+  - URL 동기화 및 심볼 자동 로딩 (✅ DONE)
+  - **E2E 검증**: Playwright 기반 3대 시나리오 통과 (✅ DONE)
+  - **Timeline**: Week 1 (COMPLETED)
+- **Phase 3C (Frontend Polish)**: 🆕 **DONE 2026-01-16**
+  - **Premium Graphics**: Market Map Gradients, LOD 적용.
+  - **Stability**: Chart/Map Layout Stabilization.
+- **Phase 3D (Backend Integration)**: 🆕 **DEFERRED**
+  - **Status**: Live Market Safety를 위해 장 마감 후 진행 ([BACKLOG.md](../BACKLOG.md) 참조).
+  - **Features**: Real-time WebSocket, API Integration.
+- **Phase 3E (Tick Streaming)**: 🆕 **CONDITIONAL** (Load Testing 필수)
   - WebSocket `/ws/ticks/{symbol}` 실시간 스트리밍
   - Lightweight Charts 기반 Canvas 렌더링
   - Data Quality Badge + Statistical Summary (VWAP, Spread, Velocity)

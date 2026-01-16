@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface SymbolSelectorProps {
     currentSymbol: string;
-    onChange: (symbol: string) => void;
+    onChange: (symbol: string, name: string) => void;
 }
 
 // Mock Search Results for now (Later DB connected)
@@ -74,7 +74,7 @@ export const SymbolSelector: React.FC<SymbolSelectorProps> = ({ currentSymbol, o
                                     <div
                                         key={s.code}
                                         onClick={() => {
-                                            onChange(s.code);
+                                            onChange(s.code, s.name);
                                             setIsOpen(false);
                                         }}
                                         className={clsx(

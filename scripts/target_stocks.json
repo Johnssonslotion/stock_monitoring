@@ -1,0 +1,134 @@
+[
+    {
+        "code": "005930",
+        "name": "Samsung Electronics",
+        "name_kr": "삼성전자",
+        "type": "STOCK"
+    },
+    {
+        "code": "000660",
+        "name": "SK Hynix",
+        "name_kr": "SK하이닉스",
+        "type": "STOCK"
+    },
+    {
+        "code": "373220",
+        "name": "LG Energy Solution",
+        "name_kr": "LG에너지솔루션",
+        "type": "STOCK"
+    },
+    {
+        "code": "207940",
+        "name": "Samsung Biologics",
+        "name_kr": "삼성바이오로직스",
+        "type": "STOCK"
+    },
+    {
+        "code": "005380",
+        "name": "Hyundai Motor",
+        "name_kr": "현대차",
+        "type": "STOCK"
+    },
+    {
+        "code": "000270",
+        "name": "Kia",
+        "name_kr": "기아",
+        "type": "STOCK"
+    },
+    {
+        "code": "068270",
+        "name": "Celltrion",
+        "name_kr": "셀트리온",
+        "type": "STOCK"
+    },
+    {
+        "code": "005490",
+        "name": "POSCO Holdings",
+        "name_kr": "POSCO홀딩스",
+        "type": "STOCK"
+    },
+    {
+        "code": "035420",
+        "name": "NAVER",
+        "name_kr": "NAVER",
+        "type": "STOCK"
+    },
+    {
+        "code": "035720",
+        "name": "Kakao",
+        "name_kr": "카카오",
+        "type": "STOCK"
+    },
+    {
+        "code": "105560",
+        "name": "KB Financial",
+        "name_kr": "KB금융",
+        "type": "STOCK"
+    },
+    {
+        "code": "055550",
+        "name": "Shinhan Financial",
+        "name_kr": "신한지주",
+        "type": "STOCK"
+    },
+    {
+        "code": "051910",
+        "name": "LG Chem",
+        "name_kr": "LG화학",
+        "type": "STOCK"
+    },
+    {
+        "code": "006400",
+        "name": "Samsung SDI",
+        "name_kr": "삼성SDI",
+        "type": "STOCK"
+    },
+    {
+        "code": "012330",
+        "name": "Hyundai Mobis",
+        "name_kr": "현대모비스",
+        "type": "STOCK"
+    },
+    {
+        "code": "069500",
+        "name": "KODEX 200",
+        "name_kr": "KODEX 200",
+        "type": "ETF"
+    },
+    {
+        "code": "122630",
+        "name": "KODEX Leverage",
+        "name_kr": "KODEX 레버리지",
+        "type": "ETF"
+    },
+    {
+        "code": "252670",
+        "name": "KODEX 200 Futures Invoice 2X",
+        "name_kr": "KODEX 200선물인버스2X",
+        "type": "ETF"
+    },
+    {
+        "code": "091160",
+        "name": "KODEX Semiconductor",
+        "name_kr": "KODEX 반도체",
+        "type": "ETF"
+    },
+    {
+        "code": "305540",
+        "name": "TIGER Secondary Battery",
+        "name_kr": "TIGER 2차전지테마",
+        "type": "ETF"
+    },
+    {
+        "code": "360750",
+        "name": "TIGER US Tech TOP10",
+        "name_kr": "TIGER 미국테크TOP10 INDXX",
+        "type": "ETF"
+    },
+    {
+        "code": "371460",
+        "name": "TIGER China EV",
+        "name_kr": "TIGER 차이나전기차SOLACTIVE",
+        "type": "ETF"
+    }
+]
