@@ -109,7 +109,8 @@ class TimescaleArchiver:
                         
                         # Ticks
                         ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
-                        row = (ts, data['symbol'], float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
+                        source = data.get('source', 'KIS')
+                        row = (ts, data['symbol'], source, float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
                         self.batch.append(row)
                         
                         if len(self.batch) >= BATCH_SIZE:
@@ -167,26 +168,46 @@ class TimescaleArchiver:
                 logger.error(f"System Metric Save Error: {e}")
 
     async def save_orderbook(self, data):
-        """호가 스냅샷 데이터를 DB에 즉시 저장"""
+        """호가 스냅샷 데이터를 DB에 저장 (10 Depth Support)"""
         async with self.db_pool.acquire() as conn:
             try:
                 ts = datetime.fromisoformat(data['timestamp'])
-                # flattened row: [time, symbol, ask1, avol1... bid1, bvol1...]
-                row = [ts, data['symbol']]
-                # Add Asks
-                for i in range(5):
-                    row.extend([data['asks'][i]['price'], data['asks'][i]['vol']])
-                # Add Bids
-                for i in range(5):
-                    row.extend([data['bids'][i]['price'], data['bids'][i]['vol']])
+                source = data.get('source', 'KIS')
                 
-                await conn.execute("""
+                # Base row: [time, symbol, source]
+                row = [ts, data['symbol'], source]
+                
+                # Add Asks 1~10
+                asks = data.get('asks', [])
+                for i in range(10):
+                    if i < len(asks):
+                        row.extend([asks[i]['price'], asks[i]['vol']])
+                    else:
+                        row.extend([None, None]) # Fill with NULL if depth < 10
+
+                # Add Bids 1~10
+                bids = data.get('bids', [])
+                for i in range(10):
+                    if i < len(bids):
+                        row.extend([bids[i]['price'], bids[i]['vol']])
+                    else:
+                        row.extend([None, None])
+
+                # Total params: 3 + 20 + 20 = 43 params
+                # Generate placeholders $1..$43
+                placeholders = ",".join([f"${i+1}" for i in range(len(row))])
+                
+                query = f"""
                     INSERT INTO market_orderbook (
-                        time, symbol,
+                        time, symbol, source,
                         ask_price1, ask_vol1, ask_price2, ask_vol2, ask_price3, ask_vol3, ask_price4, ask_vol4, ask_price5, ask_vol5,
-                        bid_price1, bid_vol1, bid_price2, bid_vol2, bid_price3, bid_vol3, bid_price4, bid_vol4, bid_price5, bid_vol5
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
-                """, *row)
+                        ask_price6, ask_vol6, ask_price7, ask_vol7, ask_price8, ask_vol8, ask_price9, ask_vol9, ask_price10, ask_vol10,
+                        bid_price1, bid_vol1, bid_price2, bid_vol2, bid_price3, bid_vol3, bid_price4, bid_vol4, bid_price5, bid_vol5,
+                        bid_price6, bid_vol6, bid_price7, bid_vol7, bid_price8, bid_vol8, bid_price9, bid_vol9, bid_price10, bid_vol10
+                    ) VALUES ({placeholders})
+                """
+                
+                await conn.execute(query, *row)
             except Exception as e:
                 logger.error(f"Orderbook Save Error: {e}")
 
@@ -208,7 +229,7 @@ class TimescaleArchiver:
                 await conn.copy_records_to_table(
                     'market_ticks',
                     records=self.batch,
-                    columns=['time', 'symbol', 'price', 'volume', 'change']
+                    columns=['time', 'symbol', 'source', 'price', 'volume', 'change']
                 )
                 logger.info(f"Flushed {len(self.batch)} ticks to TimescaleDB")
                 self.batch = []
