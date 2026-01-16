@@ -135,3 +135,18 @@ electron-dev: ## Run Electron client in development mode
 
 electron-build: ## Build Electron client for production
 	cd src/web && npm run build
+
+# --- Database Migration Commands ---
+.PHONY: migrate-status migrate-up migrate-down migrate-baseline
+
+migrate-status: ## Show database migration status
+	@./scripts/db/migrate.sh status
+
+migrate-up: ## Apply pending database migrations
+	@./scripts/db/migrate.sh up
+
+migrate-down: ## Rollback last database migration
+	@./scripts/db/migrate.sh down
+
+migrate-baseline: ## Create schema baseline from production
+	@./scripts/db/migrate.sh baseline
