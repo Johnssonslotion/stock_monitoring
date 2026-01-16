@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { clsx } from 'clsx';
-import { LayoutDashboard, Map as MapIcon, List, Activity, Settings, Search, TrendingUp as TrendingUpIcon } from 'lucide-react';
+import { fetchJson } from './api';
+import { LayoutDashboard, Map as MapIcon, Activity, Settings, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { CandleChart } from './components/CandleChart';
@@ -10,9 +10,13 @@ import { MarketMap } from './components/MarketMap';
 // import { StatusPanel } from './components/StatusPanel'; // Deprecated
 import { SystemDashboard } from './components/SystemDashboard';
 import { SymbolSelector } from './components/SymbolSelector';
-import { SectorPerformance } from './components/SectorPerformance';
 import { TimeframeSelector, type Timeframe } from './components/TimeframeSelector';
 import { ServerStatus } from './components/ServerStatus';
+import { TradingPanel } from './components/TradingPanel';
+import { TickerTape } from './components/TickerTape';
+// import { MarketInfoPanel } from './components/MarketInfoPanel'; // Refactored into TradingPanel
+import { generateMockCandles } from './mocks/tradingMocks';
+import { isMarketOpen } from './mocks/marketHoursMock';
 
 
 /* 
@@ -29,14 +33,50 @@ interface CandleData {
 
 function App() {
   // Global State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'map' | 'logs' | 'system'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'system'>('dashboard');
   const [selectedSymbol, setSelectedSymbol] = useState('005930'); // Default: Samsung Electronics
   const [selectedName, setSelectedName] = useState('삼성전자');
   // Dashboard Data State
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [selectedInterval, setSelectedInterval] = useState<Timeframe>('1d');
-  const [isMapExpanded, setIsMapExpanded] = useState(true); // Map-First 초기값
   const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [dataSource, setDataSource] = useState<'real' | 'mock' | 'partial'>('mock'); // Track data source
+  const [dataGaps, setDataGaps] = useState<{ count: number, maxGapHours: number }>({ count: 0, maxGapHours: 0 }); // Track time gaps
+  const [marketOpen, setMarketOpen] = useState<boolean>(true); // Track if market is currently open
+
+  // URL Synchronization
+  useEffect(() => {
+    // 1. Read URL on mount
+    const params = new URLSearchParams(window.location.search);
+    const symbolParam = params.get('selected');
+    if (symbolParam && symbolParam !== selectedSymbol) {
+      console.log(`🔗 URL Sync: Loading symbol from URL: ${symbolParam}`);
+      setSelectedSymbol(symbolParam);
+      setActiveTab('analysis'); // If symbol is present in URL, go to analysis view
+
+      // Fetch symbol name from market-map API
+      fetchJson<any>('/market-map/kr').then(data => {
+        if (!data) return;
+        const items = data.symbols || [];
+        const found = items.find((item: any) => item.symbol === symbolParam);
+        if (found) {
+          setSelectedName(found.name);
+          console.log(`🔗 URL Sync: Loaded name: ${found.name}`);
+        }
+      }).catch(err => {
+        console.warn('Failed to fetch symbol name:', err);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    // 2. Write URL on change
+    const url = new URL(window.location.href);
+    if (selectedSymbol) {
+      url.searchParams.set('selected', selectedSymbol);
+      window.history.replaceState({}, '', url);
+    }
+  }, [selectedSymbol]);
 
   // Electron IPC Listener
   useEffect(() => {
@@ -48,24 +88,111 @@ function App() {
     }
   }, []);
 
-  // Fetch Candles when symbol changes (Only if on dashboard)
+  // Fetch Candles when symbol changes (Only if on analysis)
+  // Fetch Candles when symbol changes (Only if on analysis)
   useEffect(() => {
-    if (activeTab === 'dashboard') {
+    if (activeTab === 'analysis') {
       const fetchCandles = async () => {
         try {
           setIsLoading(true);
           console.log(`🔄 Fetching candles: symbol=${selectedSymbol}, interval=${selectedInterval}, limit=5000`);
-          const response = await axios.get(`/candles/${selectedSymbol}`, {
-            params: {
-              limit: 5000,
-              interval: selectedInterval
+
+          // Update market status
+          const market = selectedSymbol.startsWith('0') ? 'kr' : 'us';
+          setMarketOpen(isMarketOpen(market));
+
+          // Using fetchJson wrapper (Phase 14)
+          // Base URL is triggered at /api/v1/candles/...
+          const data = await fetchJson<any[]>(`/candles/${selectedSymbol}?limit=5000&interval=${selectedInterval}`);
+
+          if (data && data.length > 0) {
+            console.log(`✅ Received ${data.length} candles for ${selectedSymbol} @ ${selectedInterval}`);
+            // Transform if necessary (API returns ISO string time, Frontend expects it compatible)
+            // Frontend CandleData defines time as string | number.
+            // API uses ISO string? Or milliseconds?
+            // backend `get_recent_candles` uses standard dict(row).
+            // If DB stores time as timestamp, it likely returns ISO string in JSON.
+            // CandleChart handles `new Date(d.time).getTime() / 1000`.
+            // Wait, `CandleChart` does NOT handle conversion inside the component currently,
+            // it expects `CandleData` passed in props.
+            // We need to map it here to match `CandleData[].time`.
+
+            // Check what MOCK data looks like.
+            // MOCK_CANDLES has `time` as Unix Timestamp (Numbers) usually for lightweight-charts.
+            // Let's ensure compatibility.
+            const formattedData = data.map((d: any) => {
+              // Try to detect if time is string or number
+              let t = d.time;
+              if (typeof t === 'string') {
+                // Convert ISO to Unix param (seconds) for lightweight-charts
+                t = new Date(t).getTime() / 1000;
+              }
+              return {
+                time: t,
+                open: d.open,
+                high: d.high,
+                low: d.low,
+                close: d.close,
+                volume: d.volume
+              };
+            }).sort((a: any, b: any) => a.time - b.time);
+
+            // Temporal Gap Detection (시간적 연속성 검증)
+            const intervalSeconds: Record<string, number> = { '1m': 60, '5m': 300, '1d': 86400 };
+            const expectedGap = intervalSeconds[selectedInterval] || 86400;
+            const maxAllowedGap = expectedGap * 3; // Allow up to 3x the expected interval
+
+            let gapCount = 0;
+            let maxGapHours = 0;
+
+            for (let i = 1; i < formattedData.length; i++) {
+              const prevTime = formattedData[i - 1].time as number;
+              const currTime = formattedData[i].time as number;
+              const gap = currTime - prevTime;
+
+              if (gap > maxAllowedGap) {
+                gapCount++;
+                const gapHours = gap / 3600;
+                if (gapHours > maxGapHours) {
+                  maxGapHours = gapHours;
+                }
+              }
             }
-          });
-          console.log(`✅ Received ${response.data.length} candles for ${selectedSymbol} @ ${selectedInterval}`);
-          setCandles(response.data);
+
+            setDataGaps({ count: gapCount, maxGapHours: Math.round(maxGapHours * 10) / 10 });
+
+            // Check data quality
+            const expectedMinimum = 50; // Expect at least 50 candles for good quality
+            if (formattedData.length < expectedMinimum) {
+              setDataSource('partial'); // Partial data warning
+              console.warn(`⚠️ Partial data: received ${formattedData.length} / expected ${expectedMinimum}+`);
+            } else if (gapCount > 0) {
+              setDataSource('partial'); // Gaps detected
+              console.warn(`⚠️ Data gaps detected: ${gapCount} gap(s), max gap: ${maxGapHours.toFixed(1)}h`);
+            } else {
+              setDataSource('real'); // Good quality real data
+            }
+
+            setCandles(formattedData);
+          } else {
+            throw new Error("Empty API Response");
+          }
+
         } catch (error) {
-          console.error("❌ Failed to fetch candles:", error);
-          setCandles([]); // Clear data on error to match Disconnected state
+          console.warn("⚠️ API Unavailable or Empty, falling back to MOCK data");
+          setDataSource('mock'); // Mark as mock data
+          setDataGaps({ count: 0, maxGapHours: 0 }); // Reset gaps
+          // Generate appropriate mock data based on interval
+          let intervalSeconds = 86400; // Default 1d
+          if (selectedInterval === '1m') intervalSeconds = 60;
+          else if (selectedInterval === '5m') intervalSeconds = 300;
+
+          // Generate 200 candles to fill the chart
+          // Use a deterministic start price for 'Samsung' (simulated)
+          const mockPrice = selectedSymbol === '005930' ? 70000 : 150000;
+          const fallbackData = generateMockCandles(200, mockPrice, intervalSeconds);
+
+          setCandles(fallbackData);
         } finally {
           setIsLoading(false);
         }
@@ -93,25 +220,19 @@ function App() {
         <NavButton
           active={activeTab === 'dashboard'}
           onClick={() => setActiveTab('dashboard')}
-          icon={<LayoutDashboard />}
-          label="Dash"
-        />
-        <NavButton
-          active={activeTab === 'map'}
-          onClick={() => setActiveTab('map')}
           icon={<MapIcon />}
           label="Map"
         />
         <NavButton
-          active={activeTab === 'logs'}
-          onClick={() => setActiveTab('logs')}
-          icon={<List />}
-          label="Logs"
+          active={activeTab === 'analysis'}
+          onClick={() => setActiveTab('analysis')}
+          icon={<LayoutDashboard />}
+          label="Analyze"
         />
         <NavButton
           active={activeTab === 'system'}
           onClick={() => setActiveTab('system')}
-          icon={<Activity />}
+          icon={<Settings />}
           label="System"
         />
 
@@ -121,21 +242,65 @@ function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 p-2 pl-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 p-6">
+        {/* Data Quality Warning Badge */}
+        <AnimatePresence>
+          {dataSource !== 'real' && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={clsx(
+                "mb-4 px-4 py-2 rounded-lg border flex items-center gap-3",
+                dataSource === 'mock' && "bg-amber-500/10 border-amber-500/30 text-amber-400",
+                dataSource === 'partial' && "bg-orange-500/10 border-orange-500/30 text-orange-400"
+              )}
+            >
+              <span className="text-xl">⚠️</span>
+              <div className="flex-1">
+                <div className="font-semibold">
+                  {dataSource === 'mock' && (marketOpen ? 'Mock Data Mode' : 'Market Closed (Simulation)')}
+                  {dataSource === 'partial' && (
+                    dataGaps.count > 0 ? `Data Gaps Detected (${dataGaps.count})` : 'Partial Data Warning'
+                  )}
+                </div>
+                <div className="text-sm opacity-80">
+                  {dataSource === 'mock' && (
+                    marketOpen
+                      ? 'Backend API unavailable. Displaying simulated data for demonstration.'
+                      : 'Market is currently closed. Showing historical simulation data.'
+                  )}
+                  {dataSource === 'partial' && dataGaps.count > 0 && (
+                    `실제 데이터이나 시간적 누락 발견: ${dataGaps.count}개 구간, 최대 갭 ${dataGaps.maxGapHours}시간`
+                  )}
+                  {dataSource === 'partial' && dataGaps.count === 0 && (
+                    'Incomplete data received from backend. Some candles may be missing.'
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Top Header (Contextual) */}
         <header className="h-14 glass rounded-xl mb-2 flex items-center px-6 justify-between shrink-0 relative z-50">
           <h1 className="text-lg font-bold flex items-center gap-3 text-white tracking-tight">
             <span className="w-1.5 h-6 bg-blue-500 rounded-full inline-block" />
-            {activeTab === 'dashboard' && 'Market Dashboard'}
-            {activeTab === 'map' && 'Market Map (KOSPI)'}
-            {activeTab === 'logs' && 'Data Ingestion Logs'}
+            {activeTab === 'dashboard' && 'Market Map Overview'}
+            {activeTab === 'analysis' && 'Professional analysis'}
             {activeTab === 'system' && 'System Health'}
           </h1>
 
           {/* Controls */}
-          {activeTab === 'dashboard' && (
+          {activeTab === 'analysis' && (
             <div className="flex items-center gap-4 bg-black/20 p-1 pl-4 rounded-lg border border-white/5">
               <ServerStatus />
+              <div className="w-px h-6 bg-white/10 mx-2" />
+              {/* Date Navigator Placeholder */}
+              <div className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded border border-white/10">
+                <span className="text-[10px] text-gray-500 uppercase tracking-tighter">Date</span>
+                <input type="date" className="bg-transparent text-xs text-blue-400 outline-none border-none [color-scheme:dark]" defaultValue="2026-01-15" />
+              </div>
               <div className="w-px h-6 bg-white/10 mx-2" />
               <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Asset</span>
               <SymbolSelector
@@ -143,7 +308,6 @@ function App() {
                 onChange={(symbol, name) => {
                   setSelectedSymbol(symbol);
                   setSelectedName(name);
-                  setIsMapExpanded(false); // 종목 클릭 시 차트 확장
                 }}
               />
               <div className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white cursor-pointer">
@@ -153,8 +317,11 @@ function App() {
           )}
         </header>
 
+        {/* Ticker Tape */}
+        <TickerTape />
+
         {/* Tab Content with Animation */}
-        <main className="flex-1 overflow-hidden relative rounded-xl">
+        <main className="flex-1 overflow-hidden relative rounded-xl mt-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -165,54 +332,43 @@ function App() {
               className="absolute inset-0"
             >
               {activeTab === 'dashboard' && (
-                <div className="w-full h-full flex gap-2 p-1">
-                  {/* Left Section: Market Map (70% or 30%) */}
-                  <motion.div
-                    animate={{ flex: isMapExpanded ? 7 : 3 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="glass rounded-xl overflow-hidden shadow-xl flex flex-col relative"
-                  >
-                    <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0">
-                      <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Market Map Overview</span>
-                      <button
-                        onClick={() => setIsMapExpanded(!isMapExpanded)}
-                        className="text-[10px] bg-white/5 hover:bg-white/10 px-2 py-0.5 rounded text-gray-400"
-                      >
-                        {isMapExpanded ? 'Collapse' : 'Expand'}
-                      </button>
-                    </div>
-                    <div className="flex-1 min-h-0">
-                      <MarketMap
-                        filterType="STOCK"
-                        onSymbolClick={(symbol: string, name: string) => {
-                          setSelectedSymbol(symbol);
-                          setSelectedName(name);
-                          setIsMapExpanded(false); // 종목 클릭 시 차트 확장
-                        }}
-                      />
-                    </div>
-                  </motion.div>
+                <div className="w-full h-full glass rounded-xl overflow-hidden shadow-xl flex flex-col relative p-1">
+                  <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Market Map Overview</span>
+                  </div>
+                  <MarketMap
+                    filterType="STOCK"
+                    onSymbolClick={(symbol: string, name: string) => {
+                      setSelectedSymbol(symbol);
+                      setSelectedName(name);
+                      setActiveTab('analysis'); // Auto switch to analysis
+                    }}
+                  />
+                </div>
+              )}
 
-                  {/* Right Section: Focus (Chart + Ticks) (30% or 70%) */}
-                  <motion.div
-                    animate={{ flex: isMapExpanded ? 3 : 7 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="flex flex-col gap-2 min-w-0"
-                  >
-                    {/* Top: Chart */}
-                    <div className="flex-[6] glass rounded-xl overflow-hidden shadow-2xl relative">
+              {activeTab === 'analysis' && (
+                <div className="w-full h-full flex gap-2 p-1">
+                  {/* Left Section: Professional Chart (75%) */}
+                  <div className="flex-[7.5] flex flex-col gap-2 min-w-0 min-h-0">
+                    <div
+                      data-testid="chart-section"
+                      className="flex-1 flex flex-col glass rounded-xl overflow-hidden shadow-2xl relative min-h-0"
+                    >
                       {/* Chart Info Overlay */}
                       <div className="absolute top-3 left-4 z-10 flex items-center gap-2 pointer-events-none">
                         <span className="px-2 py-0.5 bg-blue-600/80 text-[10px] font-bold rounded-sm uppercase tracking-tighter shadow-lg shadow-blue-500/20 backdrop-blur-md">
                           {selectedName} ({selectedSymbol})
                         </span>
-                        <span className="hidden sm:inline-block text-[10px] text-gray-400 font-medium bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
-                          {isMapExpanded ? 'PREVIEW' : 'ANALYSIS'}
-                        </span>
+                        <div className="flex gap-1 bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
+                          <span className="text-[10px] text-gray-400 font-medium uppercase">ANALYSIS</span>
+                          <div className="w-px h-3 bg-white/10 mx-0.5" />
+                          <span className="text-[10px] text-green-400 font-bold">LIVE</span>
+                        </div>
                       </div>
 
                       {/* Timeframe Selector */}
-                      <div className="absolute top-3 right-4 z-10">
+                      <div className="absolute top-3 right-24 z-10">
                         <TimeframeSelector selected={selectedInterval} onChange={setSelectedInterval} />
                       </div>
 
@@ -227,16 +383,11 @@ function App() {
                             className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20"
                           >
                             <div className="flex flex-col items-center gap-3">
-                              <div className="relative w-12 h-12">
-                                {/* Outer Ring */}
-                                <div className="absolute inset-0 rounded-full border-2 border-blue-500/20"></div>
-                                {/* Spinning Ring */}
-                                <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-r-blue-500 animate-spin"></div>
-                                {/* Inner Glow */}
-                                <div className="absolute inset-2 bg-blue-500/20 rounded-full blur-md"></div>
+                              <div className="relative w-12 h-12 text-blue-500">
+                                <Activity size={48} className="animate-pulse" />
                               </div>
                               <span className="text-xs text-gray-300 font-medium tracking-wide">
-                                Loading {selectedInterval.toUpperCase()} Data...
+                                Syncing {selectedInterval.toUpperCase()} Market Data...
                               </span>
                             </div>
                           </motion.div>
@@ -245,62 +396,40 @@ function App() {
 
                       <CandleChart data={candles} symbol={selectedSymbol} interval={selectedInterval} />
                     </div>
+                  </div>
 
-                    {/* Bottom: Ticks (Only visible or relevant when focused) */}
-                    <div className="flex-[4] glass rounded-xl overflow-hidden flex flex-col shadow-xl">
-                      <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0">
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Live Execution</span>
-                        <div className="flex gap-1.5 items-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                          <span className="text-[10px] text-green-400 font-mono">STREAMS</span>
-                        </div>
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <LogsView />
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
+                  {/* Right Section: Order Book & Executions (2.5%) */}
+                  {/* Right Section: Trading Panel & Info (25% -> 20% visual) */}
+                  <div className="flex-[2.5] flex flex-col gap-2 min-w-0 min-h-0">
 
-              {activeTab === 'map' && (
-                <div className="w-full h-full flex flex-col gap-2">
-                  {/* Top Section: Maps Split */}
-                  <div className="flex-[7] flex gap-2 min-h-0">
-                    <div className="flex-[2] glass rounded-xl overflow-hidden p-1 flex flex-col">
-                      <div className="px-2 py-1 text-xs font-bold text-gray-400">Individual Stocks</div>
-                      <MarketMap filterType="STOCK" />
-                    </div>
-                    <div className="flex-[2] glass rounded-xl overflow-hidden p-1 flex flex-col">
-                      <div className="px-2 py-1 text-xs font-bold text-gray-400">Market Indices & Sector Groups</div>
-                      <MarketMap filterType="MARKET" />
+                    {/* Advanced Trading Panel (OrderBook + Histo + MarketInfo) */}
+                    <div className="flex-1 min-h-0">
+                      <TradingPanel symbol={selectedSymbol} />
                     </div>
                   </div>
-                  {/* Bottom Section: Sector Performance */}
-                  <div className="flex-[3] glass rounded-xl overflow-hidden p-2">
-                    <div className="h-full w-full">
-                      <SectorPerformance />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'logs' && (
-                <div className="w-full h-full glass rounded-xl overflow-hidden p-2">
-                  <LogsView />
                 </div>
               )}
 
               {activeTab === 'system' && (
-                <div className="w-full h-full flex items-center justify-center">
-                  <SystemDashboard />
+                <div className="w-full h-full flex flex-col gap-2">
+                  {/* System Dashboard */}
+                  <div className="flex-[4] flex items-center justify-center">
+                    <SystemDashboard />
+                  </div>
+                  {/* System Logs */}
+                  <div className="flex-[6] glass rounded-xl overflow-hidden p-2">
+                    <div className="px-3 py-2 bg-gray-800/50 border-b border-white/5 mb-2">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">System Monitoring (All Symbols)</span>
+                    </div>
+                    <LogsView />
+                  </div>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
         </main>
       </div>
-    </div>
+    </div >
   );
 }
 

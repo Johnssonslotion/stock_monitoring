@@ -51,6 +51,7 @@ graph TD
 - **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch).
 - **Dashboard**: React 기반 웹 대시보드 (`port: 5173`) 및 FastAPI 백엔드 가동 중.
 - **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
+- **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](docs/BACKLOG.md) 참조)
 
 ## 🧪 TDD 기반 무결성 보장
 
@@ -100,6 +101,7 @@ make test
 
 **알려진 이슈 확인**:
 - 📋 [Known Issues](docs/KNOWN_ISSUES.md)
+  - 최근 해결: Map-First Layout E2E 클릭 안정성 확보 (2026-01-15)
   - 최근 해결: ALREADY_IN_SUBSCRIBE 에러 (2026-01-15)
   - 최근 해결: Archiver restart policy 누락 (2026-01-15)
 

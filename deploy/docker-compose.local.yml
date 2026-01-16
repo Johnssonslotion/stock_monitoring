@@ -11,33 +11,47 @@ services:
     ports:
       - "5432:5432"
 
+  # --- Collectors (Disabled in Local) ---
   real-collector:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ./src:/app/src # Hot Reload for Python Code
-      - ./configs:/app/configs
-    environment:
-      - PYTHONUNBUFFERED=1
-    profiles:
-      - local
+    profiles: [ "production" ]
 
+  news-collector:
+    profiles: [ "production" ]
+
+  tick-archiver:
+    profiles: [ "production" ]
+
+  timescale-archiver:
+    profiles: [ "production" ]
+
+  news-archiver:
+    profiles: [ "production" ]
+
+  sentinel-agent:
+    profiles: [ "production" ]
+
+  history-loader:
+    profiles: [ "production" ]
+
+  # --- Core Services (Enabled in Local) ---
   api-server:
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./src:/app/src # Hot Reload
+      - ../src:/app/src # Hot Reload
+      - ../configs:/app/configs
     ports:
       - "8000:8000"
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     profiles:
       - local
 
   dashboard-ui:
     volumes:
-      - ./src/web:/app/src/web # Hot Reload for Frontend
+      - ../src/web:/app/src/web # Hot Reload for Frontend
+    environment:
+      - VITE_API_TARGET=http://api-server:8000
     profiles:
       - local
 

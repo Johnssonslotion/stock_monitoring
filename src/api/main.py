@@ -194,12 +194,11 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
     # Dynamic table/view selection based on interval
     # Updated: 2026-01-15 - Target Server Schema (Continuous Aggregates) with Local Fallback
     table_map = {
-        "1m": "public.candles_1m",
-        "5m": "public.candles_5m",
-        # 15m, 1h, 1d views not yet confirmed in DB, fallback to 5m/1d or TODO
-        "15m": "public.candles_15m", 
-        "1h": "public.candles_1h",
-        "1d": "public.candles_1d"
+        "1m": "candles_1m",
+        "5m": "market_candles_5m",
+        "15m": "market_candles_15m",
+        "1h": "market_candles_1h",
+        "1d": "market_candles_1d"
     }
     
     table_name = table_map.get(interval)
@@ -215,12 +214,12 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
             if interval == '1m':
                 query = f"""
                     WITH combined_data AS (
-                        SELECT bucket as time, open, high, low, close, volume, 1 as priority
-                        FROM public.candles_1m
+                        SELECT time, open, high, low, close, volume, 1 as priority
+                        FROM candles_1m
                         WHERE symbol = $1
-                        
+
                         UNION ALL
-                        
+
                         SELECT time, open, high, low, close, volume, 2 as priority
                         FROM market_candles
                         WHERE symbol = $1 AND interval = '1m'
@@ -236,17 +235,21 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
                 """
             else:
                 # Existing logic for other intervals (or strictly table mapped)
-                time_col = 'time' if table_name == 'market_candles' else 'bucket'
+                # For local development: query market_candles directly with interval filter
                 query = f"""
-                    SELECT {time_col} as time, open, high, low, close, volume
-                    FROM {table_name}
-                    WHERE symbol = $1
-                    ORDER BY {time_col} DESC
+                    SELECT time, open, high, low, close, volume
+                    FROM market_candles
+                    WHERE symbol = $1 AND interval = $3
+                    ORDER BY time DESC
                     LIMIT $2
                 """
                 
-            logger.info(f"Executing query on {table_name} (Hybrid) for {symbol}")
-            rows = await conn.fetch(query, symbol, limit)
+            logger.info(f"Executing query on market_candles for {symbol} @ {interval}")
+            # Pass interval as third parameter for non-1m queries
+            if interval == '1m':
+                rows = await conn.fetch(query, symbol, limit)
+            else:
+                rows = await conn.fetch(query, symbol, limit, interval)
             
             return [dict(r) for r in reversed(rows)]
         except Exception as e:

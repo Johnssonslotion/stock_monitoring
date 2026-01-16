@@ -74,6 +74,8 @@
 | UI-TS-01 | `test_tailscale_access` | (Manual) | Tailscale IP(100.100.103.19:5173)로 대시보드 접속 | ⏳ 검증중 |
 | UI-CHART-01 | `test_candle_chart_render` | (Manual/Browser) | 분봉 캔들차트 렌더링 및 API 데이터 연동 검증 (QQQ) | ✅ Pass |
 | UI-CHART-02 | `test_professional_chart_features` | (Manual/Browser) | 볼륨 서브플롯, MA5/MA20, 가격 패널, 시간 범위 선택 검증 | ✅ Pass |
+| UI-MAP-01 | `Map-first drill-down` | `tests/e2e/map-first-layout.spec.ts` | Map 확장 상태 유지 및 클릭 시 차트 슬라이드업 검증 | ✅ Pass |
+| UI-MAP-02 | `URL Symbol Sync` | `tests/e2e/map-first-layout.spec.ts` | URL 파라미터(`selected`)를 통한 종목 자동 로딩 및 분석 모드 진입 | ✅ Pass |
 
 ## 📈 4. 전략 및 백테스팅 (Strategy & Backtesting) [NEW]
 
