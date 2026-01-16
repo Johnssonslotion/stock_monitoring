@@ -1,0 +1,130 @@
+# Collection Strategy Configuration
+# 멀티 브로커 환경에서의 데이터 수집 범위 및 Failover 전략 정의
+
+strategy: "primary_backup"  # 전략 유형: primary_backup | full_redundancy | cost_optimized
+
+tiers:
+  # Tier 1: Critical - 전략 핵심 종목 (Dual Source)
+  tier1:
+    priority: "critical"
+    description: "전략의 핵심이 되는 종목. KIS + 미래에셋 이중화로 99.9% 가용성 보장"
+    symbols:
+      # KR 주요 대형주
+      - "005930"  # 삼성전자
+      - "000660"  # SK하이닉스
+      - "373220"  # LG에너지솔루션
+      - "207940"  # 삼성바이오로직스
+      - "005380"  # 현대차
+      - "000270"  # 기아
+      - "068270"  # 셀트리온
+      # 주요 지수 ETF
+      - "069500"  # KODEX 200
+      - "102110"  # TIGER 200
+      - "091230"  # TIGER 반도체
+      - "305540"  # TIGER 2차전지테마
+      - "091210"  # TIGER 헬스케어
+      - "091180"  # KODEX 자동차
+      # 레버리지 (순환매 감지용)
+      - "122630"  # KODEX 레버리지
+      - "252670"  # KODEX 200선물인버스2X
+      - "233740"  # KODEX 코스닥150레버리지
+    brokers:
+      primary: "kis"
+      backup: "mirae"
+      backup_delay: 0  # 즉시 이중 수집
+    sla:
+      availability: 99.9
+      max_latency_ms: 50
+
+  # Tier 2: Important - 섹터 ETF 및 확장 종목 (Primary + Lazy Backup)
+  tier2:
+    priority: "important"
+    description: "섹터 순환 분석에 필요한 ETF 및 주요 종목. 미래에셋 Primary, 키움 Backup"
+    symbols:
+      # 섹터 대표 종목
+      - "042700"  # 한미반도체
+      - "005490"  # POSCO홀딩스
+      - "247540"  # 에코프로비엠
+      - "000100"  # 유한양행
+      - "012330"  # 현대모비스
+      # 추가 섹터 ETF (확장)
+      - "091220"  # TIGER 조선
+      - "091250"  # TIGER 방산
+      - "091170"  # KODEX 부동산
+      - "117460"  # TIGER 에너지화학
+      # 기타 관심 종목 (약 20개 추가 가능)
+    brokers:
+      primary: "mirae"
+      backup: "kiwoom_re"
+      backup_delay: 60  # Primary 60초 무응답 시 Backup 활성화
+    sla:
+      availability: 99.0
+      max_latency_ms: 200
+
+  # Tier 3: Monitoring - 나머지 종목 (Single Source)
+  tier3:
+    priority: "low"
+    description: "시장 전체 모니터링용. 키움 단독 운영 (확장성 20,000개)"
+    symbols:
+      # 현재는 비어있음 (향후 확장 시 추가)
+      # 예: 코스닥 상위 100개, 테마주 등
+    brokers:
+      primary: "kiwoom_re"
+    sla:
+      availability: 95.0
+      max_latency_ms: 500
+
+# 브로커별 리소스 할당
+broker_allocation:
+  kis:
+    max_symbols: 40  # KIS 제약사항
+    memory_limit_mb: 512
+    reconnect_interval_sec: 60
+    rate_limit_per_sec: 20
+    
+  mirae:
+    max_symbols: 1000  # 미래에셋 제약사항
+    memory_limit_mb: 1024
+    reconnect_interval_sec: 30
+    buffer_size: 10000
+    rate_limit_per_sec: null  # 제한 없음
+    
+  kiwoom_re:
+    max_symbols: 20000  # 키움 RE 제약사항 (이론상)
+    memory_limit_mb: 2048
+    reconnect_interval_sec: 30
+    lazy_subscribe: true  # Backup 모드 시에만 구독
+    rate_limit_per_sec: 5
+
+# Failover 정책
+failover:
+  # Primary 장애 감지 조건
+  detection:
+    no_data_timeout_sec: 60  # 60초간 데이터 없으면 장애로 판단
+    heartbeat_interval_sec: 10
+    
+  # Backup 활성화 조건
+  activation:
+    consecutive_failures: 3  # 3회 연속 실패 시 Backup 활성화
+    cooldown_sec: 300  # Backup 활성화 후 5분간 Primary 복구 대기
+    
+  # 복구 정책
+  recovery:
+    auto_fallback: true  # Primary 복구 시 자동 전환
+    grace_period_sec: 60  # 복구 확인 후 60초 대기
+
+# Conflict Resolution (중복 데이터 처리)
+conflict_resolution:
+  strategy: "broker_priority"  # 전략: broker_priority | timestamp_first | average
+  broker_priority:
+    - "kis"        # 최우선 (레이턴시 최저)
+    - "mirae"      # 차선
+    - "kiwoom_re"  # 백업용
+  dedup_window_sec: 1  # 동일 심볼의 1초 내 데이터는 중복으로 간주
+
+# 모니터링 설정
+monitoring:
+  enable_cross_validation: true  # 브로커 간 가격 비교
+  price_diff_threshold: 10  # 10원 이상 차이 시 알림
+  latency_tracking: true
+  latency_percentiles: [50, 95, 99]
