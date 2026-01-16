@@ -9,6 +9,7 @@
 1.  **동작 검증**: `pytest` 통과.
 2.  **정적 분석**: `flake8`, `black` 준수.
 3.  **문서화**: 변경된 로직에 대한 Docstring 및 `README` 업데이트.
+4.  **DB 마이그레이션**: 스키마 변경 시 `migrate.sh` 검증 및 SQL 파일 커밋 필수.
 
 ### 1.3 멀티 디바이스 및 원격 근무 프로토콜 (Multi-Device Protocol) [v0.02+]
 **배경**: Mac(Apple Silicon), Linux(Server), Windows 등 이기종 환경에서의 동시 작업을 지원한다.

@@ -1,121 +1,121 @@
 # Collection Strategy Configuration
-# KIS + 키움 RE 2-Broker 환경에서의 데이터 수집 범위 및 Failover 전략 정의
-# ⚠️ 미래에셋 Open API는 2017년 이후 신규 신청 중단으로 제외
+# 키움 RE Base + KIS 단타 특화 전략 (2026-01-16 Revised)
+#
+# 원칙:
+# 1. KIS: 레이턴시 민감 단타 종목 전용 (초저지연)
+# 2. 구현: 키움 RE 20,000개 캐파 활용 (대용량 모니터링)
 
-strategy: "primary_backup"  # 전략 유형: primary_backup | full_redundancy | cost_optimized
+strategy: "hybrid_latency_capacity"
 
 tiers:
-  # Tier 1: Critical - 전략 핵심 종목 (Dual Source)
-  tier1:
+  # Tier 1: Short Term Alpha (KIS Only)
+  # 목적: 초저지연 시세 포착이 필수적인 단타/스캘핑 대상
+  tier1_short_term:
     priority: "critical"
-    description: "전략의 핵심이 되는 종목. KIS + 키움 RE 이중화로 99.9% 가용성 보장"
+    description: "초저지연 단타 종목. KIS 단독 사용 (백업 없음, 속도 최우선)"
     symbols:
-      # KR 주요 대형주
+      # 초고유동성 대형주 (HFT 대상)
       - "005930"  # 삼성전자
       - "000660"  # SK하이닉스
-      - "373220"  # LG에너지솔루션
-      - "207940"  # 삼성바이오로직스
       - "005380"  # 현대차
-      - "000270"  # 기아
-      - "068270"  # 셀트리온
-      # 주요 지수 ETF
-      - "069500"  # KODEX 200
-      - "102110"  # TIGER 200
-      - "091230"  # TIGER 반도체
-      - "305540"  # TIGER 2차전지테마
-      - "091210"  # TIGER 헬스케어
-      - "091180"  # KODEX 자동차
-      # 레버리지 (순환매 감지용)
+      # 레버리지/인버스 (변동성 활용)
       - "122630"  # KODEX 레버리지
       - "252670"  # KODEX 200선물인버스2X
       - "233740"  # KODEX 코스닥150레버리지
+      # 지수 대표 (선물 연동)
+      - "069500"  # KODEX 200
+      - "102110"  # TIGER 200
+      - "252670"  # KODEX 200선물인버스2X
     brokers:
       primary: "kis"
-      backup: "kiwoom_re"
-      backup_delay: 0  # 즉시 이중 수집
+      backup: null  # 속도 저하 방지를 위해 백업 미설정 (장애 시 Tier2로 강등 처리 로직 별도)
     sla:
-      availability: 99.9
-      max_latency_ms: 50
+      availability: 99.0
+      max_latency_ms: 30  # 극도로 타이트한 레이턴시 요구
 
-  # Tier 2: Important - 섹터 ETF 및 확장 종목 (Single Source + Auto Backup)
-  tier2:
-    priority: "important"
-    description: "섹터 순환 분석에 필요한 ETF 및 주요 종목. 키움 RE 단독, KIS Backup"
+  # Tier 2: Sector Rotation (Kiwoom Base)
+  # 목적: 섹터 자금 이동 및 순환매 포착
+  tier2_rotation:
+    priority: "high"
+    description: "섹터 대표주 및 ETF. 키움 메인, KIS는 백업으로만 활용"
     symbols:
-      # 섹터 대표 종목
-      - "042700"  # 한미반도체
-      - "005490"  # POSCO홀딩스
+      # 2차전지
+      - "373220"  # LG에너지솔루션
+      - "006400"  # 삼성SDI
       - "247540"  # 에코프로비엠
+      # 바이오
+      - "207940"  # 삼성바이오로직스
+      - "068270"  # 셀트리온
       - "000100"  # 유한양행
-      - "012330"  # 현대모비스
-      # 추가 섹터 ETF (확장)
+      # 자동차/조선/방산
+      - "000270"  # 기아
+      - "042660"  # 한화오션
+      - "012450"  # 한화에어로스페이스
+      # 인터넷/게임
+      - "035420"  # NAVER
+      - "036570"  # 엔씨소프트
+      # 주요 섹터 ETF (약 20개)
+      - "091230"  # TIGER 반도체
+      - "091210"  # TIGER 헬스케어
       - "091220"  # TIGER 조선
       - "091250"  # TIGER 방산
+      - "305540"  # TIGER 2차전지테마
       - "091170"  # KODEX 부동산
       - "117460"  # TIGER 에너지화학
+      - "143860"  # TIGER 헬스케어
     brokers:
       primary: "kiwoom_re"
       backup: "kis"
-      backup_delay: 60  # Primary 60초 무응답 시 Backup 활성화
+      backup_delay: 60  # 60초 장애 시 KIS가 긴급 수혈
     sla:
-      availability: 99.0
+      availability: 99.5
       max_latency_ms: 200
 
-  # Tier 3: Monitoring - 나머지 종목 (Single Source)
-  tier3:
-    priority: "low"
-    description: "시장 전체 모니터링용. 키움 단독 운영 (확장성 20,000개)"
+  # Tier 3: Broad Market (Kiwoom Only)
+  # 목적: 시장 전체 분위기 파악, 테마주 발굴 (확장 영역)
+  tier3_monitoring:
+    priority: "medium"
+    description: "시장 감지용 광범위 모니터링. 키움 단독 운영."
     symbols:
-      # 현재는 비어있음 (향후 확장 시 추가)
-      # 예: 코스닥 상위 100개, 테마주 등
+      # 현재는 예시, 향후 수백 개로 확장
+      - "035720"  # 카카오
+      - "003550"  # LG
+      - "010130"  # 고려아연
     brokers:
       primary: "kiwoom_re"
     sla:
       availability: 95.0
       max_latency_ms: 500
 
-# 브로커별 리소스 할당 (2-Broker 구조)
+# 브로커별 리소스 할당
 broker_allocation:
   kis:
-    max_symbols: 40  # KIS 제약사항
+    role: "sniper"  # 단타 스나이퍼
+    max_symbols: 20  # 여유 있게 설정하되 소수 정예 유지
     memory_limit_mb: 512
-    reconnect_interval_sec: 60
     rate_limit_per_sec: 20
+    reconnect_interval_sec: 30
     
   kiwoom_re:
-    max_symbols: 20000  # 키움 RE 제약사항 (이론상)
-    memory_limit_mb: 2048
-    reconnect_interval_sec: 30
+    role: "carrier"  # 대형 수송선
+    max_symbols: 5000  # 1차 목표 (최대 20,000)
+    memory_limit_mb: 4096
     rate_limit_per_sec: 5
+    screen_number_count: 50  # 사용할 화면번호 개수 (개당 100종목)
+    reconnect_interval_sec: 60
 
-# Failover 정책 (2-Broker 환경)
+# Failover 정책
 failover:
-  # Primary 장애 감지 조건
   detection:
-    no_data_timeout_sec: 60  # 60초간 데이터 없으면 장애로 판단
-    heartbeat_interval_sec: 10
-    
-  # Backup 활성화 조건
-  activation:
-    consecutive_failures: 3  # 3회 연속 실패 시 Backup 활성화
-    cooldown_sec: 300  # Backup 활성화 후 5분간 Primary 복구 대기
-    
-  # 복구 정책
+    no_data_timeout_sec: 60
+  
   recovery:
-    auto_fallback: true  # Primary 복구 시 자동 전환
-    grace_period_sec: 60  # 복구 확인 후 60초 대기
+    auto_fallback: true
+    grace_period_sec: 120  # 키움은 무거우므로 복구 판정 보수적으로
 
-# Conflict Resolution (중복 데이터 처리) - 2-Broker
+# Conflict Resolution
 conflict_resolution:
-  strategy: "broker_priority"  # 전략: broker_priority | timestamp_first | average
+  strategy: "broker_priority"
   broker_priority:
-    - "kis"        # 최우선 (레이턴시 최저)
-    - "kiwoom_re"  # 백업용
-  dedup_window_sec: 1  # 동일 심볼의 1초 내 데이터는 중복으로 간주
-
-# 모니터링 설정
-monitoring:
-  enable_cross_validation: true  # 브로커 간 가격 비교
-  price_diff_threshold: 10  # 10원 이상 차이 시 알림
-  latency_tracking: true
-  latency_percentiles: [50, 95, 99]
+    - "kis"        # 단타용 데이터는 무조건 KIS 신뢰
+    - "kiwoom_re"
