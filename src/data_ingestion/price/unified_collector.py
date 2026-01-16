@@ -19,6 +19,7 @@ from src.data_ingestion.price.kr.real_collector import KRRealCollector
 from src.data_ingestion.price.us.real_collector import USRealCollector
 from src.data_ingestion.price.kr.asp_collector import KRASPCollector
 from src.data_ingestion.price.us.asp_collector import USASPCollector
+from src.data_ingestion.price.kr.kiwoom_ws import KiwoomWSCollector
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("UnifiedCollector")
@@ -26,6 +27,9 @@ logger = logging.getLogger("UnifiedCollector")
 # 환경 변수
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 KIS_WS_URL = os.getenv("KIS_WS_URL", "ws://ops.koreainvestment.com:21000")
+KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
+KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
+KIWOOM_BACKUP_MODE = os.getenv("KIWOOM_BACKUP_MODE", "False").lower() == "true"
 
 # 인증 관리자
 auth_manager = KISAuthManager()
@@ -246,6 +250,38 @@ async def main():
     
     asyncio.create_task(market_scheduler(manager))
     asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
+
+    # 5. [NEW] Kiwoom Hybrid Collector (Core + Satellite)
+    if KIWOOM_BACKUP_MODE and KIWOOM_APP_KEY and KIWOOM_APP_SECRET:
+        logger.info("🛡️ Starting Kiwoom Hybrid Collector (Backup/Satellite Mode)...")
+        
+        # Load Core Symbols from Kist Config (Tier 1)
+        # Note: KRRealCollector.load_config() is sync, but IO bound. Safe for startup.
+        kr_tick.load_config() 
+        core_symbols = kr_tick.kr_symbols
+        
+        kiwoom_collector = KiwoomWSCollector(
+            app_key=KIWOOM_APP_KEY,
+            app_secret=KIWOOM_APP_SECRET,
+            symbols=core_symbols
+        )
+        # Run in background
+        asyncio.create_task(kiwoom_collector.start())
+        
+        # Scanner Integration (Dynamic Subscription)
+        async def kiwoom_scanner_listener():
+            pubsub = r.pubsub()
+            await pubsub.subscribe("system:add_symbol")
+            logger.info("📡 [Kiwoom] Listening for Dynamic Subscription Events...")
+            async for msg in pubsub.listen():
+                if msg['type'] == 'message':
+                    symbol = msg['data']
+                    logger.info(f"🛰️ [Kiwoom] Dynamic Subscription Triggered: {symbol}")
+                    await kiwoom_collector.add_symbol(symbol)
+                    
+        asyncio.create_task(kiwoom_scanner_listener())
+    else:
+        logger.info("ℹ️ Kiwoom Collector Disabled (Env Not Set)")
     
     # Run Manager (Block)
     await manager.run(ws_url, approval_key)
