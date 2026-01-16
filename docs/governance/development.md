@@ -133,6 +133,8 @@ if received_count == 0 and running_time > 300:  # 5분
 1.  **[README.md](file:///home/ubuntu/workspace/stock_monitoring/README.md)**: 전체 시스템 가속도(Velocity) 및 Pillar 상태 업데이트.
 2.  **[master_roadmap.md](file:///home/ubuntu/workspace/stock_monitoring/docs/strategies/master_roadmap.md)**: DoD 달성 여부 및 다음 단계 연결.
 3.  **[test_registry.md](file:///home/ubuntu/workspace/stock_monitoring/docs/testing/test_registry.md)**: 품질 게이트(Tier 1~3) 통과 증명.
+4.  **[Experiment Registry](file:///home/ubuntu/workspace/stock_monitoring/experiments/README.md)**: 모든 개별 실험 및 시뮬레이션 결과 영구 기록.
+5.  **[Knowledge Base (INDEX)](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/knowledge_base.md)**: 세션 persistence 보장을 위한 기술 분석 및 의사결정 이력 허브.
 
 **문서 동조화 프로토콜 (Sync Protocol)**:
 - AI는 사용자가 `@.ai-rules.md`를 언급하거나 '문서 동기화'를 요청할 경우, 위 3대 문서를 **전수 Read**하여 상호 참조 링크와 태스크 상태가 일치하는지 Audit 수행 필수.
