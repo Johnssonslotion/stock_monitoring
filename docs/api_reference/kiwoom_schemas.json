@@ -1,0 +1,352 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Kiwoom WebSocket Schemas",
+    "definitions": {
+        "TokenRequest": {
+            "type": "object",
+            "required": [
+                "grant_type",
+                "appkey",
+                "secretkey"
+            ],
+            "properties": {
+                "grant_type": {
+                    "type": "string",
+                    "enum": [
+                        "client_credentials"
+                    ]
+                },
+                "appkey": {
+                    "type": "string",
+                    "description": "Application Key"
+                },
+                "secretkey": {
+                    "type": "string",
+                    "description": "Secret Key"
+                }
+            }
+        },
+        "TokenResponse": {
+            "type": "object",
+            "required": [
+                "return_code",
+                "token"
+            ],
+            "properties": {
+                "expires_dt": {
+                    "type": "string",
+                    "pattern": "^\\d{14}$"
+                },
+                "return_msg": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string",
+                    "enum": [
+                        "Bearer"
+                    ]
+                },
+                "return_code": {
+                    "type": "integer"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "LoginRequest": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "token"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "LOGIN"
+                    ]
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "LoginResponse": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "return_code"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "LOGIN"
+                    ]
+                },
+                "return_code": {
+                    "type": "integer"
+                },
+                "return_msg": {
+                    "type": "string"
+                },
+                "sor_yn": {
+                    "type": "string",
+                    "enum": [
+                        "Y",
+                        "N"
+                    ]
+                }
+            }
+        },
+        "RegRequest": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "grp_no",
+                "refresh",
+                "data"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "REG"
+                    ]
+                },
+                "grp_no": {
+                    "type": "string",
+                    "pattern": "^\\d{4}$",
+                    "description": "Group number (4 digits)"
+                },
+                "refresh": {
+                    "type": "string",
+                    "enum": [
+                        "0",
+                        "1"
+                    ],
+                    "description": "0: Clear existing, 1: Keep existing"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RegDataItem"
+                    }
+                }
+            }
+        },
+        "RegDataItem": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "item": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "maxItems": 100,
+                    "description": "Symbol codes (max 100)"
+                },
+                "type": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "00",
+                            "04",
+                            "0A",
+                            "0B",
+                            "0C",
+                            "0D",
+                            "0E",
+                            "0F",
+                            "0G",
+                            "0H",
+                            "0I",
+                            "0J",
+                            "0U",
+                            "0g",
+                            "0m",
+                            "0s",
+                            "0u",
+                            "0w",
+                            "1h"
+                        ]
+                    },
+                    "description": "TR types"
+                }
+            }
+        },
+        "RegResponse": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "return_code"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "REG"
+                    ]
+                },
+                "return_code": {
+                    "type": "integer"
+                },
+                "return_msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "RemoveRequest": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "grp_no",
+                "data"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "REMOVE"
+                    ]
+                },
+                "grp_no": {
+                    "type": "string",
+                    "pattern": "^\\d{4}$"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RegDataItem"
+                    }
+                }
+            }
+        },
+        "RealDataMessage": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "data"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "REAL"
+                    ]
+                },
+                "return_code": {
+                    "type": "integer"
+                },
+                "return_msg": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RealDataItem"
+                    }
+                }
+            }
+        },
+        "RealDataItem": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "description": "TR type (0B, 0D, etc.)"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "TR name in Korean"
+                },
+                "item": {
+                    "type": "string",
+                    "description": "Symbol code"
+                },
+                "values": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "FID-value pairs"
+                }
+            }
+        },
+        "PingMessage": {
+            "type": "object",
+            "required": [
+                "trnm"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string",
+                    "enum": [
+                        "PING"
+                    ]
+                }
+            }
+        },
+        "ErrorResponse": {
+            "type": "object",
+            "required": [
+                "trnm",
+                "return_code",
+                "return_msg"
+            ],
+            "properties": {
+                "trnm": {
+                    "type": "string"
+                },
+                "return_code": {
+                    "type": "integer",
+                    "not": {
+                        "enum": [
+                            0
+                        ]
+                    }
+                },
+                "return_msg": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "oneOf": [
+        {
+            "$ref": "#/definitions/TokenRequest"
+        },
+        {
+            "$ref": "#/definitions/TokenResponse"
+        },
+        {
+            "$ref": "#/definitions/LoginRequest"
+        },
+        {
+            "$ref": "#/definitions/LoginResponse"
+        },
+        {
+            "$ref": "#/definitions/RegRequest"
+        },
+        {
+            "$ref": "#/definitions/RegResponse"
+        },
+        {
+            "$ref": "#/definitions/RemoveRequest"
+        },
+        {
+            "$ref": "#/definitions/RealDataMessage"
+        },
+        {
+            "$ref": "#/definitions/PingMessage"
+        },
+        {
+            "$ref": "#/definitions/ErrorResponse"
+        }
+    ]
+}
