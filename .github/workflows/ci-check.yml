@@ -3,6 +3,13 @@ name: CI Check
 on:
   pull_request:
     branches: [ "main", "develop" ]
+    paths-ignore:
+      - 'docs/**'
+      - 'experiments/**'
+      - '**.md'
+      - '.gitignore'
+      - 'README.md'
+      - 'BACKLOG.md'
 
 jobs:
   quality-check:
