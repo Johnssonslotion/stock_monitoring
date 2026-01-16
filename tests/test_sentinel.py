@@ -31,11 +31,15 @@ async def test_sentinel_resource_monitor():
         sentinel.is_running = False
         await task
 
-        # Check if alert was published
-        sentinel.redis.publish.assert_called()
-        args = sentinel.redis.publish.call_args[0]
-        assert args[0] == "system_alerts"
-        data = json.loads(args[1])
+        # Check if alerts and metrics were published
+        # monitor_resources publishes to both 'system_alerts' and 'system.metrics'
+        alert_channels = [call[0][0] for call in sentinel.redis.publish.call_args_list]
+        assert "system_alerts" in alert_channels
+        assert "system.metrics" in alert_channels
+        
+        # Verify alert content
+        alert_call = next(c for c in sentinel.redis.publish.call_args_list if c[0][0] == "system_alerts")
+        data = json.loads(alert_call[0][1])
         assert "High CPU Usage" in data["message"]
 
 @pytest.mark.asyncio
