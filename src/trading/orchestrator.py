@@ -14,6 +14,7 @@ class BrokerOrchestrator:
     여러 브로커 워커를 가변적으로 관리하는 오케스트레이터
     """
     ADAPTER_MAP: Dict[str, Type[BrokerBase]] = {
+        "kis": MiraeAdapter,  # TODO: KISAdapter 구현 시 교체, 현재는 Mock용으로 MiraeAdapter 사용
         "mirae": MiraeAdapter,
         "kiwoom_re": KiwoomREAdapter
     }
