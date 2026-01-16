@@ -18,9 +18,12 @@
 | Failure Mode 자동 복구 | QA | P2 | 수집단 구현 | Doomsday Check 연동 |
 
 ## 3. 완료 (Done)
-- [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
-- [x] 가변적 워커 아키텍처 설계 (`worker_architecture.md`)
+- [x] 브로커 소켓 제약사항 조사 및 인프라 문서 통합
+- [x] 가변적 워커 아키텍처 설계 및 문서화
 - [x] 지식 베이스(Knowledge Base) 구축 및 영구화 전략 수립
+- [x] CI/CD 빌드 스킵([skip ci]) 및 paths-ignore 설정 적용
+- [x] 거버넌스 및 정책 업데이트 전용 티켓(`docs/policy-update-v2`) 마무리
+
 
 ---
 
