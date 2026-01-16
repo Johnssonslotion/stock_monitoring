@@ -5,6 +5,7 @@
 .env.dev
 .env.prod
 .env.*.local
+.env.backtest
 
 # Python
 __pycache__/

@@ -43,7 +43,8 @@ graph TD
 
 ## 📡 현재 시스템 상태 (Current Status)
 - **Data Ingestion**: KR/US 실시간 틱 수집 및 뉴스(RSS) 수집 가동 중 (`src/data_ingestion`).
-  - 🆕 **구독 확인 로직**: 서버 응답(SUCCESS/FAILED) 파싱 및 재시도 (2026-01-14)
+  - 🆕 **Kiwoom Integration**: WebSocket(100 slots) + REST(Index) 하이브리드 아키텍처 (2026-01-20)
+  - **Coverage**: Top 40 (KIS) + Next 100 (Kiwoom) = **Total 140 Stocks**
 - **Database**:
   - **TimescaleDB**: 실시간 틱 데이터 저장 (Hot/Warm).
   - **DuckDB**: 분석용 데이터 레이크 (Cold).
