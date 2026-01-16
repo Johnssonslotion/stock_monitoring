@@ -2,7 +2,14 @@ name: CD Deploy
 
 on:
   push:
-    branches: [ "develop" ]  # main은 배포하지 않음 (아카이브용)
+    branches: [ "develop" ]
+    paths-ignore:
+      - 'docs/**'
+      - 'experiments/**'
+      - '**.md'
+      - '.gitignore'
+      - 'README.md'
+      - 'BACKLOG.md'  # main은 배포하지 않음 (아카이브용)
 
 jobs:
   deploy:
