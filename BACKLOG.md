@@ -6,7 +6,6 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1 Week 2: Chaos Test** | QA + Developer | **P0** | [/] | 타임랙, Failover 시뮬레이션 |
-| **ISSUE-045: CPU 모니터링 수정** | Developer | **P0** | [/] | [Branch: bug/ISSUE-045] |
 | 수집단(Collector) 개편 | Developer | P1 | [/] | 미래/키움 RE 연동 |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
 
@@ -16,7 +15,6 @@
 | **🚨 KIS 중복 구독 에러 해결** | Developer + Infra | **P0** | - | 11,965건/1h, 373220 종목 집중 |
 | 미래에셋 OAuth2 연동 | Developer | P1 | - | API 키 대기 중 |
 | 키움 RE 화면번호 풀링 | Architect | P1 | - | REST API 사양 기준 |
-| **실시간 모니터링 WS API** | Developer | **P1** | - | ISSUE-044: REST -> WebSocket 전환 |
 | 상법개정 앵커 백테스트 | Data Scientist | P2 | 수집단 개편 | 2/26 기준 데이터 |
 | Failure Mode 자동 복구 | QA | P2 | 수집단 구현 | Doomsday Check 연동 |
 
@@ -28,6 +26,7 @@
 - [x] Orchestrator Failover 로직 (8 tests)
 - [x] **Governance v2: 헌법 개정 및 10대 워크플로우 구축**
 - [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
+- [x] **ISSUE-045: CPU 모니터링 수정 & 실시간 WS API (ISSUE-044) 전환**
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
