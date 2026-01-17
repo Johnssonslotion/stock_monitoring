@@ -121,7 +121,11 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
                 timeVisible: true,
                 secondsVisible: false,
                 borderColor: '#2b2b43',
-                rightOffset: 2,
+                rightOffset: 12,
+                minBarSpacing: 6, // Fix: Prevent overlaps
+                fixLeftEdge: true,
+                fixRightEdge: true,
+                allowShiftVisibleRangeOnWhitespaceReplacement: true,
             },
             rightPriceScale: {
                 borderColor: '#2b2b43',
