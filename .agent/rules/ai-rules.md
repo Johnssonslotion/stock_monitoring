@@ -1,4 +1,4 @@
-# AI Rules v2.5 - The Constitution (Index)
+# AI Rules v2.7 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -42,7 +42,9 @@
 - **AI Duty**: AI는 코드를 수정하기 전 `HISTORY.md`의 최근 변경사항(Decision Doc)을 읽어 변경의 맥락을 파악해야 한다.
 
 ## 5. Spec Verification Gate (자동 검증 체크리스트)
-AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다:
+AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다.
+
+0.  **Sync First (Constitution v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
 1.  **Spec Existence**: 해당 기능/API에 대한 Spec 문서(`docs/specs/`)가 존재하는가?
 2.  **Schema Completeness**: Swagger/OpenAPI 또는 DDL이 포함되어 있는가?
 3.  **Edge Case Coverage**: 이상치(Null, Negative, Timeout) 처리 방침이 명시되어 있는가?
