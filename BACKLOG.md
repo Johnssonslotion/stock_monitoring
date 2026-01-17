@@ -6,6 +6,7 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1 Week 2: Chaos Test** | QA + Developer | **P0** | [/] | 타임랙, Failover 시뮬레이션 |
+| **ISSUE-045: CPU 모니터링 수정** | Developer | **P0** | [/] | [Branch: bug/ISSUE-045] |
 | 수집단(Collector) 개편 | Developer | P1 | [/] | 미래/키움 RE 연동 |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
 

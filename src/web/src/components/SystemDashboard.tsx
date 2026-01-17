@@ -55,18 +55,22 @@ export const SystemDashboard: React.FC = () => {
 
         // 1. Listen for Real-time Metrics
         const handleMetric = (m: any) => {
+            console.log("DEBUG: Received System Metric:", m);
             if (['cpu', 'memory', 'disk'].includes(m.type)) {
                 const timeKey = new Date(m.timestamp || m.time).toLocaleTimeString();
                 setChartData(prev => {
-                    const newData = [...prev];
-                    const last = newData[newData.length - 1];
+                    const last = prev[prev.length - 1];
 
                     if (last && last.time === timeKey) {
-                        last[m.type] = m.value;
-                        return newData;
+                        // IMMUTABLE UPDATE: Create new object and new array
+                        console.log(`DEBUG: Updating existing tick ${timeKey} with ${m.type}=${m.value}`);
+                        const updatedLast = { ...last, [m.type]: m.value };
+                        return [...prev.slice(0, -1), updatedLast];
                     } else {
+                        // NEW ENTRY
+                        console.log(`DEBUG: Creating new tick ${timeKey} with ${m.type}=${m.value}`);
                         const newEntry = { time: timeKey, [m.type]: m.value };
-                        return [...newData.slice(-99), newEntry];
+                        return [...prev.slice(-99), newEntry];
                     }
                 });
             } else if (m.type === 'governance_status') {

@@ -13,13 +13,13 @@
 ### Pillar 1: Real-time Infrastructure Monitoring
 - **Goal**: 하드코딩된 폴링을 제거하고 실시간 리소스 변화를 대시보드에 반영.
 - **Phases**:
-    - [ ] **Phase 1: WebSocket Backend**: FastAPI `WebsocketRouter` 도입 및 Redis Pub/Sub 연동.
-    - [ ] **Phase 2: Frontend Refactor**: `StreamManager` 통합 및 실시간 차트 렌더링 최적화.
+    - [x] **Phase 1: WebSocket Backend**: FastAPI `WebsocketRouter` 도입 및 Redis Pub/Sub 연동. (DONE)
+    - [x] **Phase 2: Frontend Refactor**: `StreamManager` 통합 및 실시간 차트 렌더링 최적화. (DONE)
 
 ### Pillar 2: Intelligent Sentinel (Alerting & Recovery)
 - **Goal**: 단순 지표 수집을 넘어, 장애 상황을 스스로 판단하고 조치하는 'Sentinel' 고도화.
 - **Phases**:
-    - [ ] **Phase 1: Sentinel Alert Routing**: 시스템 경고 발생 시 WebSocket을 통한 즉각 전파.
+    - [x] **Phase 1: Sentinel Alert Routing**: 시스템 경고 발생 시 WebSocket을 통한 즉각 전파. (DONE)
     - [ ] **Phase 2: Auto-Recovery Integration**: 백로그 P2 아이템 'Failure Mode 자동 복구' 구현.
 
 ## Timeline (Q1 2026)

@@ -4,7 +4,7 @@ import json
 import os
 
 async def test_system_ws():
-    uri = "ws://localhost:8000/api/system/ws"
+    uri = "ws://localhost:8000/ws"
     print(f"Connecting to {uri}...")
     try:
         async with websockets.connect(uri) as websocket:

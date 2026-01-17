@@ -27,6 +27,8 @@ class Sentinel:
         self.startup_time = datetime.now()
         self.is_running = True
         self.config = self.load_config()
+        # Warmup psutil
+        psutil.cpu_percent(interval=None)
 
     def load_config(self):
         config_path = "configs/sentinel_config.yaml"
@@ -56,7 +58,8 @@ class Sentinel:
             await asyncio.sleep(interval)
             
             # 1. Host Resources
-            cpu = psutil.cpu_percent(interval=1)
+            # interval=None returns percentage since last call (non-blocking)
+            cpu = psutil.cpu_percent(interval=None)
             mem = psutil.virtual_memory().percent
             disk = psutil.disk_usage('/').percent
             
