@@ -101,6 +101,12 @@
 - **Phase 2 (Engine Core)**: Event-driven 방식의 백테스팅 엔진 및 성과 측정(Sharpe, MDD 등) 모듈 구현. (✅ DONE)
 - **Phase 3 (Worktree Strategy)**: `exp/*` 브랜치를 활용한 실험 관리 및 결과 리포트 자동화 프로세스 정립. (✅ DONE)
 
+### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [PLANNED]
+- **목표**: 비용(세금, 수수료, 이자)과 시장 마찰(슬리피지)을 반영한 하이퍼 리얼리즘 시뮬레이션 환경 구축.
+- **Phase 1 (Virtual Exchange)**: RFC-004 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
+- **Phase 2 (Cost Modeling)**: KR/US 세금, 브로커 수수료, 미수 이자 계산 엔진 통합. (⏳ PLANNED)
+- **Phase 3 (Dashboard)**: 실시간 PnL 및 비용 분석 대시보드 추가. (⏳ PLANNED)
+
 ### Pillar 5: 시스템 리팩토링 및 코드 품질 고도화 (System Refactoring) [DEFERRED]
 - **Goal**: RFC-003(Config Management Standard) 준수를 위한 전략 파라미터의 YAML 분리 및 Config 시스템 구조 개선.
 - **Phase 1 (Config Separation)**: 전략 알고리즘 파라미터(이동평균 기간, 임계값 등)를 코드에서 분리하여 `configs/strategy_config.yaml`로 이관. (⏳ DEFERRED)
