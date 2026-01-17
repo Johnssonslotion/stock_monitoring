@@ -14,6 +14,14 @@
 
 ## 🏛️ 4대 핵심 필러 (Strategic Pillars)
 
+### Pillar 0: 거버넌스 및 스펙 표준화 (Governance & Spec) [DONE]
+- **Goal**: "No Spec, No Code". 모든 개발 활동의 선행 지표로서 문서화 강제.
+- **Phase 1 (Validation)**: `ai-rules.md` 헌법 개정 및 LLM Self-Check 도입. (✅ DONE)
+- **Phase 2 (Standardization)**:
+  - Backend/Database/UI **3대 명세서(Specification Sheet)** 제정. (✅ DONE)
+  - **RFC & ADR Process** 도입으로 변경 관리 체계화. (✅ DONE)
+- **Phase 3 (Audit)**: 주기적인 문서-코드 정합성 감사 (Gap Analysis). (✅ DONE)
+
 ### Pillar 1: 인프라 안정성 (Dev/Prod 격리) [DONE]
 - **Phase 1**: `.env.dev` / `.env.prod` 설정을 통한 키 및 DB 경로 분리.
 - **Phase 2**: `Makefile` & `docker-compose.override.yml` 도입.

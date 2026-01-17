@@ -14,21 +14,20 @@ trigger: always_on
 ## 1. Governance Navigation
 | 영역 | 문서 | 핵심 내용 |
 | :--- | :--- | :--- |
-## 1. Governance Navigation
-| 영역 | 문서 | 핵심 내용 |
-| :--- | :--- | :--- |
 | **의사결정** | [Personas & Council](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md) | 6인의 페르소나, 협의 프로토콜, Auto-Proceed 원칙 |
-| **개발 표준** | [Development & Quality](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/development.md) | **Strict Git Flow**, 멀티 디바이스 프로토콜, 테스트 게이트 |
+| **개발 표준** | [Development & Quality](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/development.md) | **No Spec No Code**, Strict Git Flow, 테스트 게이트 |
 | **인프라 & DB** | [Infrastructure](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/infrastructure.md) | **Tailscale**, DB 격리(Snapshot), **Zero Cost** 원칙 |
+| **문서 표준** | **[Documentation Standard](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/documentation_standard.md)** | **RFC & ADR Process**, Versioning, Changelog 관리 |
 
 ## 2. 절대 헌법 (The Immutable Laws)
-다음 5가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
+다음 6가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
 
 1.  **Deep Verification**: 데이터 작업 후 로그만 믿지 말고 **DB를 직접 조회**하여 교차 검증하라.
 2.  **Single Socket**: KIS API는 하나의 소켓 연결만 유지한다. (Dual Socket 시도 금지)
 3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다.
 4.  **Auto-Proceed**: 단위 테스트가 통과된 Safe 작업은 즉시 실행한다.
 5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
+6.  **LLM Enforcement (Self-Check)**: AI는 코드를 수정하기 전, **"관련된 RFC/ADR/Spec 문서가 존재하는가?"**를 스스로 질문하고 검증해야 한다. 문서가 없다면 **즉시 작업을 중단**하고 문서부터 작성해야 한다. (No Spec, No Code)
 
 ## 3. 언어 원칙
 -   **Artifacts**: 모든 산출물(Task, Implementation Plan, Walkthrough)은 **반드시 한국어**로 작성한다. (영어 혼용 금지)
