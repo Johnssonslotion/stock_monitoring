@@ -52,9 +52,24 @@ AI(LLM)는 다음 수칙을 알고리즘적으로 강제해야 한다.
 ```bash
 docs/
 ├── governance/       # 규칙, 표준 (Constitution)
+├── ideas/            # 아이디어 인큐베이터 (신규)
 ├── specs/            # 기능 명세 (Single Source of Truth)
 ├── rfc/              # 변경 제안 (Proposed Changes)
 ├── adrs/             # 의사결정 기록 (Decisions)
 ├── manuals/          # 사용자 가이드 (How-to)
 └── testing/          # 테스트 전략 및 레지스트리
 ```
+
+## 7. 워크플로우 활용 (Workflow Automation)
+반복적인 거버넌스 프로세스는 `.agent/workflows/`에 정의된 워크플로우를 사용하여 일관성을 확보한다.
+
+**주요 워크플로우:**
+- `/create-rfc`: RFC 문서 생성 (템플릿 자동 적용)
+- `/create-spec`: Spec 문서 작성 (코드 분석 포함)
+- `/run-gap-analysis`: 코드-문서 불일치 탐지 (주기적 Audit)
+- `/council-review`: 6인 Council 협의 진행
+- `/activate-deferred`: 이연 작업 활성화
+- `/create-roadmap`: 프로젝트 로드맵 및 구조 자동 생성
+
+**참조**: [Workflows README](../../.agent/workflows/README.md)
+

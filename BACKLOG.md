@@ -37,3 +37,5 @@
 1. **Sync First**: 새로운 피쳐 개발 전후로 본 백로그를 업데이트하여 환경 간 차이를 방지한다.
 2. **Commit with TaskID**: 모든 커밋은 가급적 백로그의 태스크와 연계되도록 기술한다.
 3. **Review**: 주 단위 또는 마일스톤 종료 시 PM 페르소나가 백로그의 DoD를 점검한다.
+4. **Deferred Work**: RFC 승인 후 구현이 이연된 작업은 [Deferred Work Registry](docs/governance/deferred_work.md)에 별도 관리한다.
+

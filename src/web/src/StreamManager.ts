@@ -14,9 +14,17 @@ class StreamManager {
         // Use relative path for proxy support (ws://host/api/v1/ws)
         // Note: Vite proxy might not handle WS well, direct might be safer if port known
         // But let's try relative first. If fails, fallback to direct port.
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        // Hardcoded port 8000 for local dev if proxy fails, but try relative /ws first via Vite
-        const url = `${protocol}//${window.location.hostname}:8000/ws`;
+        // Priority: 1. Full URL (Env) 2. Port (Env) 3. Default (8000)
+        const envUrl = import.meta.env.VITE_API_URL;
+        let url: string;
+
+        if (envUrl) {
+            url = envUrl; // e.g., "ws://remote-ip:8000/ws"
+        } else {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const port = import.meta.env.VITE_API_PORT || 8000;
+            url = `${protocol}//${window.location.hostname}:${port}/ws`;
+        }
 
         console.log(`Connecting to WebSocket: ${url}`);
         this.socket = new WebSocket(url);
@@ -34,9 +42,15 @@ class StreamManager {
                 const raw = event.data;
                 const parsed = JSON.parse(raw);
 
-                // Identify message type (Heuristic or strict schema)
-                // Market Ticks usually have 'symbol', 'price', 'time'
-                if (parsed.price && parsed.volume) {
+                // Strict Schema Validation (Spec Compliance)
+                // Use 'type' field to distinguish messages
+                if (parsed.type === 'tick') {
+                    this.emit('tick', parsed);
+                } else if (parsed.type === 'orderbook') {
+                    this.emit('orderbook', parsed);
+                } else if (parsed.price && parsed.volume) {
+                    // Fallback for legacy messages (during migration)
+                    console.warn("Received legacy packet without type field");
                     this.emit('tick', parsed);
                 }
             } catch (e) {

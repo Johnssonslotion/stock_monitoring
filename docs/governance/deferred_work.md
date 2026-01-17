@@ -1,0 +1,57 @@
+# Deferred Work Registry (이연 작업 등록부)
+
+이연된 작업(Deferred Work)을 추적하고 관리하는 레지스트리입니다. RFC 승인은 되었으나 실제 구현이 미뤄진 작업, 또는 로드맵에는 있지만 우선순위가 낮아 대기 중인 작업을 기록합니다.
+
+---
+
+## 등록 원칙
+1. **RFC 링크 필수**: 모든 이연 작업은 관련 RFC/ADR 문서를 참조해야 합니다.
+2. **Trigger 명시**: 언제 작업을 시작할지 명확한 트리거 조건을 정의합니다.
+3. **Auto-Expire**: 6개월 이상 방치된 작업은 자동으로 "Cancelled" 처리되거나 재검토됩니다.
+
+---
+
+## 1. Config 관리 고도화 (P1 - High Priority)
+
+| 항목 | 내용 |
+| :--- | :--- |
+| **ID** | `DEF-003-001` |
+| **Title** | 전략 파라미터 Config 분리 (RFC-003 Compliance) |
+| **Related RFC** | [RFC-003](./decisions/RFC-003_config_management_standard.md) |
+| **Status** | ⏳ DEFERRED |
+| **Assigned** | Developer + Architect |
+| **Priority** | P1 (High) |
+| **Trigger** | 사용자 일정 여유 확보 시 |
+| **Dependencies** | - |
+| **Scope** | - `configs/strategy_config.yaml` 표준 포맷 정의<br>- `src/core/config.py`에 `StrategyConfig` Pydantic 모델 추가<br>- `SampleMomentumStrategy` 등 전략 클래스 리팩토링 |
+| **Implementation Plan** | [Link](/home/ubuntu/.gemini/antigravity/brain/d20082fe-6e04-4ba8-8324-cc86e25a09db/implementation_plan.md) |
+| **Roadmap** | [Pillar 5: System Refactoring](../strategies/master_roadmap.md#pillar-5) |
+| **Created** | 2026-01-17 |
+| **Last Review** | 2026-01-17 |
+
+---
+
+## 2. 추가 이연 작업 (Future Placeholders)
+
+### Template
+```markdown
+| 항목 | 내용 |
+| :--- | :--- |
+| **ID** | `DEF-00X-00Y` |
+| **Title** | [작업 제목] |
+| **Related RFC** | [RFC-XXX](링크) |
+| **Status** | ⏳ DEFERRED |
+| **Trigger** | [구체적 조건] |
+```
+
+---
+
+## 관리 프로세스
+- **주기적 리뷰**: 매 분기 말 PM 페르소나가 검토.
+- **활성화 (Activation)**: 사용자가 다음과 같이 명령 시 즉시 Todo로 이동.
+  - 예: `"DEF-003-001 백로그로 활성화해줘"`
+  - 예: `"Config 분리 작업 시작할게, activate"`
+  - AI는 자동으로 `BACKLOG.md`에 추가하고 `task.md`를 생성함.
+- **Status Update**: 트리거 조건 충족 시 → Status를 `🔄 ACTIVE`로 변경.
+- **Archiving**: 완료 시 → "Done" 섹션으로 이동하고 완료일 기록.
+

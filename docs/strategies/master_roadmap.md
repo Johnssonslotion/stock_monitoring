@@ -21,6 +21,7 @@
   - Backend/Database/UI **3대 명세서(Specification Sheet)** 제정. (✅ DONE)
   - **RFC & ADR Process** 도입으로 변경 관리 체계화. (✅ DONE)
 - **Phase 3 (Audit)**: 주기적인 문서-코드 정합성 감사 (Gap Analysis). (✅ DONE)
+  - **RFC Enforcement**: Single Socket 강제(RFC-001) 및 Strategy Spec 의무화(RFC-002) 적용. (✅ DONE)
 
 ### Pillar 1: 인프라 안정성 (Dev/Prod 격리) [DONE]
 - **Phase 1**: `.env.dev` / `.env.prod` 설정을 통한 키 및 DB 경로 분리.
@@ -73,6 +74,14 @@
 - **Phase 1 (Backtest Infrastructure)**: 원본과 격리된 백테스팅 전용 워크트리 및 Docker 인프라 구축. (✅ DONE)
 - **Phase 2 (Engine Core)**: Event-driven 방식의 백테스팅 엔진 및 성과 측정(Sharpe, MDD 등) 모듈 구현. (✅ DONE)
 - **Phase 3 (Worktree Strategy)**: `exp/*` 브랜치를 활용한 실험 관리 및 결과 리포트 자동화 프로세스 정립. (✅ DONE)
+
+### Pillar 5: 시스템 리팩토링 및 코드 품질 고도화 (System Refactoring) [DEFERRED]
+- **Goal**: RFC-003(Config Management Standard) 준수를 위한 전략 파라미터의 YAML 분리 및 Config 시스템 구조 개선.
+- **Phase 1 (Config Separation)**: 전략 알고리즘 파라미터(이동평균 기간, 임계값 등)를 코드에서 분리하여 `configs/strategy_config.yaml`로 이관. (⏳ DEFERRED)
+  - `SampleMomentumStrategy` 등 기존 전략 코드 리팩토링.
+  - `src/core/config.py`에 `StrategyConfig` 모델 추가.
+- **Phase 2 (Type Safety)**: Pydantic 기반의 엄격한 설정 검증 도입. (⏳ DEFERRED)
+- **Trigger**: 사용자 일정 여유 확보 시 순차 진행 예정.
 
 ---
 

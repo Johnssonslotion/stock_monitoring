@@ -1,36 +1,54 @@
-# Gap Analysis Report: Documentation vs Implementation
+# Gap Analysis Report: Documentation vs Implementation (v1.2)
 
 ## 1. 개요 (Overview)
-본 문서는 `ai-rules.md`의 **"No Spec, No Code"** 원칙에 따라 시스템 전반의 문서화 현황을 진단하고, 코드에 숨겨진 "암묵적 로직(Hidden Logic)"을 식별합니다.
+본 문서는 `ai-rules.md`의 **"No Spec, No Code"** 및 **"Single Source of Truth"** 원칙에 따라, 현재 시스템의 문서와 구현체 간의 간극(Gap)을 정밀 진단한 결과입니다.
+
+> [!CRITICAL]
+> **Governance Violation Detected**: 백엔드 명세서(`backend_specification.md`)가 프로젝트 헌법(`ai-rules.md`)의 **Single Socket** 원칙을 정면으로 위반하고 있습니다. 즉시 수정이 필요합니다.
 
 ## 2. 진단 결과 요약 (Summary)
 
-| Component | Status | Spec File | Major Gaps |
+| Component | Status | Spec File | Major Gaps & Violations |
 | :--- | :--- | :--- | :--- |
-| **Backend (Core)** | 🟡 Partial | `specs/backend_specification.md` | `history/loader.py`의 Backfill 로직 Spec 누락. Hardcoded URL Defaults. |
-| **Frontend (UI)** | 🔴 **Missing** | *None* | `config.js`의 API 엔드포인트 구성 로직, WebSocket 연결 정책 문서 부재. |
-| **Database** | 🔴 **Missing** | *None* | TimescaleDB Hypertable 설정, `market_ticks` 스키마 정의가 코드/SQL에만 존재. |
-| **Infrastructure** | 🟢 Safe | `infrastructure.md` | Docker/Port 설정은 기존 문서에 비교적 잘 정의됨. |
+| **Governance** |  **Critical** | `backend_specification.md` | Spec은 **Dual Socket**을 명시하나, `ai-rules.md`는 이를 **금지**함. (Spec Outdated) |
+| **Strategy** |  **Vacuum** | **MISSING** | `src/backtest/strategies/` 코드는 존재하나, `docs/specs/strategies/` 명세가 **전무함**. |
+| **Backend** |  Unsafe | `src/data_ingestion/price/unified_collector.py` | 코드가 `enable_dual_socket` 없을 시 **True(Dual)**로 기본값 설정함. (Safe Mode Violation) |
+| **Frontend** | 🔴 Refactor | `src/web/src/StreamManager.ts` | **Heuristic Parsing** 사용 (Spec 위반), Port `8000` 하드코딩. |
+| **Database** |  Warning | `migrations/000_baseline.sql` | `market_orderbook` DDL(CREATE TABLE) 누락됨. (Procedure에서만 참조) |
 
 ## 3. 상세 분석 (Detailed Findings)
 
-### 3.1 Backend Gaps
-- **Hardcoded Defaults**: `real_collector.py` 등에 `ws://ops.koreainvestment.com:21000` 문자열이 하드코딩됨. Spec 문서의 Table과 일치하지만, **Single Source of Truth**가 아님 (Duplicate).
-- **History Loader**: 실시간 수집(WebSocket) 외에, 과거 데이터 적재(`history/loader.py`)의 에러 처리 핸들링(`rt_cd` check)이 Spec에 명시되지 않음.
+### 3.1 Governance Conflict (Spec vs Constitution)
+- **Issue**: `backend_specification.md` Section 3.1은 "Data Ingestion (Dual Socket)"을 표준으로 정의하고 있습니다.
+- **Violation**: `ai-rules.md` Immutable Law #2는 "**Single Socket**: KIS API는 하나의 소켓 연결만 유지한다"라고 명시합니다.
+- **Impact**: AI나 개발자가 Spec을 따르면 헌법을 위반하게 되는 모순 발생.
+- **Action**: `RFC-001`을 발의하여 Single Socket으로 Spec을 강제 변경해야 합니다.
 
-### 3.2 Frontend Gaps
-- **Implicit Protocol**: `scr/viewer/dashboard`에서 API 서버 포트를 `8000`으로 가정하고 연결하는 로직이 있으나, 이를 정의한 인터페이스 명세가 없음.
-- **Vite Config**: Proxy 설정 및 환경 변수(`VITE_API_HOST`) 의존성이 문서화되지 않음.
+### 3.2 Strategy Specification Vacuum
+- **Issue**: `src/backtest/strategies/` 하위에 `BaseStrategy` 등 구현체가 존재하지만, 이에 대한 입출력, 파라미터, 엣지 케이스 명세가 어디에도 없습니다.
+- **Violation**: `ai-rules.md` Rule #2.6 (**No Spec, No Code**). 문서 없는 코드는 불법입니다.
+- **Action**: `RFC-002`를 발의하여 전략 명세 표준을 수립하고, 기존 전략에 대한 명세를 소급 작성(Retroactive Spec)해야 합니다.
 
-### 3.3 Database Gaps
-- **Schema Visibility**: `market_ticks` 테이블이 어떤 컬럼을 가지는지, 압축 정책(Compression Policy)은 무엇인지 확인하려면 `migrations/` 폴더 sql 파일을 직접 열어봐야 함.
+### 3.3 Backend Implementation Gaps
+- **Unified Collector**: Redis 설정 부재 시 Dual Socket으로 Fallback되는 로직은 위험합니다. Single Socket Default로 변경해야 합니다.
+- **Kiwoom**: `KiwoomWSCollector`에 대한 토큰 관리 및 재접속 상세 정책이 Spec에 누락되었습니다.
+
+### 3.4 Frontend & Database
+- **Frontend**: `StreamManager.ts`의 하드코딩과 휴리스틱 파싱은 유지보수성을 해칩니다.
+- **Database**: `market_orderbook` 테이블 DDL이 누락되어 있어 초기 배포 시 실패할 수 있습니다.
 
 ## 4. 조치 계획 (Action Plan)
 
-### Phase 2: Standardization
-1.  **Frontend Spec 작성**: `docs/specs/ui_specification.md` 생성. (API 연동 규약 정의)
-2.  **DB Schema Spec 작성**: `docs/specs/database_schema.md` 생성. (Table/Column 정의)
-3.  **Backend Spec 보완**: Backfill/History API 프로토콜 추가.
+### Phase 1: Governance Repair (Immediate)
+1.  **RFC 승인 및 Spec 수정**:
+    - `RFC-001`: Single Socket Enforcement
+    - `RFC-002`: Strategy Specification Standard
+2.  **Spec Patch**: `backend_specification.md` 수정, `docs/specs/strategies/` 신설.
+
+### Phase 2: Code Alignment
+1.  **Backend Fix**: `unified_collector.py` Default 값 변경.
+2.  **Strategy Doc**: 기존 코드 기반으로 Spec 역공학(Reverse Engineering)하여 문서화.
+3.  **DB Migration**: 누락된 DDL 추가.
 
 ### Phase 3: Verification
-- 모든 Code의 Docstring에 관련 `See docs/specs/...` 링크 추가 Refactoring.
+1.  **Unit Test**: Spec 기반 테스트 케이스 보강.

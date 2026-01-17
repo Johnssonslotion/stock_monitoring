@@ -1,8 +1,4 @@
----
-trigger: always_on
----
-
-# AI Rules v2.0 - The Constitution (Index)
+# AI Rules v2.5 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -14,25 +10,46 @@ trigger: always_on
 ## 1. Governance Navigation
 | 영역 | 문서 | 핵심 내용 |
 | :--- | :--- | :--- |
-| **의사결정** | [Personas & Council](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md) | 6인의 페르소나, 협의 프로토콜, Auto-Proceed 원칙 |
-| **개발 표준** | [Development & Quality](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/development.md) | **No Spec No Code**, Strict Git Flow, 테스트 게이트 |
-| **인프라 & DB** | [Infrastructure](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/infrastructure.md) | **Tailscale**, DB 격리(Snapshot), **Zero Cost** 원칙 |
-| **문서 표준** | **[Documentation Standard](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/documentation_standard.md)** | **RFC & ADR Process**, Versioning, Changelog 관리 |
+| **의사결정** | [Personas & Council](./docs/governance/personas.md) | 6인의 페르소나, 협의 프로토콜, Auto-Proceed 원칙 |
+| **개발 표준** | [Development & Quality](./docs/governance/development.md) | **No Spec No Code**, Strict Git Flow, 테스트 게이트 |
+| **인프라 & DB** | [Infrastructure](./docs/governance/infrastructure.md) | **Tailscale**, DB 격리(Snapshot), **Zero Cost** 원칙 |
+| **문서 표준** | **[Documentation Standard](./docs/governance/documentation_standard.md)** | **RFC & ADR Process**, Versioning, Changelog 관리 |
+| **이연 작업** | [Deferred Work Registry](./docs/governance/deferred_work.md) | 승인되었으나 미뤄진 작업 추적 및 관리 |
 
 ## 2. 절대 헌법 (The Immutable Laws)
-다음 6가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
+다음 7가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
 
 1.  **Deep Verification**: 데이터 작업 후 로그만 믿지 말고 **DB를 직접 조회**하여 교차 검증하라.
 2.  **Single Socket**: KIS API는 하나의 소켓 연결만 유지한다. (Dual Socket 시도 금지)
 3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다.
 4.  **Auto-Proceed**: 단위 테스트가 통과된 Safe 작업은 즉시 실행한다.
 5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
-6.  **LLM Enforcement (Self-Check)**: AI는 코드를 수정하기 전, **"관련된 RFC/ADR/Spec 문서가 존재하는가?"**를 스스로 질문하고 검증해야 한다. 문서가 없다면 **즉시 작업을 중단**하고 문서부터 작성해야 한다. (No Spec, No Code)
+6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우 슬래시 커멘드**가 존재하는지 확인하고 이를 준수해야 한다. (No Spec, No Code)
+7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
 
 ## 3. 언어 원칙
 -   **Artifacts**: 모든 산출물(Task, Implementation Plan, Walkthrough)은 **반드시 한국어**로 작성한다. (영어 혼용 금지)
 -   **Commit**: 커밋 메시지는 **영어**로 작성한다 (Conventional Commits).
 
+## 4. Rule Change Protocol (Constitution Amendment)
+- **History Link**: 모든 규칙 변경 이력은 **[docs/governance/HISTORY.md](./docs/governance/HISTORY.md)**에 기록된다.
+- **Process**:
+    0.  **[선행 조건]** `HISTORY.md` 최근 변경사항 검토 (변경 맥락 파악).
+    1.  `docs/governance/decisions/`에 Decision Record 작성 (RFC/ADR).
+    2.  6인 페르소나 만장일치 승인.
+    3.  `HISTORY.md`에 Index 추가.
+    4.  `.ai-rules.md` 본문 수정.
+- **AI Duty**: AI는 코드를 수정하기 전 `HISTORY.md`의 최근 변경사항(Decision Doc)을 읽어 변경의 맥락을 파악해야 한다.
 
-## 4. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
+## 5. Spec Verification Gate (자동 검증 체크리스트)
+AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다:
+1.  **Spec Existence**: 해당 기능/API에 대한 Spec 문서(`docs/specs/`)가 존재하는가?
+2.  **Schema Completeness**: Swagger/OpenAPI 또는 DDL이 포함되어 있는가?
+3.  **Edge Case Coverage**: 이상치(Null, Negative, Timeout) 처리 방침이 명시되어 있는가?
+4.  **Roadmap Alignment**: `master_roadmap.md`에서 승인된 작업인가?
+
+**검증 실패 시**: 즉시 작업 중단 → 사용자에게 보고 → Spec 작성 후 재개.
+
+---
+## 6. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
 현재 프롬프트가 정확하게 포함되었는지 사용자에게 알린다.
