@@ -76,6 +76,52 @@ docker compose -f deploy/docker-compose.yml --profile real up -d --build
 make test
 ```
 
+## 🤖 Dual AI Support (Gemini + Claude Code)
+
+본 프로젝트는 **Gemini Antigravity**와 **Claude Code** 두 AI를 동시에 지원합니다.
+
+### AI별 워크플로우 사용법
+
+| AI | 실행 방식 | 예시 | 특징 |
+|----|----------|------|------|
+| **Gemini Antigravity** | 자연어 요청 | "새로운 ISSUE 만들어줘" | 유연한 해석, 문맥 이해 |
+| **Claude Code** | Slash commands | `/create-issue` | 결정적 실행, 자동완성 |
+
+### 사용 가능한 Slash Commands (11개)
+
+```bash
+/create-issue          # ISSUE 등록 및 브랜치 생성
+/run-gap-analysis      # 코드-문서 정합성 검증 ⭐
+/council-review        # 6인 페르소나 협의 ⭐
+/create-rfc            # RFC 문서 생성 ⭐
+/create-spec           # Spec 문서 작성 ⭐
+/activate-deferred     # 이연 작업 활성화
+/create-roadmap        # 로드맵 생성
+/brainstorm            # 아이디어 인큐베이팅
+/amend-constitution    # 헌법 개정
+/hotfix                # 긴급 프로덕션 수정
+/merge-to-develop      # 품질 게이트 병합
+```
+
+⭐ = Constitution에서 명시적으로 요구하는 워크플로우
+
+### 워크플로우 동기화
+
+- **SSoT (원본)**: `.agent/workflows/` (Git 추적)
+- **Claude 실행**: `.claude/commands/` (심링크)
+- **동기화 스크립트**: `./scripts/sync-workflows.sh`
+
+새 워크플로우 추가 시:
+```bash
+# 1. .agent/workflows/에 워크플로우 작성
+# 2. 동기화 스크립트 실행
+./scripts/sync-workflows.sh
+```
+
+상세: [RFC-004: Dual AI Workflow Sync](docs/governance/decisions/RFC-004_dual_ai_workflow_sync.md)
+
+---
+
 ## 📚 문서 허브 (Documentation Hub)
 
 ### 핵심 거버넌스 문서

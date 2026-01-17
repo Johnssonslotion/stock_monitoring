@@ -1,4 +1,4 @@
-# AI Rules v2.7 - The Constitution (Index)
+# AI Rules v2.8 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -24,7 +24,9 @@
 3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다.
 4.  **Auto-Proceed**: 단위 테스트가 통과된 Safe 작업은 즉시 실행한다.
 5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
-6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우 슬래시 커멘드**가 존재하는지 확인하고 이를 준수해야 한다. (No Spec, No Code)
+6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우**가 존재하는지 확인하고 이를 준수해야 한다.
+    - **Gemini Antigravity**: `.agent/workflows/` 문서 참조 (자연어 해석)
+    - **Claude Code**: `/slash-command` 실행 (`.claude/commands/` 심링크)
 7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
 
 ## 3. 언어 원칙
@@ -53,5 +55,37 @@ AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야
 **검증 실패 시**: 즉시 작업 중단 → 사용자에게 보고 → Spec 작성 후 재개.
 
 ---
-## 6. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
+## 6. Dual AI Workflow Support (v2.8)
+
+### 6.1. 워크플로우 아키텍처
+본 프로젝트는 **Gemini Antigravity**와 **Claude Code** 두 AI를 동시에 지원한다.
+
+- **SSoT (Single Source of Truth)**: `.agent/workflows/` (원본, Git 추적)
+- **Execution Interface**:
+  - **Gemini Antigravity**: 자연어 요청 → `.agent/workflows/` 문서 참조
+  - **Claude Code**: Slash commands → `.claude/commands/` (심링크)
+
+### 6.2. 동기화 프로토콜
+- **스크립트**: `scripts/sync-workflows.sh`
+- **실행 시점**:
+  1. 새 워크플로우 추가 시
+  2. 워크플로우 수정 시
+  3. `.claude/` 디렉토리 초기화 시
+- **검증**: `ls -la .claude/commands/` 확인
+
+### 6.3. 워크플로우 인벤토리 (11개)
+1. `/create-issue` - ISSUE 등록 및 브랜치 생성
+2. `/run-gap-analysis` - 코드-문서 정합성 검증
+3. `/council-review` - 6인 페르소나 협의
+4. `/create-rfc` - RFC 문서 생성
+5. `/create-spec` - Spec 문서 작성
+6. `/activate-deferred` - 이연 작업 활성화
+7. `/create-roadmap` - 로드맵 생성
+8. `/brainstorm` - 아이디어 인큐베이팅
+9. `/amend-constitution` - 헌법 개정
+10. `/hotfix` - 긴급 프로덕션 수정
+11. `/merge-to-develop` - 품질 게이트 병합
+
+---
+## 7. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
 현재 프롬프트가 정확하게 포함되었는지 사용자에게 알린다.
