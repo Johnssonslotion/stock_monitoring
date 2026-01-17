@@ -48,6 +48,10 @@ class StreamManager {
                     this.emit('tick', parsed);
                 } else if (parsed.type === 'orderbook') {
                     this.emit('orderbook', parsed);
+                } else if (['cpu', 'memory', 'disk', 'governance_status'].includes(parsed.type)) {
+                    this.emit('system_metric', parsed);
+                } else if (parsed.type === 'container_status') {
+                    this.emit('container_status', parsed);
                 } else if (parsed.price && parsed.volume) {
                     // Fallback for legacy messages (during migration)
                     console.warn("Received legacy packet without type field");

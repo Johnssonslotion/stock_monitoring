@@ -16,7 +16,9 @@
 
 ### Pillar 0: 거버넌스 및 스펙 표준화 (Governance & Spec) (Status: ✅ **COMPLETED** - 2026-01-17)
 - [x] **Pillar 0: Governance & Standards 강화** (Status: ✅ **COMPLETED** - 2026-01-17)
-    - [x] `.ai-rules.md` (Constitution v2.5) 개정
+    - [x] `.ai-rules.md`- [Core Constitution (v2.5)](file:///.ai-rules.md)
+- [Governance History](file:///docs/governance/HISTORY.md)
+- [Observability Roadmap (New)](file:///docs/strategies/observability_roadmap.md)
     - [x] 10대 핵심 워크플로우 자동화 (`.agent/workflows/`)
     - [x] 거버넌스 이연 작업 레지스트리 (`deferred_work.md`) 구축
     - [x] 아이디어 인큐베이터 (`docs/ideas/`) 및 브레인스토밍 체계화
