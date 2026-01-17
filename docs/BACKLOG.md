@@ -2,75 +2,50 @@
 
 > **Governance Notice**: 
 > 본 백로그의 작업은 **Live Market Data Collection**에 영향을 주지 않도록, 장 마감 후 또는 별도의 Staging 환경에서 진행해야 합니다.
-> (Reference: `API_GAP_REPORT.md` for specific technical gaps)
 
-## Issues (Live)
-- [x] **ISSUE-007**: Chart Zoom Glitch & Market Holiday Handling | P1 | [x] | [Branch: bug/ISSUE-001-chart-zoom-and-holiday]
-- [x] **ISSUE-002**: Standardize Backlog Issue IDs | P1 | [x] | [Branch: refactor/ISSUE-002-standardize-backlog]
-- [ ] **ISSUE-001**: Virtual Investment Simulation Platform | P1
+## RFC (Request for Comments) - 설계 대기 중
 
-## Tier 1: Critical (Scalper / Day Trader)
-*High Frequency Data Layer*
+복잡한 아키텍처 결정이 필요한 항목들입니다. RFC 승인 후 ISSUE로 분해됩니다.
 
-- [ ] **ISSUE-004**: **WebSocket Connection Manager (`src/backend/ws/manager.py`)**
-    - [ ] **Single Socket Policy**: KIS API의 웹소켓 연결 제한(Key당 1개)을 준수하는 중앙 관리자 구현.
-    - [ ] **Subscription Multiplexing**: 단일 소켓으로 여러 종목(005930, 000660 등)의 데이터를 수신하고 라우팅하는 로직.
-    - [ ] **Recoverability**: 연결 끊김 시 60초 내 자동 재접속(Backoff) 전략.
-
-- [ ] **ISSUE-008**: **OrderBook Streaming**
-    - [ ] `stream_orderbook` 핸들러 구현.
-    - [ ] 호가 잔량 변동분(Delta)만 전송하여 대역폭 절약.
-
-- [ ] **ISSUE-009**: **Execution Streaming**
-    - [ ] `stream_executions` 핸들러 구현.
-    - [ ] "세력 체결" 감지 로직(서버 사이드) 및 알림 패킷 전송.
-
-## Tier 2: Major (Swing / Trend Trader)
-*Historical & Analytical Data Layer*
-
-- [ ] **ISSUE-010**: **Candle Data Service (`src/backend/api/candles.py`)**
-    - [ ] `GET /api/candles`: DB(PostgreSQL/TimescaleDB) 조회 로직.
-    - [ ] **Data Filling**: 장중 빈 캔들(Gap)에 대한 Zero-Filling 또는 직전가 채우기 로직.
-
-- [ ] **ISSUE-011**: **Market Sector Service**
-    - [ ] 섹터별 등락률 집계 배치(Batch) 작업 (10초 주기).
-    - [ ] `GET /api/market/sectors` 엔드포인트 구현.
-
-## Tier 3: Quant Features (Analytical)
-*Advanced Analytics*
-
-- [ ] **ISSUE-012**: **Correlation Engine**
-    - [ ] 관련주(`RelatedAssets`) 자동 산출 알고리즘 (Pearson Correlation).
-    - [ ] 뉴스 키워드 기반 종목 연관성 분석.
-
-- [ ] **ISSUE-013**: **Whale Alert System**
-    - [ ] 대량 체결 발생 시 슬랙/디스코드 웹훅 연동.
+- [ ] **RFC-005**: Virtual Investment Simulation Platform | P1
+- [ ] **RFC-006**: DB View & Aggregation Restoration Strategy | P0
+- [ ] **RFC-007**: WebSocket Connection Multiplexing Architecture | P1
+- [ ] **RFC-008**: OrderBook Delta Streaming Design | P1
+- [ ] **RFC-009**: Execution Streaming & Whale Detection | P1
+- [ ] **RFC-010**: Correlation Engine & NLP Integration | P3
 
 ---
 
-## Tier 4: Internal Instance Execution (Backend Spec v1)
-> **Ref**: `docs/requirements/backend_specs_v1.md`
+## Issues (Live) - 구현 작업
 
-### [ISSUE-003] DB View & Aggregation Restoration
-**Priority**: Critical (P0)
-- [ ] `market_candles` 데이터 보존 정책 확인
-- [ ] `public.candles_1m` 뷰 재생성
-- [ ] Continuous Aggregates (5m, 1h, 1d) 생성 및 Refresh Policy 등록
-- [ ] `SELECT count(*)` 검증 (15m > 0)
+단순 구현 작업들입니다. 바로 시작 가능합니다.
 
-### [ISSUE-004] WebSocket Connection Manager Implementation
-**Priority**: High (P1)
-- [ ] `ConnectionManager` 클래스 고도화 (`src/api/manager.py`)
-- [ ] Redis Pub/Sub(`stock:ticks`) 기반 데이터 분배 구조 확립
-- [ ] 브라우저 멀티 탭 진입 시 Socket 1개 유지 검증
+- [ ] **ISSUE-001**: 데이터 누락 감지 및 채우기 로직 (Data Gap Detection) | P2
+- [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
+- [ ] **ISSUE-003**: API 에러 핸들링 및 로깅 (API Error Handling & Logging) | P2
+- [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
+- [ ] **ISSUE-005**: 캔들 데이터 서비스 (Candle Data Service) | P2
+- [ ] **ISSUE-006**: 시장 섹터 서비스 (Market Sector Service) | P2
+- [ ] **ISSUE-007**: 고래 알림 시스템 (Whale Alert System) | P3
 
-### [ISSUE-005] Data Gap Detection & Filling Logic
-**Priority**: Medium (P2)
-- [ ] `get_candles` 내 누락 구간 감지 로직 추가
-- [ ] Zero-Order Hold (직전가 채우기) 구현
-- [ ] `is_filled` 메타데이터 응답 추가
+---
 
-### [ISSUE-006] API Error Handling & Logging
-**Priority**: Medium (P2)
-- [ ] 500 에러 스택 트레이스 로깅 강화
-- [ ] 클라이언트용 명확한 에러 코드 정의 (`DB_CONNECTION_ERROR` 등)
+## 참고: 재정렬 내역 (2026-01-17)
+
+**RFC로 전환된 항목** (Constitution v2.8 기준):
+- `ISSUE-001` (Virtual Investment) → `RFC-005`
+- `ISSUE-003` (DB Aggregation) → `RFC-006`
+- `ISSUE-004` (WebSocket Manager) → `RFC-007`
+- `ISSUE-008` (OrderBook Streaming) → `RFC-008`
+- `ISSUE-009` (Execution Streaming) → `RFC-009`
+- `ISSUE-012` (Correlation Engine) → `RFC-010`
+
+**번호 재정렬된 항목**:
+- `ISSUE-005` → `ISSUE-001` (Data Gap Detection)
+- `ISSUE-006` → `ISSUE-003` (API Error Handling)
+- `ISSUE-007` → `ISSUE-004` (Chart Zoom - 완료)
+- `ISSUE-010` → `ISSUE-005` (Candle Service)
+- `ISSUE-011` → `ISSUE-006` (Market Sector)
+- `ISSUE-013` → `ISSUE-007` (Whale Alert)
+
+상세: `docs/governance/issue_reorganization_plan_2026-01-17.md`

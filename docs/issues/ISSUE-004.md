@@ -1,20 +1,31 @@
-# ISSUE-004: 웹소켓 연결 관리자 구현 (WebSocket Connection Manager Implementation)
+# ISSUE-004: 차트 줌 오류 및 휴장일 처리 (Chart Zoom Glitch & Market Holiday Handling)
 
-**Status**: Open (작성 완료)
+**Status**: Resolved (Code Merged)
 **Priority**: P1 (High)
-**Type**: Feature
+**Type**: Bug / Data Quality
 **Created**: 2026-01-17
-**Assignee**: Backend Engineer
+**Assignee**: Developer
 
 ## 문제 설명 (Problem Description)
-KIS API는 "API Key 당 하나의 소켓 연결" 정책을 엄격하게 적용합니다. 구독을 다중화하고 재연결을 자동으로 처리하기 위한 중앙 집중식 `ConnectionManager`가 필요합니다.
+1. **휴장일 로직 부재**: 현 시스템(`isMarketOpen`, 데이터 수집)이 한국/미국 휴장일을 인지하지 못해, 휴일에도 "Mock Data Mode"가 잘못 활성화되거나 데이터 누락 로그가 발생하는 문제.
+2. **차트 줌 및 분봉 겹침**: 차트 줌 인/아웃 시 분봉(`1m`) 캔들이 시각적으로 겹치거나 깨지는 현상 발생 (lightweight-charts `timeScale` 설정 미흡).
 
 ## 완료 조건 (Acceptance Criteria)
-- [ ] **싱글 소켓 정책 (Single Socket Policy)**: 전역적으로 API Key 당 1개의 소켓만 생성되도록 강제.
-- [ ] **다중화 (Multiplexing)**: 단일 소켓 연결 위에서 여러 심볼(종목) 구독 처리.
-- [ ] **복구 능력 (Recoverability)**: 연결 끊김 시 60초 이내 자동 재접속(Backoff 알고리즘 포함).
-- [ ] **Redis Pub/Sub**: `stock:ticks` 채널로 틱 데이터 발행.
+- [x] **휴일 인식**: 2026년 주요 공휴일을 식별하는 `MarketCalendar` 서비스 구현.
+    - [x] `isMarketOpen()`이 휴일에 `false` 반환.
+- [x] **차트 줌 수정**:
+    - [x] `CandleChart.tsx`의 `timeScale` 설정 최적화 (`minBarSpacing`, `fixLeftEdge` 등).
+    - [x] 1분봉 캔들이 줌 레벨에 관계없이 겹치지 않고 정상 렌더링 확인.
 
 ## 기술 상세 (Technical Details)
-- **File**: `src/backend/ws/manager.py`
-- **Redis**: 데이터 수집과 소비를 분리하기 위해 Pub/Sub 패턴 사용.
+- **Frontend**: `src/web/src/components/CandleChart.tsx`, `src/web/src/mocks/marketHoursMock.ts`
+- **Library**: `lightweight-charts` v4+
+
+## 해결 계획 (Resolution Plan)
+1. (완료) `marketHoursMock.ts`에 2026년 휴일 추가.
+2. (완료) `CandleChart.tsx` 줌 동작 수정.
+3. (완료) E2E 테스트 `map-first-layout.spec.ts` 검증.
+
+## 관련 (Related)
+- Replaces legacy `ISSUE-001` entry (which is now Virtual Investment).
+- Code merged in `02940b1`.

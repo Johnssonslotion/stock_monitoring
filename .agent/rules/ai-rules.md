@@ -46,8 +46,16 @@
 ## 5. Spec Verification Gate (자동 검증 체크리스트)
 AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다.
 
-0.  **Sync First (Constitution v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
+0.  **Sync First (v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
 1.  **Spec Existence**: 해당 기능/API에 대한 Spec 문서(`docs/specs/`)가 존재하는가?
+1.5.  **RFC vs ISSUE Separation (v2.8)**: 다음 조건 중 **하나라도** 해당하면 ISSUE 대신 **RFC**를 먼저 작성해야 한다:
+    - **3개 이상 파일/컴포넌트** 수정
+    - **DB Schema 변경** 필요
+    - **새로운 외부 의존성** (라이브러리, API) 추가
+    - **아키텍처 패턴 결정** 필요 (예: Adapter, Strategy, Observer)
+    - **통합 테스트 또는 E2E 테스트** 필요
+    
+    **RFC 승인 후** → 구현 작업을 ISSUE로 분해하여 추적한다.
 2.  **Schema Completeness**: Swagger/OpenAPI 또는 DDL이 포함되어 있는가?
 3.  **Edge Case Coverage**: 이상치(Null, Negative, Timeout) 처리 방침이 명시되어 있는가?
 4.  **Roadmap Alignment**: `master_roadmap.md`에서 승인된 작업인가?
