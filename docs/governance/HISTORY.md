@@ -11,3 +11,4 @@
 | **2026-01-17** | **2.4** | **Risk Control & Spec Standard**<br>- Single Socket 강제 (RFC-001)<br>- Strategy Spec 의무화 (RFC-002) | [RFC-001](./decisions/RFC-001_single_socket_enforcement.md)<br>[RFC-002](./decisions/RFC-002_strategy_spec_standard.md) |
 | **2026-01-17** | **2.5** | **Config Management Standard**<br>- Env(Infra) vs File(Logic) 이원화<br>- Frontend Port는 Env로 관리 | [RFC-003](./decisions/RFC-003_config_management_standard.md) |
 | **2026-01-17** | **2.6** | **Governance System v2**<br>- 9대 워크플로우(Slash Command) 도입<br>- Deferred Work Registry 신설<br>- 아이디어 인큐베이션 및 로드맵 자동화 | [Governance Audit](./governance_audit_2026-01-17.md) |
+| **2026-01-17** | **2.7** | **Mandate Doc Sync**<br>- 문서 작업 전 `git pull` 강제 (Pre-condition)<br>- ID 충돌 방지 및 거버넌스 최신화 | [ID-doc-sync-policy](../ideas/stock_monitoring/ID-doc-sync-policy.md) |
