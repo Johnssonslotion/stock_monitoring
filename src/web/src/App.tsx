@@ -367,9 +367,45 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Timeframe Selector */}
-                      <div className="absolute top-3 left-3 z-10">
+                      {/* Chart Controls Group (Timeframe + Zoom) */}
+                      <div className="absolute top-3 right-16 z-10 flex items-center gap-2">
                         <TimeframeSelector selected={selectedInterval} onChange={setSelectedInterval} />
+                        <div className="flex gap-1">
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) {
+                              const timeScale = chart.timeScale();
+                              const currentRange = timeScale.getVisibleLogicalRange();
+                              if (currentRange) {
+                                const range = currentRange.to - currentRange.from;
+                                const delta = range * 0.2;
+                                timeScale.setVisibleLogicalRange({ from: currentRange.from + delta, to: currentRange.to });
+                              }
+                            }
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Zoom In">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) {
+                              const timeScale = chart.timeScale();
+                              const currentRange = timeScale.getVisibleLogicalRange();
+                              if (currentRange) {
+                                const range = currentRange.to - currentRange.from;
+                                const delta = range * 0.2;
+                                timeScale.setVisibleLogicalRange({ from: currentRange.from - delta, to: currentRange.to });
+                              }
+                            }
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Zoom Out">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) chart.timeScale().fitContent();
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Reset Zoom">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Loading Indicator Overlay */}
