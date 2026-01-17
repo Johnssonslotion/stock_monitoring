@@ -134,7 +134,7 @@ async def redis_subscriber():
     try:
         r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         pubsub = r.pubsub()
-        await pubsub.subscribe("market_ticker", "market_orderbook", "news_alert", "system_alerts")
+        await pubsub.subscribe("market_ticker", "market_orderbook", "news_alert", "system_alerts", "system.metrics")
         logger.info("Connected to Redis Pub/Sub.")
 
         async for message in pubsub.listen():
