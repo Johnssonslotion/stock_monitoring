@@ -25,11 +25,13 @@
 
 ## 3. 통신 프로토콜 (Communication Protocols)
 
-### 3.1 Data Ingestion (Dual Socket)
+### 3.1 Data Ingestion (Single Socket)
+- **Constraint**: `ai-rules.md` (Law #2) 및 `RFC-001`에 의거하여 **Single Socket** 연결만 허용된다.
+- **Failover**: 미국/한국 시장 데이터 수신 채널을 단일화하며, Socket 연결 끊김 시 재접속(Reconnect) 외의 이중화(Dual Socket) 시도는 금지된다.
+
 | Channel | Function | Protocol | Endpoint | Coverage |
 | :--- | :--- | :--- | :--- | :--- |
-| **Primary** | KR Tick/Orderbook | WebSocket | `ws://ops.koreainvestment.com:21000` | KR Market Only |
-| **Secondary** | US Tick/Orderbook | WebSocket | `ws://ops.koreainvestment.com:21000` | US Market Only |
+| **Primary** | KR/US Tick/Orderbook | WebSocket | `ws://ops.koreainvestment.com:21000` | Global Market |
 
 ### 3.2 Keep-Alive Policy
 - **Application Ping**: 30초 주기. Packet: `{"header": {"tr_id": "PINGPONG"}}`

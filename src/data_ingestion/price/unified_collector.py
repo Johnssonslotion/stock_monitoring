@@ -182,7 +182,9 @@ async def main():
     enable_dual = await r.get("config:enable_dual_socket")
     await r.close()
     
-    use_dual = enable_dual is None or enable_dual.lower() == 'true'
+    # Safe Default Enforcement (RFC-001)
+    # Default is NOW Single Socket (False) if config is missing.
+    use_dual = enable_dual is not None and enable_dual.lower() == 'true'
     
     manager = None
     if use_dual:
