@@ -1,9 +1,10 @@
 # ISSUE-008: 차트 UI 컨트롤 겹침 현상 (Chart UI Controls Overlap)
 
-**Status**: Open  
+**Status**: Resolved  
 **Priority**: P1 (High)  
 **Type**: Bug  
 **Created**: 2026-01-17  
+**Resolved**: 2026-01-17  
 **Assignee**: Frontend Engineer  
 
 ## Problem Description
