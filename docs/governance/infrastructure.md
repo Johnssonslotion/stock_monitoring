@@ -84,8 +84,6 @@ CREATE INDEX market_ticks_time_idx ON market_ticks (time DESC);
 - **Retention**: 120시간. 최소 48시간(2일) 보존 필수.
 - **규칙**: 디스크 부족 시에도 최소 2일치 로그 삭제 금지.
 
-<<<<<<< Updated upstream
-=======
 ### 4.5 데이터베이스 마이그레이션 전략 (Database Migration Strategy) [NEW]
 **원칙**: "Code와 DB Schema의 생명주기 분리"
 - **Single Source of Truth**: 스키마 변경은 오직 `migrations/*.sql` 파일을 통해서만 수행한다.
@@ -100,8 +98,6 @@ CREATE INDEX market_ticks_time_idx ON market_ticks (time DESC);
 | **한투 (KIS)** | 계좌당 1개 | 세션당 40개 | 초당 20회 | 가장 엄격 |
 | **키움 (RE)** | 멀티 세션 | 총 20,000개 | 초당 5회 | 확장성 최상 (화면번호) |
 | **미래에셋** | 단일 연결 | 세션당 1,000개 | OAuth2 | 대용량 수급 적합 |
-
->>>>>>> Stashed changes
 ## 5. API 및 보안 원칙 (API & Security Standard) [NEW]
 
 ### 5.1 REST API 설계
