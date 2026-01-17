@@ -1,18 +1,17 @@
-# ISSUE-006: API 에러 핸들링 및 로깅 (API Error Handling & Logging)
+# ISSUE-006: 시장 섹터 서비스 (Market Sector Service)
 
 **Status**: Open (작성 완료)
-**Priority**: P2 (Medium)
-**Type**: Reliability
+**Priority**: P2 (Major)
+**Type**: Feature
 **Created**: 2026-01-17
-**Assignee**: Backend Engineer
+**Assignee**: Data Engineer
 
 ## 문제 설명 (Problem Description)
-현재 API 에러 처리가 너무 포괄적입니다. 클라이언트를 위한 명확한 에러 코드와 디버깅을 위한 500 에러 스택 트레이스 로깅이 필요합니다.
+실시간 시장 섹터 성과(예: 반도체, 바이오)를 계산하고 제공해야 합니다. 구성 종목들의 수익률을 집계하는 배치 작업이 필요합니다.
 
 ## 완료 조건 (Acceptance Criteria)
-- [ ] 500 에러 발생 시 스택 트레이스 로깅 강화.
-- [ ] 클라이언트용 구조화된 에러 코드 정의 (예: `DB_CONNECTION_ERROR`, `INVALID_SYMBOL`).
+- [ ] 10초 주기의 섹터 등락률 집계 배치(Batch) 작업.
+- [ ] `GET /api/market/sectors` 엔드포인트 구현.
 
 ## 기술 상세 (Technical Details)
-- **Framework**: FastAPI (Exception Handlers)
-- **Logging**: Python `logging` 모듈 사용 (JSON 포맷터 권장).
+- **Computation**: 구성 종목의 가중 평균 수익률 계산.
