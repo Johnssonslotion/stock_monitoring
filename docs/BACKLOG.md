@@ -5,8 +5,8 @@
 > (Reference: `API_GAP_REPORT.md` for specific technical gaps)
 
 ## Issues (Live)
-- [ ] **ISSUE-001**: Chart Zoom Glitch & Market Holiday Handling | P1 | [/] | [Branch: bug/ISSUE-001-chart-zoom-and-holiday]
-- [/] **ISSUE-002**: Standardize Backlog Issue IDs | P1 | [/] | [Branch: refactor/ISSUE-002-standardize-backlog]
+- [x] **ISSUE-007**: Chart Zoom Glitch & Market Holiday Handling | P1 | [x] | [Branch: bug/ISSUE-001-chart-zoom-and-holiday]
+- [x] **ISSUE-002**: Standardize Backlog Issue IDs | P1 | [x] | [Branch: refactor/ISSUE-002-standardize-backlog]
 
 ## Tier 1: Critical (Scalper / Day Trader)
 *High Frequency Data Layer*
