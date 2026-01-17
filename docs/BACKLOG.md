@@ -14,7 +14,7 @@
 - [ ] **ISSUE-005**: 가상 투자 시뮬레이션 플랫폼 (Virtual Investment) | P1 | Epic
 - [ ] **ISSUE-006**: DB 뷰 및 집계 복구 (DB Aggregation Restoration) | P0
 - [ ] **ISSUE-007**: 웹소켓 연결 관리자 (WebSocket Manager) | P1 | Epic
-- [ ] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug
+- [x] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | ✅ 완료
 
 ---
 
