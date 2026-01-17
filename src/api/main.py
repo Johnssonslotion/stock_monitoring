@@ -11,6 +11,8 @@ from datetime import datetime
 from typing import List, Optional, Dict
 from .auth import verify_api_key
 from .routes import system
+from .routes import virtual
+from src.broker.virtual import VirtualExchange
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +22,7 @@ app = FastAPI(title="Antigravity API", version="1.0.0")
 
 # Register Routers
 app.include_router(system.router)
+app.include_router(virtual.router)
 
 # CORS 설정 (로컬 개발 및 Electron 앱 지원)
 app.add_middleware(
@@ -107,6 +110,7 @@ async def startup_event():
     load_config()
     # Redis 구독 타스크 시작
     asyncio.create_task(redis_subscriber())
+    asyncio.create_task(virtual_redis_subscriber())  # Virtual trading events
     # DB 커넥션 풀 초기화
     try:
         logger.info(f"📊 Connecting to DB: {DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
@@ -116,6 +120,18 @@ async def startup_event():
         # Attach to app state for routers
         app.state.db_pool = db_pool
         logger.info("✅ Database Pool initialized successfully!")
+        
+        # Initialize VirtualExchange
+        db_config = {
+            'user': DB_USER,
+            'password': DB_PASSWORD,
+            'database': DB_NAME,
+            'host': DB_HOST,
+            'port': int(DB_PORT)
+        }
+        virtual.virtual_exchange = VirtualExchange(db_config, account_id=1)
+        await virtual.virtual_exchange.connect()
+        logger.info("✅ VirtualExchange initialized!")
         
         # Diagnostic: Check tables
         async with db_pool.acquire() as conn:
@@ -142,6 +158,21 @@ async def redis_subscriber():
                 await manager.broadcast(message["data"])
     except Exception as e:
         logger.error(f"Redis Subscriber Exception: {e}")
+
+async def virtual_redis_subscriber():
+    """가상 거래 이벤트를 WebSocket으로 전달하는 타스크"""
+    try:
+        r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe("virtual.execution", "virtual.account", "virtual.position")
+        logger.info("Connected to Virtual Trading Redis Pub/Sub.")
+
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                # Broadcast virtual trading events
+                await manager.broadcast(message["data"])
+    except Exception as e:
+        logger.error(f"Virtual Redis Subscriber Exception: {e}")
 
 # --- REST API Endpoints ---
 
@@ -646,4 +677,22 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+@app.websocket("/ws/virtual")
+async def virtual_websocket_endpoint(websocket: WebSocket, api_key: Optional[str] = None):
+    """Virtual Trading WebSocket - Real-time updates for orders, positions, account"""
+    # Simple auth check (in production, use proper token validation)
+    if not api_key or api_key != API_AUTH_SECRET:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+    
+    await manager.connect(websocket)
+    logger.info("Virtual Trading WebSocket client connected")
+    try:
+        while True:
+            # Keep connection alive, actual data comes from Redis subscriber
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        logger.info("Virtual Trading WebSocket client disconnected")
 
