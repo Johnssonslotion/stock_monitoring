@@ -12,7 +12,7 @@
 ## 2. 대기 중 (Todo)
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISSUE-001: 가상 투자 시뮬레이션** | Dev+DS | **P1** | [ ] | (Doc Synced) |
+| **ISSUE-001: 가상 투자 시뮬레이션** | Dev+DS | **P1** | [/] | [Branch: feature/ISSUE-001] |
 | **🚨 KIS 중복 구독 에러 해결** | Developer + Infra | **P0** | - | 11,965건/1h, 373220 종목 집중 |
 | 미래에셋 OAuth2 연동 | Developer | P1 | - | API 키 대기 중 |
 | 키움 RE 화면번호 풀링 | Architect | P1 | - | REST API 사양 기준 |
