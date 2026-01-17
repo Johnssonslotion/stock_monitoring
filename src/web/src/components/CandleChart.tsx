@@ -273,7 +273,7 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
             <div ref={chartContainerRef} className="absolute inset-0 z-0" />
 
             {/* Controls */}
-            <div className="absolute top-3 right-20 z-10 flex gap-1 opacity-100">
+            <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-100">
                 <button onClick={() => handleZoom('in')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Plus size={16} /></button>
                 <button onClick={() => handleZoom('out')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Minus size={16} /></button>
                 <button onClick={() => chartRef.current?.timeScale().fitContent()} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><RefreshCcw size={16} /></button>
