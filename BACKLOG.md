@@ -8,7 +8,6 @@
 | **Phase 1 Week 2: Chaos Test** | QA + Developer | **P0** | [/] | 타임랙, Failover 시뮬레이션 |
 | 수집단(Collector) 개편 | Developer | P1 | [/] | 미래/키움 RE 연동 |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
-| 거버넌스 문서 Git 동기화 | PM | P1 | [/] | 브레인 -> 저장소 이관 |
 
 ## 2. 대기 중 (Todo)
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |
@@ -25,6 +24,8 @@
 - [x] Collection Strategy YAML 설정 (3-Tier 분류)
 - [x] DB 스키마 업데이트 (타임스탬프 계층, 중복 방지)
 - [x] Orchestrator Failover 로직 (8 tests)
+- [x] **Governance v2: 헌법 개정 및 10대 워크플로우 구축**
+- [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
