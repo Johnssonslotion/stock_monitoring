@@ -170,7 +170,7 @@ services:
     container_name: real-collector
     command: python -m src.data_ingestion.price.unified_collector
     env_file:
-      - ../${ENV_FILE:-.env}
+      - ../${ENV_FILE:-.env.prod}
     environment:
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
@@ -194,7 +194,7 @@ services:
     container_name: history-collector
     command: python -m src.data_ingestion.history.main
     env_file:
-      - ../${ENV_FILE:-.env}
+      - ../${ENV_FILE:-.env.prod}
     environment:
       - REDIS_URL=redis://stock-redis:6379/0
       - APP_ENV=${APP_ENV}
@@ -275,7 +275,7 @@ services:
     container_name: recovery-worker
     command: python scripts/recovery/validate_and_recover.py
     env_file:
-      - ../${ENV_FILE:-.env}
+      - ../${ENV_FILE:-.env.prod}
     environment:
       - DB_HOST=stock-timescale
       - DB_PORT=5432

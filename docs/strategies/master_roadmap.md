@@ -27,6 +27,7 @@
 - **Phase 2 (Standardization)**:
   - Backend/Database/UI **3대 명세서(Specification Sheet)** 제정. (✅ DONE)
   - **RFC & ADR Process** 도입으로 변경 관리 체계화. (✅ DONE)
+  - **Mandatory Secret Management (IDEA-002)**: 모든 비밀 정보의 하드코딩 금지 및 환경 변수 강제화 (🆕 2026-01-19).
 - **Phase 3 (Audit)**: 주기적인 문서-코드 정합성 감사 (Gap Analysis). (✅ DONE)
   - **RFC Enforcement**: Single Socket 강제(RFC-001) 및 Strategy Spec 의무화(RFC-002) 적용. (✅ DONE)
 
@@ -39,6 +40,9 @@
   - *US Config*: `HDFSCNT0` + `/HDFSCNT0` (Dual-Socket Ready)
 - **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
 - **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
+- **Phase 3.5 (Collector Isolation)**: 🆕 **2026-01-19** (IDEA-003)
+  - **Strategy**: `kis-service` vs `kiwoom-service` 컨테이너 및 네트워크 완전 분리.
+  - **Recovery**: **Cross-Broker Tick Recovery** (KIS 틱 누락 시 키움 `opt10079` 조회를 통해 100% 틱 복구 달성).
 - **Phase 3 (Hybrid Ingestion Strategy)**: 🆕 **2026-01-14**
   - **Strategy**: **Ticks (Real-time WS)** + **Orderbook (1s Polling REST)** 혼합 운용.
   - **Standard**: **FI-2010 Format** 준수 (10-level Ask/Bid Depth) 학습용 정밀 데이터 확보.
@@ -46,6 +50,11 @@
 - **Phase 4 (Quality Guardrail)**:
   - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
   - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)
+- **Phase 4.5 (Data Integrity & Continuity)**: 🆕 **2026-01-19** (IDEA-001)
+  - **Standard**: "No Gaps Allowed" - 99.9% 일단위 데이터 무결성 보장.
+  - **Pre-flight Check**: 장 시작 전(08:30) API 키 및 소켓 연결 자동 점검 로직 구축.
+  - **Daily Gap-Filler**: 장 마감 후 REST API를 통해 누락된 틱/분봉 데이터를 자동 보충하는 워커 도입.
+  - **Watchdog Evolution**: 5분간 데이터 유입 중단 시 컨테이너 자동 재시작 및 알림.
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**
   - **구독 응답 확인**: 서버 응답(SUCCESS/FAILED) 파싱 및 성공/실패 판정. (✅ DONE)
   - **재시도 로직**: 구독 실패 시 심볼당 최대 3회 즉시 재시도. (✅ DONE)
