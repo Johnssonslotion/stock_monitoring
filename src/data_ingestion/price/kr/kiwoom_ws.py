@@ -88,25 +88,30 @@ class KiwoomWSCollector:
                 if not self.token or self._is_token_expired():
                     # Rate limiting: 토큰 재발급 실패 시 대기 시간 증가
                     if token_retry_count > 0:
-                        wait_time = min(5 * (2 ** token_retry_count), 60)  # 5s, 10s, 20s, 40s, 최대 60s
+                        wait_time = min(5 * (2 ** token_retry_count), 60)
                         logger.warning(f"⏳ Token refresh retry {token_retry_count}/{max_token_retries}, waiting {wait_time}s...")
                         await asyncio.sleep(wait_time)
                     
                     try:
                         await self._refresh_token()
-                        token_retry_count = 0  # 성공 시 카운터 리셋
+                        token_retry_count = 0
+                        # ALERT: Login Success
+                        await self._publish_alert("INFO", "Kiwoom Token Refreshed & Ready")
                     except Exception as token_error:
                         token_retry_count += 1
                         if token_retry_count >= max_token_retries:
-                            logger.error(f"❌ Token refresh failed {max_token_retries} times. Waiting 5 minutes before retry...")
-                            await asyncio.sleep(300)  # 5분 대기
+                            msg = f"❌ Token refresh failed {max_token_retries} times. Waiting 5 minutes..."
+                            logger.error(msg)
+                            await self._publish_alert("CRITICAL", msg)
+                            await asyncio.sleep(300)
                             token_retry_count = 0
-                        raise  # 예외를 상위로 전달
+                        raise
                     
                 await self._connect()
             except Exception as e:
                 logger.error(f"Kiwoom WS Connection Failed: {e}")
-                await asyncio.sleep(5)  # 일반 연결 실패는 5초 후 재시도
+                await self._publish_alert("ERROR", f"Kiwoom Connection Failed: {e}")
+                await asyncio.sleep(5)
 
     async def stop(self):
         """Collector 종료"""
@@ -163,7 +168,9 @@ class KiwoomWSCollector:
             }
             
             await self.ws.send(json.dumps(reg_msg))
-            logger.info(f"📤 REG Screen {screen_no}: {len(symbols)} symbols")
+            msg = f"📤 REG Screen {screen_no}: {len(symbols)} symbols"
+            logger.info(msg)
+            await self._publish_alert("INFO", msg)
             
             # 응답 대기
             resp = await self.ws.recv()
@@ -206,6 +213,20 @@ class KiwoomWSCollector:
         channel = f"tick:KR:{tick.symbol}"
         message = tick.json()
         await self.redis.publish(channel, message)
+
+    async def _publish_alert(self, level: str, message: str):
+        """Publish system alert to Redis"""
+        try:
+            if self.redis:
+                payload = {
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "Kiwoom-Service",
+                    "level": level,
+                    "message": message
+                }
+                await self.redis.publish("system:alerts", json.dumps(payload))
+        except Exception as e:
+            logger.error(f"Failed to publish alert: {e}")
 
     async def add_symbol(self, symbol: str):
         """동적 구독 추가 (Scanner 연동용)"""

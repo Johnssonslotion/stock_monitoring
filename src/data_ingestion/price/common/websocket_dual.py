@@ -105,6 +105,7 @@ class DualWebSocketManager:
                             # 🚨 KEY EXPIRED DETECTION
                             if "invalid tr_key" in msg or "Expired" in msg:
                                 logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
+                                await self._publish_alert("CRITICAL", f"KIS Key Expired: {msg}")
                                 asyncio.create_task(self.trigger_refresh())
                                 return "ERROR"
                             
@@ -113,7 +114,14 @@ class DualWebSocketManager:
                                 logger.info(f"✅ [SUCCESS] {source.upper()}: {msg}")
                                 return "SUCCESS"
                             
+                            # 🚨 CRITICAL PROTOCOL ERRORS
+                            if "ALREADY IN USE" in msg:
+                                logger.critical(f"🚨 DUPLICATE CONNECTION: {msg}")
+                                await self._publish_alert("CRITICAL", f"KIS Connection Conflict: {msg}")
+                                return "ERROR"
+
                             logger.error(f"🚨 PROTOCOL ERROR [{source.upper()}]: {msg} | Raw: {message}")
+                            await self._publish_alert("ERROR", f"KIS Protocol Error: {msg}")
                             return "ERROR"
                 except json.JSONDecodeError:
                     pass
@@ -306,13 +314,33 @@ class DualWebSocketManager:
             c.load_symbols()
             logger.info(f"[{c.market}] Loaded {len(c.symbols)} symbols for {c.tr_id}")
 
-        logger.info("🚀 Starting DUAL-SOCKET Manager...")
+        # Run sockets based on active collectors
+        tasks = []
+        if any(self._determine_socket_type(tr_id) == 'tick' for tr_id in self.collectors):
+            tasks.append(self._maintain_connection('tick'))
         
-        # Run both sockets with staggered start to avoid "ALREADY IN USE appkey"
-        await asyncio.gather(
-            self._maintain_connection('tick'),
-            self._delayed_orderbook_start(5)
-        )
+        if any(self._determine_socket_type(tr_id) == 'orderbook' for tr_id in self.collectors):
+            tasks.append(self._delayed_orderbook_start(5))
+
+        if tasks:
+            logger.info(f"🚀 Starting DUAL-SOCKET Manager with {len(tasks)} active sockets...")
+            await asyncio.gather(*tasks)
+        else:
+            logger.error("❌ No valid collectors found. Manager exiting.")
+
+    async def _publish_alert(self, level: str, message: str):
+        """Publish system alert to Redis"""
+        try:
+            if self.redis:
+                payload = {
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "KIS-Service",
+                    "level": level,
+                    "message": message
+                }
+                await self.redis.publish("system:alerts", json.dumps(payload))
+        except Exception as e:
+            logger.error(f"Failed to publish alert: {e}")
 
     async def _delayed_orderbook_start(self, delay: int):
         """Start orderbook connection after a delay to prevent KIS key conflicts"""
