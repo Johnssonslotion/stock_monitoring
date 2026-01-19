@@ -1,4 +1,4 @@
-# ISSUE-014: 데이터 누락 자동 보완 (Data Gap Auto-Completion)
+# ISSUE-015: 데이터 누락 자동 보완 (Data Gap Auto-Completion)
 
 **Status**: Open
 **Priority**: P1

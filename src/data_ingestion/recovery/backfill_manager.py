@@ -2,18 +2,23 @@ import asyncio
 import os
 import yaml
 import logging
+import argparse
 from datetime import datetime
 import aiohttp
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Optional
+import duckdb
 from dotenv import load_dotenv
 
-# Load Environment Variables FIRST
+# Load Environment Variables
 load_dotenv()
 
 from src.data_ingestion.price.common import KISAuthManager
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger("BackfillManager")
 
 # Constants
@@ -22,10 +27,33 @@ OUTPUT_DIR = "data/recovery"
 SYMBOLS_FILE = "configs/kr_symbols.yaml"
 
 class BackfillManager:
-    def __init__(self):
+    def __init__(self, target_symbols: Optional[List[str]] = None):
         self.auth_manager = KISAuthManager()
-        self.symbols = self._load_symbols()
+        self.symbols = target_symbols if target_symbols else self._load_symbols()
+        
+        # Create temp DB path with timestamp
+        self.timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.db_filename = f"recovery_temp_{self.timestamp_str}.duckdb"
+        self.db_path = os.path.join(OUTPUT_DIR, self.db_filename)
+        
         os.makedirs(OUTPUT_DIR, exist_ok=True)
+        self._init_db()
+
+    def _init_db(self):
+        conn = duckdb.connect(self.db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS market_ticks (
+                symbol VARCHAR,
+                timestamp TIMESTAMP,
+                price DOUBLE,
+                volume INT,
+                source VARCHAR,
+                execution_no VARCHAR,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.close()
+        logger.info(f"Initialized temporary DB: {self.db_path}")
 
     def _load_symbols(self) -> List[str]:
         def extract_symbols(data):
@@ -45,108 +73,120 @@ class BackfillManager:
             with open(SYMBOLS_FILE, 'r') as f:
                 config = yaml.safe_load(f)
                 all_symbols = extract_symbols(config)
-                return sorted(list(set(all_symbols))) # Unique and sorted
+                return sorted(list(set(all_symbols)))
         except Exception as e:
             logger.error(f"Failed to load symbols: {e}")
             return []
 
-    async def fetch_ticks(self, symbol: str, token: str):
-        """Fetch minute candles for today using inquire-time-itemchartprice (TR: FHKST03010200)"""
-        # Note: User agreed to use Minute Candles as Tick Proxy for recovery
-        base_url = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
-        url = f"{base_url}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+    async def fetch_real_ticks(self, session: aiohttp.ClientSession, symbol: str, token: str):
+        """
+        Fetch TICK Data using 'inquire-time-itemconclusion' (TR: FHKST01010300)
+        """
+        url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
         
         headers = {
             "Content-Type": "application/json; charset=utf-8",
             "authorization": f"Bearer {token}",
             "appkey": os.getenv("KIS_APP_KEY"),
             "appsecret": os.getenv("KIS_APP_SECRET"),
-            "tr_id": "FHKST03010200", 
+            "tr_id": "FHKST01010300",
             "custtype": "P"
         }
         
-        # Backward search from market close (15:30) to open (09:00)
-        # KIS returns 30 items per call. We need to cover ~390 minutes.
-        # 153000 -> 1500~1530
-        # 150000 -> 1430~1500
-        # ...
-        # 093000 -> 0900~0930
-        target_times = [
-            "153000", "150000", "143000", "140000", 
-            "133000", "130000", "123000", "120000", 
-            "113000", "110000", "103000", "100000", 
-            "093000", "090000" # Just in case
-        ]
-        all_items = []
+        # Sampling Strategy: Every 1 minute from 15:30 to 09:00
+        # For fuller coverage, we would need 30s intervals or handle exact time cursors
+        target_times = []
+        curr = datetime.strptime("153000", "%H%M%S")
+        end = datetime.strptime("090000", "%H%M%S")
+        
+        while curr >= end:
+            target_times.append(curr.strftime("%H%M%S"))
+            curr = curr - pd.Timedelta(minutes=1)
+            
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        all_ticks = []
 
-        async with aiohttp.ClientSession() as session:
-            for t_time in target_times:
-                params = {
-                    "FID_COND_MRKT_DIV_CODE": "J",
-                    "FID_INPUT_ISCD": symbol,
-                    "FID_INPUT_HOUR_1": t_time,
-                    "FID_PW_DATA_INCU_YN": "Y", # Include password data? No, this is PW_DATA? Usually Y/N
-                    "FID_ETC_CLS_CODE": ""
-                }
-                try:
-                    async with session.get(url, headers=headers, params=params) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            if data.get('rt_cd') != '0':
-                                logger.error(f"❌ KIS API Error for {symbol} at {t_time}: {data.get('msg1')}")
-                                continue
+        for t_time in target_times:
+            params = {
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": symbol,
+                "FID_INPUT_HOUR_1": t_time
+            }
+            
+            try:
+                async with session.get(url, headers=headers, params=params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        items = data.get('output1', [])
+                        if items:
+                            for item in items:
+                                tick_time_str = item['stck_cntg_hour']
+                                # Format: YYYY-MM-DD HH:MM:SS
+                                timestamp = f"{today_str} {tick_time_str[:2]}:{tick_time_str[2:4]}:{tick_time_str[4:6]}"
                                 
-                            # Candles are in output2
-                            items = data.get('output2', [])
-                            if isinstance(items, list) and len(items) > 0:
-                                all_items.extend(items)
-                                logger.info(f"   - Fetched {len(items)} minute bars at {t_time} for {symbol}")
-                            else:
-                                logger.debug(f"   - [{symbol}] {t_time} output2 is empty.")
-                        else:
-                            logger.error(f"Failed to fetch {symbol} at {t_time}: {resp.status}")
-                except Exception as e:
-                    logger.error(f"Error fetching {symbol}: {e}")
-                
-                await asyncio.sleep(0.5) # TPS limit
+                                tick = {
+                                    'symbol': symbol,
+                                    'timestamp': timestamp,
+                                    'price': float(item['stck_prpr']),
+                                    'volume': int(item['cntg_vol']),
+                                    'source': 'KIS_REST_RECOVERY',
+                                    'execution_no': f"{timestamp}_{item['cntg_vol']}" # Synthetic ID
+                                }
+                                all_ticks.append(tick)
+                        
+                        # Rate Limit Prevention (KIS: ~20 TPS per key)
+                        await asyncio.sleep(0.06) 
+                        
+                    else:
+                        logger.warning(f"[{symbol}] Failed {t_time}: HTTP {resp.status}")
+                        await asyncio.sleep(0.5)
 
-        if not all_items:
-            logger.warning(f"⚠️ No data found for {symbol}")
+            except Exception as e:
+                logger.error(f"[{symbol}] Error at {t_time}: {e}")
+                await asyncio.sleep(0.5)
+
+        if not all_ticks:
+            logger.warning(f"[{symbol}] No ticks recovered.")
             return
 
-        # Deduplicate and Save
-        df = pd.DataFrame(all_items).drop_duplicates(subset=['stck_cntg_hour'])
-        if not df.empty:
-            df = df.sort_values('stck_cntg_hour')
-            output_file = f"{OUTPUT_DIR}/backfill_minute_{symbol}_{datetime.now().strftime('%Y%m%d')}.csv"
-            df.to_csv(output_file, index=False)
-            logger.info(f"✅ Saved {len(df)} minute rows for {symbol} to {output_file}")
+        # Save to DuckDB immediately to free memory
+        try:
+            df = pd.DataFrame(all_ticks).drop_duplicates(subset=['timestamp', 'execution_no'])
+            conn = duckdb.connect(self.db_path)
+            conn.executemany("""
+                INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, df[['symbol', 'timestamp', 'price', 'volume', 'source', 'execution_no']].values.tolist())
+            conn.close()
+            logger.info(f"[{symbol}] ✅ Recovered {len(df)} ticks")
+        except Exception as e:
+            logger.error(f"[{symbol}] Database Error: {e}")
 
     async def run(self):
-        logger.info(f"🚀 Starting Backfill for {len(self.symbols)} symbols...")
+        logger.info(f"🚀 Starting Tick Recovery for {len(self.symbols)} symbols...")
+        logger.info(f"💾 Temporary DB: {self.db_path}")
         
-        token = None
-        max_retries = 3
-        for i in range(max_retries):
-            try:
-                token = await self.auth_manager.get_access_token()
-                if token: break
-            except Exception as e:
-                if "EGW00133" in str(e):
-                    wait_time = 65
-                    logger.warning(f"⏳ KIS Token Limit (EGW00133). Waiting {wait_time}s... (Retry {i+1}/{max_retries})")
-                    await asyncio.sleep(wait_time)
-                else:
-                    raise e
-        
+        token = await self.auth_manager.get_access_token()
         if not token:
-            logger.error("❌ Failed to obtain KIS token after retries.")
+            logger.error("❌ Failed to get access token.")
             return
-        
-        for symbol in self.symbols:
-            await self.fetch_ticks(symbol, token)
-            await asyncio.sleep(1) # KIS TPS is sensitive
+
+        async with aiohttp.ClientSession() as session:
+            # Chunking symbols to avoid overwhelming everything, although basic loop is sequential per symbol
+            # Implementing simple parallelism for symbols (e.g. batch of 5)
+            batch_size = 5
+            for i in range(0, len(self.symbols), batch_size):
+                batch = self.symbols[i:i+batch_size]
+                logger.info(f"Processing batch {i//batch_size + 1}: {batch}")
+                tasks = [self.fetch_real_ticks(session, sym, token) for sym in batch]
+                await asyncio.gather(*tasks)
+
+        print(f"OUTPUT_DB={self.db_path}") # stdout for pipe
 
 if __name__ == "__main__":
-    manager = BackfillManager()
+    parser = argparse.ArgumentParser(description='KIS Tick Data Recovery')
+    parser.add_argument('--symbols', nargs='+', help='Specific symbols to recover')
+    args = parser.parse_args()
+
+    manager = BackfillManager(target_symbols=args.symbols)
     asyncio.run(manager.run())

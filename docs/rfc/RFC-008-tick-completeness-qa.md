@@ -117,20 +117,26 @@ graph TD
 
 ### 3.4 External API Specifications
 
-#### Kiwoom Chart REST API
+#### Kiwoom Chart REST API (QA용)
 
 본 시스템은 틱 데이터 검증을 위해 키움증권의 차트 조회 API를 사용합니다.
 
-**상세 스펙**: [Kiwoom Chart API Specification](file:///home/ubuntu/workspace/stock_monitoring/docs/specs/kiwoom-chart-api.md)
-
-**핵심 활용**:
-- **엔드포인트**: `POST /api/v1/daily/chart`
-- **제공 데이터**: 1분봉 OHLCV + **틱 개수** (`trde_qty`)
+- **엔드포인트**: `POST /api/tr/opt10079` (주식틱차트조회)
+- **제공 데이터**: 틱 차트 + **체결 횟수** (`trde_qty`)
 - **검증 로직**: `틱 DB의 COUNT(*) == 키움 API의 trde_qty` → 완전성 보장
 
-**검증 우선순위**:
-1. **Primary**: Kiwoom API (안정적, 틱 개수 제공)
-2. **Secondary**: KIS API (백업 용도)
+#### KIS Tick REST API (Recovery용)
+
+본 시스템은 **누락된 틱 데이터 복구**를 위해 KIS의 체결 조회 API를 사용합니다.
+
+- **엔드포인트**: `GET /uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion` (`FHKST01010300`)
+- **제공 데이터**: **Tick History** (시간, 가격, 거래량)
+- **특징**: `FID_INPUT_HOUR_1` 파라미터로 특정 시점 과거 데이터 조회 가능. 
+- **복구 전략**: 누락 구간에 대해 Paging 호출하여 DB에 채워넣음.
+
+**역할 분담**:
+1. **Kiwoom (QA)**: "몇 개가 빠졌는지" 확인 (Count Check)
+2. **KIS (Recovery)**: "빠진 내용을" 채워넣기 (Data Fill)
 
 ### 3.5 Quality Metrics
 
