@@ -1,9 +1,14 @@
 # IDEA: Daily Minute Recovery & Quality Assurance System
 
-**Status**: 🌿 Sprouting (Drafting)  
-**Priority**: P1  
+**Status**: 🎓 Graduated → [RFC-008](file:///home/ubuntu/workspace/stock_monitoring/docs/rfc/RFC-008-tick-completeness-qa.md)  
+**Priority**: P0 (Critical)  
 **Category**: Infrastructure + Data  
 **Source**: User (2026-01-19)  
+**Graduated**: 2026-01-19  
+
+> [!NOTE]
+> 이 아이디어는 **RFC-008: Tick Data Completeness & Quality Assurance System**으로 승격되었습니다.
+> 계속해서 RFC 문서를 참조하세요.  
 
 ## 1. 개요 (Abstract)
 
