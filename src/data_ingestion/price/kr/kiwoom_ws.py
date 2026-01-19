@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Set
 import aiohttp
 
 from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData
-from src.common.config import get_redis_connection
+from src.core.config import get_redis_connection
 
 
 # Explicit Core ETF List (Leverage/Inverse mainly)

@@ -6,14 +6,12 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1 Week 2: Chaos Test** | QA + Developer | **P0** | [/] | 타임랙, Failover 시뮬레이션 |
-| 수집단(Collector) 개편 | Developer | P1 | [/] | 미래/키움 RE 연동 |
+| **수집단(Collector) 독립화** | Developer | P1 | [/] | 미래/키움 RE 연동 (독립 모듈화 진행) |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
 
 ## 2. 대기 중 (Todo)
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISSUE-001: 가상 투자 시뮬레이션 (Backend)** | Dev | **P1** | [/] | [Branch: feature/ISSUE-001] |
-| **ISSUE-002: 가상 투자 UI (Frontend)** | Frontend | **P1** | [ ] | Mock 기반 선행 작업 가능 |
 | **🚨 KIS 중복 구독 에러 해결** | Developer + Infra | **P0** | - | 11,965건/1h, 373220 종목 집중 |
 | 미래에셋 OAuth2 연동 | Developer | P1 | - | API 키 대기 중 |
 | 키움 RE 화면번호 풀링 | Architect | P1 | - | REST API 사양 기준 |
@@ -29,6 +27,9 @@
 - [x] **Governance v2: 헌법 개정 및 10대 워크플로우 구축**
 - [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
 - [x] **ISSUE-045: CPU 모니터링 수정 & 실시간 WS API (ISSUE-044) 전환**
+### 가상 투자 시뮬레이션 (2026-01-19)
+- [x] **ISSUE-001: 가상 투자 Backend (REST/WS API, VirtualExchange, DB)**
+- [x] **ISSUE-002: 가상 투자 Frontend UI (React Components, Mock/Real Sync)**
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
