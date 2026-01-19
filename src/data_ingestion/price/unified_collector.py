@@ -25,8 +25,13 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("UnifiedCollector")
 
 # 환경 변수
+APP_ENV = os.getenv("APP_ENV", "development").lower()
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 KIS_WS_URL = os.getenv("KIS_WS_URL", "ws://ops.koreainvestment.com:21000")
+KIS_BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
+KIS_APP_KEY = os.getenv("KIS_APP_KEY")
+KIS_APP_SECRET = os.getenv("KIS_APP_SECRET")
+
 KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
 KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
 KIWOOM_BACKUP_MODE = os.getenv("KIWOOM_BACKUP_MODE", "False").lower() == "true"
@@ -165,9 +170,22 @@ def check_time_cross_midnight(current: time, start: time, end: time) -> bool:
         return start <= current or current <= end
 
 async def main():
-    logger.info("🚀 Starting Unified Real-time Collector (Dual-Socket Mode)...")
+    # 0. Startup Banner
+    env_tag = "[PROD]" if APP_ENV == "production" else "[DEV]"
+    print("\n" + "="*60)
+    print(f"🚀 {env_tag} Unified Real-time Collector")
+    print(f"📍 KIS Base: {KIS_BASE_URL}")
+    print(f"📍 KIS WS:   {KIS_WS_URL}")
+    print(f"📍 Redis:    {REDIS_URL}")
+    print(f"🔐 KIS Key:  {KIS_APP_KEY[:4]}****" if KIS_APP_KEY else "🔐 KIS Key:  MISSING")
+    print("="*60 + "\n")
 
-    # 1. Approval Key 발급
+    # 1. API 키 및 연결성 사전 검증 (Pre-flight)
+    if not await auth_manager.verify_connectivity():
+        logger.critical("🛑 CRITICAL: API Connectivity Verification Failed. Shutting down.")
+        sys.exit(1)
+
+    # 1.5 Approval Key 발급
     approval_key = await auth_manager.get_approval_key()
     
     # 2. 수집기 인스턴스 생성 (KR/US Tick & Orderbook)
@@ -283,7 +301,13 @@ async def main():
         logger.info("ℹ️ Kiwoom Collector Disabled (Env Not Set)")
     
     # Run Manager (Block)
-    await manager.run(ws_url, approval_key)
+    if use_dual:
+        # P0 FIX: DualWebSocketManager needs specific URLs for each socket
+        tick_url = f"{KIS_WS_URL}/H0STCNT0" if "H0STCNT0" not in ws_url else ws_url
+        orderbook_url = f"{KIS_WS_URL}/H0STASP0" # Real-time Orderbook TR
+        await manager.run(tick_url, orderbook_url, approval_key)
+    else:
+        await manager.run(ws_url, approval_key)
 
 if __name__ == "__main__":
     asyncio.run(main())
