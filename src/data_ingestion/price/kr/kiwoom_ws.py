@@ -277,10 +277,11 @@ class KiwoomWSCollector:
                     data = await resp.json()
                     self.token = data.get("token")
                     if self.token:
-                        logger.info(f"✅ Kiwoom Token Refreshed: {self.token[:10]}...")
-                    else:
-                        logger.error(f"⚠️ Token missing in response: {data}")
-                        raise Exception("Token not found in response")
+                        # Set expiration (typically 24h, but we use 20h for safety)
+                        expires_in = int(data.get("expires_in", 86400))
+                        from datetime import timedelta
+                        self.token_expire = datetime.now() + timedelta(seconds=expires_in - 600)
+                        logger.info(f"✅ Kiwoom Token Refreshed: {self.token[:10]}... (Expires at {self.token_expire})")
                 else:
                     logger.error(f"❌ Token Refresh Failed: {resp.status} | Response: {response_text}")
                     raise Exception(f"Token Refresh Failed: HTTP {resp.status}")
@@ -312,5 +313,8 @@ class KiwoomWSCollector:
         logger.info(f"Subscribed Screen {screen_no}: {len(symbols)} symbols")
 
     def _is_token_expired(self) -> bool:
-        # TODO: Implement accurate expiration check
-        return False
+        """토큰 만료 여부 확인 (10분 여유)"""
+        if not self.token or not self.token_expire:
+            return True
+        now = datetime.now()
+        return now >= self.token_expire

@@ -58,6 +58,8 @@
 - [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
 - [x] **ISSUE-045: CPU 모니터링 수정 & 실시간 WS API (ISSUE-044) 전환**
 - [x] **ISSUE-016: 데이터 파이프라인 테스트 완벽성 강화 및 ZEVS 구축** (2026-01-19)
+- [x] **ISSUE-012: KIS WebSocket Approval Key & Auth Fix (P0)** (2026-01-19)
+- [x] **ISSUE-015: 데이터 누락 자동 보완 (Gap Filler & Backfill)** (2026-01-19)
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)

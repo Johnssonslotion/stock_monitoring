@@ -303,11 +303,11 @@ class DualWebSocketManager:
         if self.ws_orderbook:
             await self.ws_orderbook.close()
 
-    async def run(self, tick_url: str, orderbook_url: str, approval_key: str):
+    async def run(self, tick_url: str, orderbook_url: Optional[str] = None, approval_key: Optional[str] = None):
         """Main entry point: Launches parallel connection loops"""
         self.approval_key = approval_key
         self.ws_url_tick = tick_url
-        self.ws_url_orderbook = orderbook_url
+        self.ws_url_orderbook = orderbook_url or tick_url
         
         await self.connect_redis()
         

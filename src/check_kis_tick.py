@@ -1,46 +1,27 @@
-import requests
+import asyncio
+import aiohttp
 import os
 import json
 import sys
 
+from dotenv import load_dotenv
+
 # Flush stdout immediately
 sys.stdout.reconfigure(line_buffering=True)
+load_dotenv()
 
-def get_access_token(base_url, app_key, app_secret):
-    url = f"{base_url}/oauth2/tokenP"
-    headers = {"Content-Type": "application/json"}
-    body = {
-        "grant_type": "client_credentials",
-        "appkey": app_key,
-        "appsecret": app_secret
-    }
-    
-    print(f"🔑 Requesting Token from {url}...", flush=True)
+from src.data_ingestion.price.common import KISAuthManager
+
+BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
+APP_KEY = os.getenv("KIS_APP_KEY")
+APP_SECRET = os.getenv("KIS_APP_SECRET")
+
+async def fetch_tick_data():
+    auth_manager = KISAuthManager()
     try:
-        res = requests.post(url, json=body, headers=headers, timeout=10)
-        data = res.json()
-        token = data.get("access_token")
-        if token:
-            print("✅ Token Received", flush=True)
-            return token
-        else:
-            print(f"❌ Token Failed: {data}", flush=True)
-            return None
+        token = await auth_manager.get_access_token()
     except Exception as e:
-        print(f"❌ Token Error: {e}", flush=True)
-        return None
-
-def fetch_tick_data():
-    APP_KEY = os.getenv("KIS_APP_KEY")
-    APP_SECRET = os.getenv("KIS_APP_SECRET")
-    BASE_URL = "https://openapi.koreainvestment.com:9443"
-    
-    if not APP_KEY:
-        print("❌ ENV KIS_APP_KEY not found", flush=True)
-        return
-
-    token = get_access_token(BASE_URL, APP_KEY, APP_SECRET)
-    if not token:
+        print(f"❌ Auth Error: {e}")
         return
 
     # KIS TR: FHKST01010400 (주식시세-주식현재가 체결가)
@@ -64,32 +45,44 @@ def fetch_tick_data():
     
     print(f"📊 Testing KIS Tick Response for 005930 at {params['fid_input_hour_1']}...", flush=True)
     try:
-        res = requests.get(url, headers=headers, params=params, timeout=10)
-        
-        print(f"Status: {res.status_code}", flush=True)
-        if res.status_code == 200:
-            data = res.json()
-            rt_cd = data.get('rt_cd')
-            msg1 = data.get('msg1')
-            output2 = data.get('output2', [])
-            
-            print(f"Return Code: {rt_cd} ({msg1})", flush=True)
-            print(f"Total Count: {len(output2)}", flush=True)
-            
-            if output2:
-                print("First 3 records:", flush=True)
-                for item in output2[:3]:
-                    # stck_cntg_hour: Time, stck_prpr: Price, cntg_vol: Volume
-                    print(f" - Time: {item.get('stck_cntg_hour')}, Price: {item.get('stck_prpr')}, Vol: {item.get('cntg_vol')}", flush=True)
-                
-                print("\n✅ Verification SUCCESS: Tick data retrieval is possible via REST API.", flush=True)
-            else:
-                print("⚠️ No data in output2. (Market closed or time mismatch?)", flush=True)
-        else:
-            print(f"❌ HTTP Error: {res.text}", flush=True)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers, params=params, timeout=10) as res:
+                print(f"Status: {res.status}", flush=True)
+                if res.status == 200:
+                    data = await res.json()
+                    rt_cd = data.get('rt_cd')
+                    msg1 = data.get('msg1')
+                    output2 = data.get('output2', [])
+                    
+                    print(f"Return Code: {rt_cd} ({msg1})", flush=True)
+                    
+                    # FHKST01010400 sometimes returns a dict in output2 for summary
+                    # and output1 for list, OR vice versa. 
+                    # Let's check both output1 and output2 for a list.
+                    tick_list = []
+                    for out_key in ['output1', 'output2']:
+                        val = data.get(out_key)
+                        if isinstance(val, list) and len(val) > 0:
+                            tick_list = val
+                            print(f"✅ Found list in {out_key}")
+                            break
+                    
+                    print(f"Total Count: {len(tick_list)}", flush=True)
+                    
+                    if tick_list:
+                        print("First 3 records:", flush=True)
+                        for item in tick_list[:3]:
+                            print(f" - Time: {item.get('stck_cntg_hour')}, Price: {item.get('stck_prpr')}, Vol: {item.get('cntg_vol')}", flush=True)
+                        print("\n✅ Verification SUCCESS: Tick data retrieval is possible via REST API.", flush=True)
+                    else:
+                        print("⚠️ No list data found in output1 or output2.", flush=True)
+                        print(f"Response keys: {list(data.keys())}")
+                else:
+                    text = await res.text()
+                    print(f"❌ HTTP Error: {text}", flush=True)
             
     except Exception as e:
         print(f"❌ Exception: {e}", flush=True)
 
 if __name__ == "__main__":
-    fetch_tick_data()
+    asyncio.run(fetch_tick_data())
