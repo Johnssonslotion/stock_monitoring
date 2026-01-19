@@ -10,14 +10,14 @@ To prevent history corruption and context loss, the following rules apply strict
 - Once an Issue ID (e.g., `ISSUE-003`) is assigned to a topic, it **MUST NOT** be repurposed for a different topic.
 - If an issue is abandoned or invalid, mark its Status as `Closed - Won't Fix` or `Obsolete`. Do not recycle the number.
 
-### Rule 1.2: Check Before Create
-- Before creating a new issue, the Assignee (AI/User) **MUST** list existing files in `docs/issues/` to identify the next available sequence number.
-- **Protocol**: `ls docs/issues/ | grep ISSUE-`
+### Rule 1.3: Similarity Audit (ZEVS)
+- Every `bug` type issue **MUST** undergo a similarity audit against `docs/issues/` before coding.
+- The outcome of the audit must be recorded in the issue's `Failure Analysis` section.
 
 ## 2. Issue Lifecycle
-- **Open**: Problem identified.
-- **In Progress**: Work has started.
-- **Resolved**: Work complete, awaiting verification.
+- **Open**: Problem identified + **Similarity Audit Complete**.
+- **In Progress**: Work has started + **Regression Test Case Defined**.
+- **Resolved**: Work complete + **Regression Test Passed**.
 - **Closed**: Verification successful.
 
 ## 3. Conflict Resolution
