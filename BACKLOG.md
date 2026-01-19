@@ -9,6 +9,7 @@
 | **ISSUE-015: 수집기 외부 모니터링** | Developer | P1 | [/] | [ISSUE-015](./docs/issues/ISSUE-015.md) (Netlify+Northflank) |
 | **수집단(Collector) 독립화** | Developer | P1 | [/] | 미래/키움 RE 연동 (독립 모듈화 진행) |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
+| **ISSUE-016: 데이터 누락 자동 보완** | Developer | P1 | [/] | [ISSUE-016](./docs/issues/ISSUE-016.md) 키움 TR 복구 |
 
 ## 2. 대기 중 (Todo)
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |
