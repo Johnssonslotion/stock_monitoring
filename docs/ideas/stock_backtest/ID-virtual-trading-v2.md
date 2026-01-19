@@ -37,6 +37,6 @@
 - **Target Component**: `src/broker/virtual.py`, `src/broker/cost_model.py`, `tests/test_virtual_broker.py`
 
 ## 5. 제안하는 다음 단계 (Next Steps)
-1. **ISSUE-014 (Audit)**: 현재 코드의 구조적 한계점 정밀 분석 및 리팩토링 스펙 정의.
+1. **ISSUE-013 (Audit)**: 현재 코드의 구조적 한계점 정밀 분석 및 리팩토링 스펙 정의.
 2. **Spec Creation**: 비동기 매칭 엔진 및 슬리피지 모델에 대한 상세 명세(`docs/specs/virtual_matching_engine.md`) 작성.
 3. **PoC**: Redis 기반의 주문 상태 전파 및 비동기 체결 로직 프로토타입 구현.
