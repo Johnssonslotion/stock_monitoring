@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { fetchJson } from './api';
-import { LayoutDashboard, Map as MapIcon, Activity, Settings, Search } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Activity, Settings, Search, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { CandleChart } from './components/CandleChart';
@@ -14,6 +14,7 @@ import { TimeframeSelector, type Timeframe } from './components/TimeframeSelecto
 import { ServerStatus } from './components/ServerStatus';
 import { TradingPanel } from './components/TradingPanel';
 import { TickerTape } from './components/TickerTape';
+import { VirtualPanel } from './components/virtual/VirtualPanel';
 // import { MarketInfoPanel } from './components/MarketInfoPanel'; // Refactored into TradingPanel
 import { generateMockCandles } from './mocks/tradingMocks';
 import { isMarketOpen } from './mocks/marketHoursMock';
@@ -33,7 +34,7 @@ interface CandleData {
 
 function App() {
   // Global State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'system'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'system' | 'virtual'>('dashboard');
   const [selectedSymbol, setSelectedSymbol] = useState('005930'); // Default: Samsung Electronics
   const [selectedName, setSelectedName] = useState('삼성전자');
   // Dashboard Data State
@@ -235,6 +236,12 @@ function App() {
           icon={<Settings />}
           label="System"
         />
+        <NavButton
+          active={activeTab === 'virtual'}
+          onClick={() => setActiveTab('virtual')}
+          icon={<Wallet />}
+          label="Virtual"
+        />
 
         <div className="mt-auto">
           <NavButton icon={<Settings />} label="Set" />
@@ -289,6 +296,7 @@ function App() {
             {activeTab === 'dashboard' && 'Market Map Overview'}
             {activeTab === 'analysis' && 'Professional analysis'}
             {activeTab === 'system' && 'System Health'}
+            {activeTab === 'virtual' && 'Virtual Simulation'}
           </h1>
 
           {/* Controls */}
@@ -421,8 +429,16 @@ function App() {
                     <div className="px-3 py-2 bg-gray-800/50 border-b border-white/5 mb-2">
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">System Monitoring (All Symbols)</span>
                     </div>
-                    <LogsView />
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'virtual' && (
+                <div className="w-full h-full glass rounded-xl overflow-hidden shadow-xl flex flex-col relative p-1">
+                  <div className="px-4 py-2 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Virtual Investment Platform</span>
+                  </div>
+                  <VirtualPanel symbol={selectedSymbol} isMock={dataSource === 'mock'} />
                 </div>
               )}
             </motion.div>

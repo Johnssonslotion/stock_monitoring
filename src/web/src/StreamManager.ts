@@ -52,6 +52,8 @@ class StreamManager {
                     this.emit('system_metric', parsed);
                 } else if (parsed.type === 'container_status') {
                     this.emit('container_status', parsed);
+                } else if (['EXECUTION', 'BALANCE', 'POSITION'].includes(parsed.type)) {
+                    this.emit('virtual', parsed);
                 } else if (parsed.price && parsed.volume) {
                     // Fallback for legacy messages (during migration)
                     console.warn("Received legacy packet without type field");
