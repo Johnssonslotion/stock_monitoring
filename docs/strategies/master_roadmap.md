@@ -32,8 +32,12 @@
   - **RFC Enforcement**: Single Socket 강제(RFC-001) 및 Strategy Spec 의무화(RFC-002) 적용. (✅ DONE)
 
 ### Pillar 1: 인프라 안정성 (Dev/Prod 격리) [DONE]
-- **Phase 1**: `.env.dev` / `.env.prod` 설정을 통한 키 및 DB 경로 분리.
-- **Phase 2**: `Makefile` & `docker-compose.override.yml` 도입.
+- **Phase 1**: `.env.dev` / `.env.prod` 설정을 통한 키 및 DB 경로 분리. (✅ DONE)
+- **Phase 2**: `Makefile` & `docker-compose.override.yml` 도입. (✅ DONE)
+- **Phase 3 (Centralized Hub & Edge Ingestion)**: 🆕 **2026-01-19** (IDEA-006)
+  - **Strategy**: **OCI A1(24GB RAM)**을 중앙 데이터 허브(DB+분석)로 고정하고, **GCP/Northflank**를 경량 수집 에지(Edge)로 활용.
+  - **Connectivity**: Tailscale VPN을 통한 원격 DB Direct Write (Ingress Edge 패턴).
+  - **Goal**: 데이터 일원화(Single SSoT) 및 OCI A1 자원의 효율적 배분.
 
 ### Pillar 2: 고정밀 데이터 인입 파이프라인 (Data Ingestion) [IN-PROGRESS]
 - **Phase 1 (Ticks)**: KR(Unverified)/US(✅ Verified) 실시간 체결가 수집기 구축. (✅ DONE)
@@ -98,10 +102,12 @@
 
 ### Pillar 4: 운영 및 관측성 (Operations & Observability) [IN-PROGRESS]
 - **목표**: 무중지 시스템 및 카오스 엔진(Chaos Engine)을 통한 복원력 강화.
-- **Phase 1 (Monitoring)**: Sentinel(0-Data Alarm) 및 인프라 메트릭 수집. (✅ DONE)
 - **Phase 2 (System Dashboard)**: 🆕 **2026-01-14**
   - **System Metrics**: CPU, Memory, Disk, Container Health 시각화. (✅ DONE)
   - **Log Viewer**: 주요 경고 및 장애 로그 타임라인 뷰. (✅ DONE)
+- **Phase 2.5 (External Health Dashboard)**: 🆕 **2026-01-19** (ISSUE-015)
+  - **Standalone Bridge**: Netlify(Front) + Northflank(API) 기반의 독립 모니터링 구축.
+  - **Security**: X-API-KEY 및 CORS 기반의 외부 접속 보안 강화.
 - **Phase 3 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
 
 ### Pillar 5: 전략 및 실험 (Strategy & Experimentation) [DONE] 🆕
@@ -110,8 +116,9 @@
 - **Phase 2 (Engine Core)**: Event-driven 방식의 백테스팅 엔진 및 성과 측정(Sharpe, MDD 등) 모듈 구현. (✅ DONE)
 - **Phase 3 (Worktree Strategy)**: `exp/*` 브랜치를 활용한 실험 관리 및 결과 리포트 자동화 프로세스 정립. (✅ DONE)
 
-### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [PLANNED]
+### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [IN-PROGRESS] 🆕
 - **목표**: 비용(세금, 수수료, 이자)과 시장 마찰(슬리피지)을 반영한 하이퍼 리얼리즘 시뮬레이션 환경 구축.
+- **Phase 0 (Ideation)**: [IDEA-005: 하이퍼 리얼리즘 가상 거래 시스템](../ideas/stock_backtest/ID-virtual-trading-v2.md) 브레인스토밍 완료 (🌿 Sprouting). (✅ DONE 2026-01-19)
 - **Phase 1 (Virtual Exchange)**: RFC-004 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
 - **Phase 2 (Cost Modeling)**: KR/US 세금, 브로커 수수료, 미수 이자 계산 엔진 통합. (⏳ PLANNED)
 - **Phase 3 (Dashboard)**: 실시간 PnL 및 비용 분석 대시보드 추가. (⏳ PLANNED)

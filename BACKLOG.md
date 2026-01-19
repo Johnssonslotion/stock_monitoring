@@ -6,6 +6,7 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1 Week 2: Chaos Test** | QA + Developer | **P0** | [/] | 타임랙, Failover 시뮬레이션 |
+| **ISSUE-015: 수집기 외부 모니터링** | Developer | P1 | [/] | [ISSUE-015](./docs/issues/ISSUE-015.md) (Netlify+Northflank) |
 | **수집단(Collector) 독립화** | Developer | P1 | [/] | 미래/키움 RE 연동 (독립 모듈화 진행) |
 | 실험 레지스트리 구축 | Data Scientist | P1 | [/] | `experiments/` 구조화 |
 
@@ -13,6 +14,7 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **🚨 KIS 중복 구독 에러 해결** | Developer + Infra | **P0** | - | 11,965건/1h, 373220 종목 집중 |
+| **ISSUE-014: 가상 거래 시스템 점검** | Architect + Backend | **P1** | - | [IDEA-005](../docs/ideas/stock_backtest/ID-virtual-trading-v2.md) 연동 |
 | 미래에셋 OAuth2 연동 | Developer | P1 | - | API 키 대기 중 |
 | 키움 RE 화면번호 풀링 | Architect | P1 | - | REST API 사양 기준 |
 | 상법개정 앵커 백테스트 | Data Scientist | P2 | 수집단 개편 | 2/26 기준 데이터 |
