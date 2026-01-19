@@ -7,6 +7,9 @@ import aiohttp
 
 from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData
 from src.core.config import get_redis_connection
+from src.data_ingestion.logger.raw_logger import RawWebSocketLogger
+
+logger = logging.getLogger(__name__)
 
 
 # Explicit Core ETF List (Leverage/Inverse mainly)
@@ -48,6 +51,9 @@ class KiwoomWSCollector:
         self.screen_map: Dict[str, Set[str]] = {}
         self._assign_screens(list(self.target_symbols))
 
+        # Raw Logger (Separate Directory to avoid conflict with KIS)
+        self.raw_logger = RawWebSocketLogger(log_dir="data/raw/kiwoom", retention_hours=48)
+
     def _assign_screens(self, symbols: List[str]):
         """종목들을 화면번호에 분산 할당"""
         self.screen_map.clear()
@@ -66,6 +72,7 @@ class KiwoomWSCollector:
         self.running = True
         self.redis = await get_redis_connection()
         self.session = aiohttp.ClientSession()
+        await self.raw_logger.start()
         
         while self.running:
             try:
@@ -137,6 +144,10 @@ class KiwoomWSCollector:
 
     async def _handle_message(self, raw_data: str):
         """메시지 처리"""
+        # 💾 RAW LOGGING
+        if self.raw_logger:
+            await self.raw_logger.log(raw_data, direction="RX")
+
         try:
             data = json.loads(raw_data)
             
