@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Set
 import aiohttp
+import websockets
 
 from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData
 from src.core.config import get_redis_connection
@@ -32,14 +33,14 @@ class KiwoomWSCollector:
     """
     
     WS_URL = "wss://api.kiwoom.com:10000/api/dostk/websocket"
-    REST_URL = "https://api.kiwoom.com/oauth2/token"  # OAuth2 Token Endpoint
+    REST_URL = "https://api.kiwoom.com/oauth2/token"  # Official API domain
     MAX_SYMBOLS_PER_SCREEN = 50  # 안전하게 50으로 설정 (Max 100)
     
     def __init__(self, app_key: str, app_secret: str, symbols: List[str], mock_mode: bool = False):
         self.app_key = app_key
         self.app_secret = app_secret
         self.target_symbols = set(symbols) | CORE_ETFS
-        self.ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.session: Optional[aiohttp.ClientSession] = None
         self.token: Optional[str] = None
         self.token_expire: Optional[datetime] = None
@@ -79,15 +80,33 @@ class KiwoomWSCollector:
         self.session = aiohttp.ClientSession()
         await self.raw_logger.start()
         
+        token_retry_count = 0
+        max_token_retries = 3
+        
         while self.running:
             try:
                 if not self.token or self._is_token_expired():
-                    await self._refresh_token()
+                    # Rate limiting: 토큰 재발급 실패 시 대기 시간 증가
+                    if token_retry_count > 0:
+                        wait_time = min(5 * (2 ** token_retry_count), 60)  # 5s, 10s, 20s, 40s, 최대 60s
+                        logger.warning(f"⏳ Token refresh retry {token_retry_count}/{max_token_retries}, waiting {wait_time}s...")
+                        await asyncio.sleep(wait_time)
+                    
+                    try:
+                        await self._refresh_token()
+                        token_retry_count = 0  # 성공 시 카운터 리셋
+                    except Exception as token_error:
+                        token_retry_count += 1
+                        if token_retry_count >= max_token_retries:
+                            logger.error(f"❌ Token refresh failed {max_token_retries} times. Waiting 5 minutes before retry...")
+                            await asyncio.sleep(300)  # 5분 대기
+                            token_retry_count = 0
+                        raise  # 예외를 상위로 전달
                     
                 await self._connect()
             except Exception as e:
                 logger.error(f"Kiwoom WS Connection Failed: {e}")
-                await asyncio.sleep(5)  # Retry delay
+                await asyncio.sleep(5)  # 일반 연결 실패는 5초 후 재시도
 
     async def stop(self):
         """Collector 종료"""
@@ -98,54 +117,59 @@ class KiwoomWSCollector:
             await self.session.close()
 
     async def _connect(self):
-        """WebSocket 연결 및 구독"""
+        """WebSocket 연결 및 구독 (websockets 라이브러리 사용)"""
         logger.info(f"Connecting to Kiwoom WS: {self.WS_URL}")
         
-        async with self.session.ws_connect(self.WS_URL) as ws:
+        async with websockets.connect(self.WS_URL) as ws:
             self.ws = ws
-            logger.info("Kiwoom WS Connected")
+            logger.info("✅ Kiwoom WS Connected")
             
-            # 초기 구독 수행
+            # 1. LOGIN 필수 (첫 메시지)
+            await self._send_login()
+            login_resp = await ws.recv()
+            await self._handle_message(login_resp)
+            
+            # 2. REG (구독)
             await self._subscribe_all()
             
-            # 메시지 루프
+            # 3. 메시지 루프
             async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    await self._handle_message(msg.data)
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    logger.error("Kiwoom WS Error")
-                    break
+                await self._handle_message(msg)
+
+    async def _send_login(self):
+        """LOGIN 메시지 전송 (필수)"""
+        login_msg = {
+            "trnm": "LOGIN",
+            "token": self.token
+        }
+        await self.ws.send(json.dumps(login_msg))
+        logger.info("📤 SENT LOGIN")
 
     async def _subscribe_all(self):
-        """할당된 모든 화면번호에 대해 구독 요청"""
+        """할당된 모든 화면번호에 대해 REG 요청"""
         for screen_no, symbols in self.screen_map.items():
             if not symbols:
                 continue
-                
-            # 구독 패킷 구성 (Kiwoom Spec 참조 필요, 여기서는 일반적인 JSON 포맷 가정)
-            # 실시간 포맷: {"header": {...}, "body": {"input": {...}}}
-            # 주의: 실제 키움 WS 프로토콜은 문서 확인 필요. 
-            # 현재는 'implementation_plan.md'의 가정을 따름.
             
-            payload = {
-                "header": {
-                    "token": "BEARER_TOKEN_REQUIRED_HERE", # TODO: Token Logic Addition
-                    "tr_type": "3", # 3: Realtime Subscribe
-                    "content-type": "utf-8"
-                },
-                "body": {
-                    "input": {
-                        "tr_id": "H0STCNT0", # 주식체결
-                        "tr_key": ";".join(symbols)
-                    }
-                }
+            # Kiwoom REG 포맷
+            reg_msg = {
+                "trnm": "REG",
+                "grp_no": screen_no,
+                "refresh": "1",
+                "data": [{
+                    "item": list(symbols),
+                    "type": ["0B"]  # 주식체결
+                }]
             }
-            # Note: 실제 구현시 Auth Token 발급 로직 연동 필요.
-            # 지금은 구조 잡기 우선.
             
-            await self.ws.send_json(payload)
-            logger.info(f"Subscribed Screen {screen_no}: {len(symbols)} symbols")
-            await asyncio.sleep(0.2) # Rate Limit 고려
+            await self.ws.send(json.dumps(reg_msg))
+            logger.info(f"📤 REG Screen {screen_no}: {len(symbols)} symbols")
+            
+            # 응답 대기
+            resp = await self.ws.recv()
+            await self._handle_message(resp)
+            
+            await asyncio.sleep(0.2)  # Rate Limit
 
     async def _handle_message(self, raw_data: str):
         """메시지 처리"""
@@ -156,18 +180,23 @@ class KiwoomWSCollector:
         try:
             data = json.loads(raw_data)
             
-            # Heartbeat or System Message check
-            if "body" not in data:
+            # LOGIN/REG 응답
+            trnm = data.get("trnm")
+            if trnm in ["LOGIN", "REG", "PING"]:
+                logger.info(f"📥 {trnm} response: {data}")
                 return
-
-            # 데이터 파싱
-            # 실제 응답 구조에 따라 키값 조정 필요
-            body = data["body"]
-            symbol = body.get("MKSC_SHRN_ISCD")
             
-            if symbol:
-                tick = KiwoomTickData.from_ws_json(body, symbol)
-                await self._publish_to_redis(tick)
+            # REAL 데이터 처리
+            if trnm == "REAL":
+                real_data_list = data.get("data", [])
+                for item in real_data_list:
+                    symbol = item.get("item")
+                    values = item.get("values", {})
+                    
+                    if symbol and values:
+                        # KiwoomTickData로 변환
+                        tick = KiwoomTickData.from_ws_json(values, symbol)
+                        await self._publish_to_redis(tick)
                 
         except Exception as e:
             logger.debug(f"Msg Parse Error: {e}")
@@ -213,7 +242,11 @@ class KiwoomWSCollector:
             "appkey": self.app_key,
             "secretkey": self.app_secret
         }
-        headers = {"Content-Type": "application/json"}
+        # Headers based on kiwoom_websocket_guide.md
+        headers = {
+            "Content-Type": "application/json; charset=UTF-8",
+            "User-Agent": "Mozilla/5.0"
+        }
         
         try:
             async with self.session.post(self.REST_URL, json=payload, headers=headers) as resp:
@@ -221,7 +254,7 @@ class KiwoomWSCollector:
                 
                 if resp.status == 200:
                     data = await resp.json()
-                    self.token = data.get("access_token") or data.get("token")
+                    self.token = data.get("token")
                     if self.token:
                         logger.info(f"✅ Kiwoom Token Refreshed: {self.token[:10]}...")
                     else:
