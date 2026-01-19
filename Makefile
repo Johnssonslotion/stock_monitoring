@@ -63,8 +63,8 @@ PROD_HOST ?= stock-monitor-prod  # Can be overridden: make sync-db-prod PROD_HOS
 sync-db-prod: ## [Local] Fetch Snapshot from Production (Requires Tailscale/SSH)
 	@echo "🔄 Syncing TimescaleDB from Production ($(PROD_HOST))..."
 	@# 1. Dump Remote(Zip) -> Stream -> Unzip -> Restore Local
-	ssh $(PROD_HOST) "docker exec stock-db pg_dump -U postgres stockval --clean --if-exists | gzip" | \
-		gunzip | docker compose $(COMPOSE_ARGS) exec -T stock-db psql -U postgres stock_dev
+	ssh $(PROD_HOST) "docker exec stock-timescale pg_dump -U postgres stockval --clean --if-exists | gzip" | \
+		gunzip | docker compose $(COMPOSE_ARGS) exec -T timescaledb psql -U postgres stockval
 	@echo "✅ TimescaleDB Synced!"
 	@echo "🔄 Syncing DuckDB from Production..."
 	@# 2. Rsync DuckDB Files
