@@ -33,6 +33,8 @@
 | **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
+| **ISSUE-019: API E2E Test Environment Fix** | Developer | - | Fix local API test DB connection |
+| **ISSUE-020: Dual Data Collection (70 Symbols)** | Developer | - | KIS(40) + Kiwoom(40+30) Setup |
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
 
 ### 🟡 P2 (보통)
