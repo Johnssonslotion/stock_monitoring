@@ -44,6 +44,7 @@
   - *US Config*: `HDFSCNT0` + `/HDFSCNT0` (Dual-Socket Ready)
 - **Phase 2 (Dual-Socket)**: Tick/Orderbook 소켓 분리를 통한 동시 수집 안정성 확보. (✅ DONE)
 - **Phase 2.5 (Doomsday Protocol)**: 장애 발생 시 자동 복구 전략 (Sentinel Trigger -> Auto Fallback). (✅ DONE)
+  - *Related*: [ISSUE-003](file:///docs/issues/ISSUE-003.md) (API Error Handling)
 - **Phase 3.5 (Collector Isolation)**: 🆕 **2026-01-19** (IDEA-003) (✅ DONE)
   - **Strategy**: `kis-service` vs `kiwoom-service` 컨테이너 및 네트워크 완전 분리. (✅ DONE)
   - **Recovery**: **Cross-Broker Tick Recovery** (KIS 틱 누락 시 키움 `opt10079` 조회를 통해 100% 틱 복구 달성). (✅ DONE)
@@ -51,6 +52,7 @@
   - **Strategy**: **Ticks (Real-time WS)** + **Orderbook (1s Polling REST)** 혼합 운용.
   - **Standard**: **FI-2010 Format** 준수 (10-level Ask/Bid Depth) 학습용 정밀 데이터 확보.
   - **Constraints**: Single-Key 환경에서의 최적화된 동시 수집 모델.
+  - *Related*: [ISSUE-007](file:///docs/issues/ISSUE-007.md) (WebSocket Manager), [ISSUE-012](file:///docs/issues/ISSUE-012.md) (KIS Auth Key Fix)
 - **Phase 4 (Quality Guardrail)**:
   - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
   - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)
@@ -59,6 +61,7 @@
   - **Pre-flight Check**: 장 시작 전(08:30) API 키 및 소켓 연결 자동 점검 로직 구축.
   - **Daily Gap-Filler**: 장 마감 후 REST API를 통해 누락된 틱/분봉 데이터를 자동 보충하는 워커 도입.
   - **Watchdog Evolution**: 5분간 데이터 유입 중단 시 컨테이너 자동 재시작 및 알림. (✅ DONE)
+  - *Related*: [ISSUE-004](file:///docs/issues/ISSUE-004.md) (Market Open Failure Fix)
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**
   - **구독 응답 확인**: 서버 응답(SUCCESS/FAILED) 파싱 및 성공/실패 판정. (✅ DONE)
   - **재시도 로직**: 구독 실패 시 심볼당 최대 3회 즉시 재시도. (✅ DONE)
@@ -93,12 +96,14 @@
 - **Phase 3D (Backend Integration)**: 🆕 **DEFERRED**
   - **Status**: Live Market Safety를 위해 장 마감 후 진행 ([BACKLOG.md](../BACKLOG.md) 참조).
   - **Features**: Real-time WebSocket, API Integration.
+  - *Related*: [ISSUE-005](file:///docs/issues/ISSUE-005.md) (Candle Service), [ISSUE-006](file:///docs/issues/ISSUE-006.md) (Sector Service)
 - **Phase 3E (Tick Streaming)**: 🆕 **CONDITIONAL** (Load Testing 필수)
   - WebSocket `/ws/ticks/{symbol}` 실시간 스트리밍
   - Lightweight Charts 기반 Canvas 렌더링
   - Data Quality Badge + Statistical Summary (VWAP, Spread, Velocity)
   - **Prerequisite**: Locust 성능 검증 (CPU < 80%, Latency < 100ms p95)
   - **Timeline**: Week 5-8 (Phase 3)
+  - *Related*: [ISSUE-008](file:///docs/issues/ISSUE-008.md) (OrderBook), [ISSUE-009](file:///docs/issues/ISSUE-009.md) (Execution)
 
 ### Pillar 4: 운영 및 관측성 (Operations & Observability) [IN-PROGRESS]
 - **목표**: 무중지 시스템 및 카오스 엔진(Chaos Engine)을 통한 복원력 강화.
@@ -109,6 +114,9 @@
   - **Standalone Bridge**: Netlify(Front) + Northflank(API) 기반의 독립 모니터링 구축.
   - **Security**: X-API-KEY 및 CORS 기반의 외부 접속 보안 강화.
 - **Phase 3 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
+- **Phase 4 (Advanced Analytics)**: 🆕 **2026-01-19**
+  - **Market Dynamics**: Correlation Engine 및 Whale Alert 시스템 통합.
+  - *Related*: [ISSUE-010](file:///docs/issues/ISSUE-010.md) (Correlation), [ISSUE-011](file:///docs/issues/ISSUE-011.md) (Whale Alert)
 
 ### Pillar 5: 전략 및 실험 (Strategy & Experimentation) [DONE] 🆕
 - **목표**: 과거 데이터를 활용한 전략 가속 검증 및 최적화.
@@ -120,8 +128,10 @@
 - **목표**: 비용(세금, 수수료, 이자)과 시장 마찰(슬리피지)을 반영한 하이퍼 리얼리즘 시뮬레이션 환경 구축.
 - **Phase 0 (Ideation)**: [IDEA-005: 하이퍼 리얼리즘 가상 거래 시스템](../ideas/stock_backtest/ID-virtual-trading-v2.md) 브레인스토밍 완료 (🌿 Sprouting). (✅ DONE 2026-01-19)
 - **Phase 1 (Virtual Exchange)**: RFC-004 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
+  - *Related*: [ISSUE-001](file:///docs/issues/ISSUE-001.md) (Backend)
 - **Phase 2 (Cost Modeling)**: KR/US 세금, 브로커 수수료, 미수 이자 계산 엔진 통합. (⏳ PLANNED)
 - **Phase 3 (Dashboard)**: 실시간 PnL 및 비용 분석 대시보드 추가. (⏳ PLANNED)
+  - *Related*: [ISSUE-002](file:///docs/issues/ISSUE-002.md) (Frontend)
 
 ### Pillar 5: 시스템 리팩토링 및 코드 품질 고도화 (System Refactoring) [DEFERRED]
 - **Goal**: RFC-003(Config Management Standard) 준수를 위한 전략 파라미터의 YAML 분리 및 Config 시스템 구조 개선.
