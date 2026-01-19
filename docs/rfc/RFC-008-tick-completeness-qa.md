@@ -129,7 +129,24 @@ CREATE TABLE IF NOT EXISTS minute_candles (
 CREATE INDEX idx_minute_candles_time ON minute_candles(timestamp DESC);
 ```
 
-### 3.4 Quality Metrics
+### 3.4 External API Specifications
+
+#### Kiwoom Chart REST API
+
+본 시스템은 틱 데이터 검증을 위해 키움증권의 차트 조회 API를 사용합니다.
+
+**상세 스펙**: [Kiwoom Chart API Specification](file:///home/ubuntu/workspace/stock_monitoring/docs/specs/kiwoom-chart-api.md)
+
+**핵심 활용**:
+- **엔드포인트**: `POST /api/v1/daily/chart`
+- **제공 데이터**: 1분봉 OHLCV + **틱 개수** (`trde_qty`)
+- **검증 로직**: `틱 DB의 COUNT(*) == 키움 API의 trde_qty` → 완전성 보장
+
+**검증 우선순위**:
+1. **Primary**: Kiwoom API (안정적, 틱 개수 제공)
+2. **Secondary**: KIS API (백업 용도)
+
+### 3.5 Quality Metrics
 
 #### A. Coverage (커버리지)
 
