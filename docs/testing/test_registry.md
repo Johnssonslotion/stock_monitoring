@@ -93,7 +93,9 @@
 | :--- | :--- | :--- | :--- | :--- |
 | QG-UT-01 | `Unit Coverage` | 핵심 파싱 함수 라인 커버리지 | 100% | 🟡 90% |
 | QG-IT-01 | `Redis Resilience` | Redis 중단 시 Collector 재시도 및 버퍼링 유지 | Persistence 보장 | ⏳ 예정 |
-| QG-E2E-01 | `Zero-Data Alarm` | 5분간 데이터 무인입 시 Sentinel 알람 발생 여부 | Alerting 정확도 | ⏳ 예정 |
+| QG-E2E-01 | `Zero-Data Alarm` | 5분간 데이터 무인입 시 Sentinel 알람 발생 여부 | Alerting 정확도 | ✅ Pass |
+97: | SENTINEL-01 | `Critical Alert Pub` | KIS/Kiwoom 에러 시 `system:alerts` 발행 확인 | Logs Verified | ✅ Pass |
+98: | SENTINEL-02 | `Heartbeat Threshold` | 장 중 60초 데이터 부재 시 알람 발생 확인 | Config Verified | ✅ Pass |
 
 ---
 

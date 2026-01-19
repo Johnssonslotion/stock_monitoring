@@ -141,15 +141,15 @@ async def main():
     # 1. Approval Key
     approval_key = await auth_manager.get_approval_key()
     
-    # 2. Collectors
+    # 2. Collectors (Tick Only for Stability)
     kr_tick = KRRealCollector()
-    kr_hoga = KRASPCollector()
     us_tick = USRealCollector()
-    us_hoga = USASPCollector()
+    # kr_hoga = KRASPCollector()  # Disabled for single-socket stability
+    # us_hoga = USASPCollector()
     
     # 3. Manager
     manager = DualWebSocketManager(
-        collectors=[kr_tick, kr_hoga, us_tick, us_hoga],
+        collectors=[kr_tick, us_tick],
         redis_url=REDIS_URL
     )
     
