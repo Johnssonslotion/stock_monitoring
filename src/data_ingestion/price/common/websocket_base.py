@@ -201,7 +201,8 @@ class UnifiedWebSocketManager:
                     "approval_key": self.approval_key,
                     "custtype": "P",
                     "tr_type": tr_type,
-                    "content-type": "utf-8"
+                    "content-type": "utf-8",
+                    "encrypt": "N"
                 },
                 "body": {
                     "input": {
