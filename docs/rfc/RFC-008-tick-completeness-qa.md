@@ -30,37 +30,35 @@
 ### 2.1 Current State (As-Is)
 
 ```
-WebSocket Tick Stream → DuckDB INSERT (즉시)
-                         ↓
-                    문제점:
-                    1. 중복 체결번호 미체크
-                    2. 5,000+ writes/sec 시 I/O 병목
-                    3. 소켓 끊김 구간 미추적
+[KIS WebSocket]
+   ├─ Tick ──┐
+   └─ Hoga ──┴─→ UnifiedCollector → Redis → TimescaleDB (Dual Write)
+                   (메모리 부족 위험, KIS 부하 집중)
 ```
 
-**현재 데이터 품질**:
-- 틱 누락 확인 방법 없음 (추정치만 존재)
-- 분봉 데이터 미수집 (차트 생성 불가)
-- 품질 검증 프로세스 없음
+**문제점**:
+1. **단일 소스 의존**: KIS 장애 시 틱/호가 모두 중단.
+2. **KIS 소켓 부하**: KIS 소켓 하나로 틱/호가 모두 처리 시 Latency 증가 (Zero Cost 환경).
+3. **DB 리소스**: TimescaleDB 단일 저장소는 분석용(Cold)으로 무겁고, DuckDB는 실시간용(Hot)으로 부족.
 
-### 2.2 Desired State (To-Be)
+### 2.2 Desired State (To-Be: Hybrid & Multi-Vendor)
 
 ```
-WebSocket Tick Stream → EnhancedCollector (중복 제거 + 버퍼링)
-                         ↓
-                    DuckDB (1초 배치 INSERT)
-                         ↓
-                    분봉 생성 (SQL 집계) ← 장 마감 후
-                         ↓
-                    API 교차 검증 (KIS/Kiwoom REST)
-                         ↓
-                    품질 리포트 자동 생성
+[KIS WebSocket] ────→ Tick ────┐
+                               │
+[Kiwoom WebSocket] ─→ Hoga ────┼─→ Redis ──┬─→ [TimescaleDB] (Hot/Realtime)
+                               │           │    ├─ 실시간 차트 (1m/5m/1h)
+                               │           │    └─ 시스템 메트릭
+                               │           │
+                               │           └─→ [DuckDB] (Cold/Analytics)
+                               │                ├─ 틱/호가 전체 로그 (Batch)
+                               │                └─ Daily Recovery & QA
 ```
 
-**목표 데이터 품질**:
-- 틱 누락률 < 0.1% (자동 탐지)
-- 분봉 완성도 > 98%
-- 일일 품질 리포트 자동 생성
+**핵심 변경**:
+1. **Vendor 이원화**: 틱(KIS) / 호가(Kiwoom) 분리하여 리스크 분산.
+2. **DB Hybrid**: 실시간성(Timescale)과 분석/보관(DuckDB)의 강점 결합.
+3. **Deep Integrity**: DuckDB를 'Ground Truth'로 하여 Daily Recovery 수행.
 
 ---
 
@@ -68,66 +66,54 @@ WebSocket Tick Stream → EnhancedCollector (중복 제거 + 버퍼링)
 
 ### 3.1 Component Overview
 
-| Component | 역할 | 우선순위 |
-|-----------|------|---------|
-| **EnhancedTickCollector** | 중복 제거, 버퍼링, Gap 감지 | P0 (Critical) |
-| **TickRecoveryLogger** | 소켓 끊김 구간 로깅 | P0 |
-| **CandleGenerator** | 틱 → 분봉 SQL 집계 | P1 |
-| **CrossValidator** | 틱 분봉 vs REST 분봉 비교 | P2 |
-| **QA Reporter** | 일일 품질 리포트 생성 | P2 |
+| Component | 역할 | Source | Storage | Priority |
+|-----------|------|--------|---------|----------|
+| **EnhancedTickCollector** | 틱 수집 및 발행 | **KIS** | Redis | P0 |
+| **KiwoomOrderbookCollector** | 호가 수집 및 발행 | **Kiwoom** | Redis | P0 |
+| **TimescaleArchiver** | 실시간 데이터 적재 | Redis | **TimescaleDB** | P1 |
+| **DuckDBArchiver** | 대용량 배치 적재 | Redis | **DuckDB** | P1 |
+| **DailyRecovery** | 품질 검증 및 복구 | REST API | DuckDB | P2 |
 
 ### 3.2 Data Flow
 
 ```mermaid
 graph TD
-    A[WebSocket Tick] --> B{EnhancedCollector}
-    B -->|중복 체크| C[seen_ticks Set]
-    B -->|버퍼링| D[tick_buffer]
-    D -->|1초마다| E[DuckDB Batch INSERT]
+    KIS[KIS WebSocket] -->|Tick| A[Redis: ticker.kr]
+    KW[Kiwoom WebSocket] -->|Orderbook| B[Redis: orderbook.kr]
     
-    E --> F[market_ticks Table]
+    A --> C{TimescaleArchiver}
+    B --> C
+    C -->|Realtime Insert| D[(TimescaleDB)]
+    D -->|Continuous Aggr| E[Minute Candles]
     
-    F -->|장 마감 후| G[CandleGenerator]
-    G --> H[minute_candles Table]
+    A --> F{DuckDBArchiver}
+    B --> F
+    F -->|1s Batch Insert| G[(DuckDB)]
     
-    I[KIS/Kiwoom REST] -->|분봉 수집| H
-    
-    H --> J[CrossValidator]
-    J -->|불일치 탐지| K[QA Report CSV]
-    
-    B -->|10초+ Gap| L[Redis Alert]
-    L --> M[Sentinel]
+    G --> H[Daily Recovery]
+    H -->|Validate| I[Kiwoom REST API]
 ```
 
-### 3.3 Database Schema
+### 3.3 Database Strategy (Hybrid)
 
-#### 기존 테이블 (수정)
+#### TimescaleDB (Hot Data)
+- **목적**: 실시간 차트 스트리밍, 시스템 모니터링
+- **보관 주기**: 최근 7일 (Retention Policy 적용)
+- **Table**: `market_ticks`, `market_orderbook`, `system_metrics`
+- **Feature**: Continuous Aggregates (1m, 5m, 1h 자동 생성)
 
-```sql
--- market_ticks 테이블에 execution_no 추가 (중복 제거용)
-ALTER TABLE market_ticks ADD COLUMN execution_no VARCHAR;
-CREATE INDEX idx_market_ticks_exec_no ON market_ticks(execution_no);
-```
+#### DuckDB (Cold Data)
+- **목적**: 전체 과거 데이터 보관, 백테스팅, ML 학습, 무결성 검증
+- **보관 주기**: 영구 (Permanent)
+- **Table**: `market_ticks`, `market_orderbook`, `minute_candles`
+- **Feature**: 고속 OLAP 쿼리, Parquet Export
 
-#### 신규 테이블
+### 3.4 Kiwoom Orderbook Specification
 
-```sql
-CREATE TABLE IF NOT EXISTS minute_candles (
-    symbol VARCHAR NOT NULL,
-    timestamp TIMESTAMP NOT NULL,
-    open DOUBLE NOT NULL,
-    high DOUBLE NOT NULL,
-    low DOUBLE NOT NULL,
-    close DOUBLE NOT NULL,
-    volume BIGINT NOT NULL,
-    source VARCHAR NOT NULL,  -- 'TICK_AGGREGATED', 'KIS_REST', 'KIWOOM_REST'
-    tick_count INT,           -- 해당 분봉을 구성한 틱 개수
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (symbol, timestamp, source)
-);
+- **TR ID**: `real_hoga` (주식호가)
+- **Fields**: 매도호가1~10, 매수호가1~10, 매도잔량, 매수잔량
+- **특징**: KIS보다 데이터 업데이트 빈도가 높을 수 있음 (Throttle 필요 가능성)
 
-CREATE INDEX idx_minute_candles_time ON minute_candles(timestamp DESC);
-```
 
 ### 3.4 External API Specifications
 
