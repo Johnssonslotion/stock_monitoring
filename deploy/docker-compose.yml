@@ -31,7 +31,7 @@ services:
   kis-service:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.collector
+      dockerfile: Dockerfile
     command: python -m src.data_ingestion.instances.kis_main
     profiles: [ "collection", "real" ]
     volumes:
@@ -47,7 +47,7 @@ services:
   kiwoom-service:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile.collector
+      dockerfile: Dockerfile
     command: python -m src.data_ingestion.instances.kiwoom_sub
     profiles: [ "collection", "real" ]
     volumes:
