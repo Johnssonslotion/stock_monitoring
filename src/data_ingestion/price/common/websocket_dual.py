@@ -223,9 +223,14 @@ class DualWebSocketManager:
                 target_url = self.current_ws_url
                 logger.info(f"🔌 [{socket_type.upper()}] Connecting to {target_url}...")
                 
+                # Enhanced connection with explicit heartbeat
                 async with websockets.connect(
                     target_url,
-                    ping_interval=20, ping_timeout=10, close_timeout=10
+                    ping_interval=30,      # Send ping every 30 seconds
+                    ping_timeout=10,       # Wait 10s for pong response
+                    close_timeout=10,      # Wait 10s for close frame
+                    max_size=10_000_000,   # 10MB max message size
+                    compression=None       # Disable compression for lower latency
                 ) as ws:
                     logger.info(f"✅ [{socket_type.upper()}] Connected.")
                     
