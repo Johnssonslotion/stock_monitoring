@@ -50,10 +50,22 @@ Proceed anyway? (Not recommended)
 ---
 
 ### 2. Generate Issue ID
-**Action**: Auto-increment issue number
-- Scan `BACKLOG.md` for existing issues
-- **Numbering Reset (v2)**: Start from `ISSUE-001` (Ignore legacy issues in `docs/issues/legacy/`)
-- Format: `ISSUE-[NUMBER]` (e.g., `ISSUE-001`)
+**Action**: Auto-increment issue number based on ISSUE_SUMMARY.md
+
+**2a. Review ISSUE_SUMMARY.md**
+- **Location**: `docs/issues/ISSUE_SUMMARY.md`
+- **Purpose**: Single Source of Truth for all active issues
+- **Check**: Read the file to identify the highest existing ISSUE-XXX number
+- **Validation**: Ensure no gaps in numbering (e.g., if 001-015 exist, next is 016)
+
+**2b. Calculate Next ID**
+- Find max number from ISSUE_SUMMARY.md
+- Increment by 1
+- Format: `ISSUE-[NUMBER]` (zero-padded to 3 digits, e.g., `ISSUE-016`)
+
+**2c. Verify No Conflicts**
+- Check `docs/issues/ISSUE-[NUMBER].md` does NOT already exist
+- If exists, skip to next number
 
 ---
 
@@ -64,15 +76,21 @@ Proceed anyway? (Not recommended)
 - **Location**: `docs/issues/ISSUE-[NUMBER].md`
 - **Template**: (Standard Issue Template)
 
-**3b. Add to BACKLOG**
+**3b. Update ISSUE_SUMMARY.md**
+- **Action**: Add new issue to the summary table
+- **Format**: `| ISSUE-XXX | [Title] | [Priority] | Open | [Assignee] | docs/issues/ISSUE-XXX.md |`
+- **Location**: Append to the table in `docs/issues/ISSUE_SUMMARY.md`
+
+**3c. Add to BACKLOG**
 - **Action**: Insert into `BACKLOG.md` under appropriate section
 - **Format**: `| **ISSUE-[NUMBER]**: [Title] | [Persona] | [Priority] | [ ] | (Doc synced) |`
 
-**3c. Immediate Doc Push (Required)**
+**3d. Immediate Doc Push (Required + Auto-Push)**
 - **Policy**: `docs/**` and `BACKLOG.md` changes must be pushed to `develop` immediately to prevent numbering conflicts.
+- **Auto-Execute**: AI should automatically stage, commit, and push these changes without user intervention.
   ```bash
   git add docs/issues/ BACKLOG.md
-  git commit -m "docs: register ISSUE-[NUMBER]"
+  git commit -m "docs: register ISSUE-[NUMBER] - [Title]"
   git push origin develop
   ```
 
