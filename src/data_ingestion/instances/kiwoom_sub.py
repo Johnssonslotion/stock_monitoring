@@ -68,11 +68,16 @@ async def main():
     symbols = load_symbols()
     logger.info(f"Target Symbols: {len(symbols)}")
     
+    # Check mock mode
+    mock_mode = os.getenv("KIWOOM_MOCK", "False").lower() == "true"
+    logger.info(f"🔧 Mock Mode: {mock_mode}")
+    
     # 2. Init Collector
     collector = KiwoomWSCollector(
         app_key=KIWOOM_APP_KEY,
         app_secret=KIWOOM_APP_SECRET,
-        symbols=symbols
+        symbols=symbols,
+        mock_mode=mock_mode
     )
     
     # 3. Start

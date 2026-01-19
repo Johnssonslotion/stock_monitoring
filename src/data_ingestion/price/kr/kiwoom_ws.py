@@ -32,10 +32,10 @@ class KiwoomWSCollector:
     """
     
     WS_URL = "wss://api.kiwoom.com:10000/api/dostk/websocket"
-    REST_URL = "https://api.kiwoom.com/oauth2/token"  # For Token Refresh
+    REST_URL = "https://api.kiwoom.com/oauth2/token"  # OAuth2 Token Endpoint
     MAX_SYMBOLS_PER_SCREEN = 50  # 안전하게 50으로 설정 (Max 100)
     
-    def __init__(self, app_key: str, app_secret: str, symbols: List[str]):
+    def __init__(self, app_key: str, app_secret: str, symbols: List[str], mock_mode: bool = False):
         self.app_key = app_key
         self.app_secret = app_secret
         self.target_symbols = set(symbols) | CORE_ETFS
@@ -45,6 +45,11 @@ class KiwoomWSCollector:
         self.token_expire: Optional[datetime] = None
         self.running = False
         self.redis = None
+        
+        # Environment-based URL selection
+        if mock_mode:
+            self.WS_URL = "wss://mockapi.kiwoom.com:10000/api/dostk/websocket"
+            self.REST_URL = "https://mockapi.kiwoom.com/oauth2/token"
         
         # Screen Number Management
         # screen_no -> set(symbols)
@@ -201,7 +206,8 @@ class KiwoomWSCollector:
              await self._subscribe_screen(target_screen)
 
     async def _refresh_token(self):
-        """Get OAuth2 Access Token"""
+        """Get OAuth2 Access Token from Kiwoom API"""
+        # Kiwoom API Token Request Format
         payload = {
             "grant_type": "client_credentials",
             "appkey": self.app_key,
@@ -209,15 +215,25 @@ class KiwoomWSCollector:
         }
         headers = {"Content-Type": "application/json"}
         
-        async with self.session.post(self.REST_URL, json=payload, headers=headers) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                self.token = data.get("access_token") or data.get("token")
-                # TODO: Parse expires_in or expires_dt
-                logger.info(f"Token Refreshed: {self.token[:10]}...")
-            else:
-                logger.error(f"Token Refresh Failed: {resp.status}")
-                raise Exception("Token Refresh Failed")
+        try:
+            async with self.session.post(self.REST_URL, json=payload, headers=headers) as resp:
+                response_text = await resp.text()
+                
+                if resp.status == 200:
+                    data = await resp.json()
+                    self.token = data.get("access_token") or data.get("token")
+                    if self.token:
+                        logger.info(f"✅ Kiwoom Token Refreshed: {self.token[:10]}...")
+                    else:
+                        logger.error(f"⚠️ Token missing in response: {data}")
+                        raise Exception("Token not found in response")
+                else:
+                    logger.error(f"❌ Token Refresh Failed: {resp.status} | Response: {response_text}")
+                    raise Exception(f"Token Refresh Failed: HTTP {resp.status}")
+                    
+        except Exception as e:
+            logger.error(f"❌ Token Refresh Error: {e}")
+            raise
 
     async def _subscribe_screen(self, screen_no: str):
         """Single Screen Subscription"""
