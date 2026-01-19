@@ -27,6 +27,38 @@ services:
     volumes:
       - ../data:/app/data
 
+  # [RFC-007] KIS Service (Unified)
+  kis-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.collector
+    command: python -m src.data_ingestion.instances.kis_main
+    profiles: [ "collection", "real" ]
+    volumes:
+      - ../src:/app/src
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    depends_on:
+      - redis
+      - timescaledb
+    restart: always
+
+  # [RFC-007] Kiwoom Service (Isolated Sub)
+  kiwoom-service:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.collector
+    command: python -m src.data_ingestion.instances.kiwoom_sub
+    profiles: [ "collection", "real" ]
+    volumes:
+      - ../src:/app/src
+      - ../data/raw/kiwoom:/app/data/raw/kiwoom
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    depends_on:
+      - redis
+    restart: always
+
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: stock-timescale
