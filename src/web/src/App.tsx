@@ -360,10 +360,22 @@ function App() {
                         <span className="px-2 py-0.5 bg-blue-600/80 text-[10px] font-bold rounded-sm uppercase tracking-tighter shadow-lg shadow-blue-500/20 backdrop-blur-md">
                           {selectedName} ({selectedSymbol})
                         </span>
-                        <div className="flex gap-1 bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
-                          <span className="text-[10px] text-gray-400 font-medium uppercase">ANALYSIS</span>
-                          <div className="w-px h-3 bg-white/10 mx-0.5" />
-                          <span className="text-[10px] text-green-400 font-bold">LIVE</span>
+                        <div className="flex gap-2">
+                          <div className="flex gap-1 bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
+                            <span className="text-[10px] text-gray-400 font-medium uppercase">ANALYSIS</span>
+                            <div className="w-px h-3 bg-white/10 mx-0.5" />
+                            <span className="text-[10px] text-green-400 font-bold">LIVE</span>
+                          </div>
+                          <div className={clsx(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-sm backdrop-blur-sm border",
+                            import.meta.env.DEV
+                              ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
+                              : "bg-blue-500/20 border-blue-500/30 text-blue-300"
+                          )}>
+                            <span className="text-[10px] font-bold">
+                              {import.meta.env.DEV ? 'LOCAL API' : 'SERVER API'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
