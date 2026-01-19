@@ -1,11 +1,10 @@
 # ISSUE-008: 차트 UI 컨트롤 겹침 현상 (Chart UI Controls Overlap)
 
-**Status**: Resolved  
-**Priority**: P1 (High)  
-**Type**: Bug  
-**Created**: 2026-01-17  
-**Resolved**: 2026-01-17  
-**Assignee**: Frontend Engineer  
+**Status**: In Progress
+**Priority**: P1 (High)
+**Type**: Bug
+**Created**: 2026-01-17
+**Assignee**: Frontend Engineer
 
 ## Problem Description
 프론트엔드 차트에서 분봉 선택 드롭다운(Timeframe Selector)과 줌 인/아웃 컨트롤이 UI 상에서 겹쳐서 표시되어 사용성이 저하됩니다.
