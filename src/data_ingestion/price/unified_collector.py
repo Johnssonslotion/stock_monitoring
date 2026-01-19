@@ -249,18 +249,15 @@ async def main():
     # 4. 실행 (WebSocket Loop + Scheduler + Key Refresh)
     asyncio.create_task(market_scheduler(manager))
     asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
-    
-    asyncio.create_task(market_scheduler(manager))
-    asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
 
     # 5. [NEW] Kiwoom Hybrid Collector (Core + Satellite)
     if KIWOOM_BACKUP_MODE and KIWOOM_APP_KEY and KIWOOM_APP_SECRET:
         logger.info("🛡️ Starting Kiwoom Hybrid Collector (Backup/Satellite Mode)...")
         
         # Load Core Symbols from Kist Config (Tier 1)
-        # Note: KRRealCollector.load_config() is sync, but IO bound. Safe for startup.
-        kr_tick.load_config() 
-        core_symbols = kr_tick.kr_symbols
+        # Load Symbols
+        await kr_tick.load_symbols() # Fixed Method Name
+        core_symbols = kr_tick.symbols # Fixed Property
         
         kiwoom_collector = KiwoomWSCollector(
             app_key=KIWOOM_APP_KEY,

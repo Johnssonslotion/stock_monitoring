@@ -308,7 +308,7 @@ class KiwoomWSCollector:
                 }
             }
         }
-        await self.ws.send_json(payload)
+        await self.ws.send(json.dumps(payload))
         logger.info(f"Subscribed Screen {screen_no}: {len(symbols)} symbols")
 
     def _is_token_expired(self) -> bool:
