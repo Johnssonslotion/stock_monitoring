@@ -35,6 +35,7 @@ KIS_APP_SECRET = os.getenv("KIS_APP_SECRET")
 KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
 KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
 KIWOOM_BACKUP_MODE = os.getenv("KIWOOM_BACKUP_MODE", "False").lower() == "true"
+KIWOOM_MOCK_MODE = os.getenv("KIWOOM_MOCK_MODE", "False").lower() == "true"
 
 # 인증 관리자
 auth_manager = KISAuthManager()
@@ -280,7 +281,8 @@ async def main():
         kiwoom_collector = KiwoomWSCollector(
             app_key=KIWOOM_APP_KEY,
             app_secret=KIWOOM_APP_SECRET,
-            symbols=core_symbols
+            symbols=core_symbols,
+            mock_mode=KIWOOM_MOCK_MODE
         )
         # Run in background
         asyncio.create_task(kiwoom_collector.start())

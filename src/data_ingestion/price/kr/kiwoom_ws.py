@@ -163,7 +163,7 @@ class KiwoomWSCollector:
                 "refresh": "1",
                 "data": [{
                     "item": list(symbols),
-                    "type": ["0B"]  # 주식체결
+                    "type": ["0B", "0D"]  # 주식체결(0B), 주식호가잔량(0D)
                 }]
             }
             
@@ -187,9 +187,15 @@ class KiwoomWSCollector:
         try:
             data = json.loads(raw_data)
             
-            # LOGIN/REG 응답
+            # LOGIN/REG/PING 응답
             trnm = data.get("trnm")
-            if trnm in ["LOGIN", "REG", "PING"]:
+            if trnm == "PING":
+                # Manual PONG response required for Kiwoom
+                await self.ws.send(json.dumps({"trnm": "PONG"}))
+                logger.debug("📤 SENT PONG")
+                return
+            
+            if trnm in ["LOGIN", "REG"]:
                 logger.info(f"📥 {trnm} response: {data}")
                 return
             
@@ -201,9 +207,16 @@ class KiwoomWSCollector:
                     values = item.get("values", {})
                     
                     if symbol and values:
-                        # KiwoomTickData로 변환
-                        tick = KiwoomTickData.from_ws_json(values, symbol)
-                        await self._publish_to_redis(tick)
+                        msg_type = item.get("type")
+                        if msg_type == "0B":
+                            # KiwoomTickData로 변환
+                            tick = KiwoomTickData.from_ws_json(values, symbol)
+                            await self._publish_to_redis(tick)
+                        elif msg_type == "0D":
+                            # FID 확인을 위해 로그 출력 (추후 스키마 적용)
+                            # logger.info(f"Orderbook(0D) keys: {list(values.keys())}")
+                            # Too verbose, log sample only
+                            pass
                 
         except Exception as e:
             logger.debug(f"Msg Parse Error: {e}")
@@ -296,20 +309,17 @@ class KiwoomWSCollector:
         if not symbols:
             return
 
-        payload = {
-            "header": {
-                "token": self.token,
-                "tr_type": "3",
-                "content-type": "utf-8"
-            },
-            "body": {
-                "input": {
-                    "tr_id": "H0STCNT0", 
-                    "tr_key": ";".join(symbols)
-                }
-            }
+        # Kiwoom REG Format (Corrected)
+        reg_msg = {
+            "trnm": "REG",
+            "grp_no": screen_no,
+            "refresh": "1",
+            "data": [{
+                "item": list(symbols),
+                "type": ["0B", "0D"]
+            }]
         }
-        await self.ws.send(json.dumps(payload))
+        await self.ws.send(json.dumps(reg_msg))
         logger.info(f"Subscribed Screen {screen_no}: {len(symbols)} symbols")
 
     def _is_token_expired(self) -> bool:

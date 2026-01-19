@@ -65,8 +65,18 @@ class BackfillManager:
             "custtype": "P"
         }
         
-        # Backward search from market close
-        target_times = ["153000", "120000", "100000"]
+        # Backward search from market close (15:30) to open (09:00)
+        # KIS returns 30 items per call. We need to cover ~390 minutes.
+        # 153000 -> 1500~1530
+        # 150000 -> 1430~1500
+        # ...
+        # 093000 -> 0900~0930
+        target_times = [
+            "153000", "150000", "143000", "140000", 
+            "133000", "130000", "123000", "120000", 
+            "113000", "110000", "103000", "100000", 
+            "093000", "090000" # Just in case
+        ]
         all_items = []
 
         async with aiohttp.ClientSession() as session:
