@@ -2,6 +2,12 @@ import pytest
 import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import sys
+# Mock docker module before any imports that might use it
+mock_docker = MagicMock()
+sys.modules["docker"] = mock_docker
+
 from src.monitoring.sentinel import Sentinel
 
 @pytest.mark.asyncio
