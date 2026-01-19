@@ -35,7 +35,7 @@ async def test_parse_us_websocket_message(collector):
     # Needs redis mock if handle_message publishes. 
     # But since handle_message is what we want to test, let's see if we can trigger it.
     # In real_collector_us.py, handle_message calls redis.publish, so we need to mock it.
-    import mock
+    from unittest import mock
     collector.redis = mock.AsyncMock()
     
     res = await collector.handle_message(raw_msg)

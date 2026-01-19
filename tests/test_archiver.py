@@ -9,12 +9,16 @@ TEST_DB_PATH = "data/test_market_data.duckdb"
 
 @pytest.fixture
 def archiver():
+    # Ensure data directory exists
+    os.makedirs(os.path.dirname(TEST_DB_PATH), exist_ok=True)
+    
     if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
-        
-    archiver = TickArchiver(batch_size=2, flush_interval=10) # 2개만 모여도 저장
-    archiver.db_path = TEST_DB_PATH
-    archiver._init_db() # Re-init with new path
+        try:
+            os.remove(TEST_DB_PATH)
+        except:
+            pass
+            
+    archiver = TickArchiver(batch_size=2, flush_interval=10, db_path=TEST_DB_PATH) # 2개만 모여도 저장
     return archiver
 
 @pytest.mark.asyncio

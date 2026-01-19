@@ -6,7 +6,7 @@ from src.api.main import app
 from datetime import datetime, timezone
 
 # 설정 로드
-DB_HOST = os.getenv("DB_HOST", "stock-timescale")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")

@@ -48,8 +48,23 @@ Proceed anyway? (Not recommended)
 **If NO to all** → Continue to Step 2 (Generate Issue ID)
 
 ---
-
-### 2. Generate Issue ID
+ 
+ ### 1.7. **Error Similarity Search (Zero-Leak Policy)**
+ **Trigger**: If Type is `bug`.
+ **Action**: Search for similar past issues to prevent duplication and reuse lessons learned.
+ 
+ 1. **Search**: Execute `grep -r "[Keywords]" docs/issues/` and `docs/governance/reviews/`.
+ 2. **Review**: Check `Regression Test ID` and `Failure Analysis` of matched issues.
+ 3. **Validation**: If similar error exists, AI must notify:
+    ```
+    ⚠️ Similar past error detected: ISSUE-XXX.
+    Existing Test Case: [test_id]
+    Please ensure the new fix addresses the root cause identified previously.
+    ```
+ 
+ ---
+ 
+ ### 2. Generate Issue ID
 **Action**: Auto-increment issue number based on ISSUE_SUMMARY.md
 
 **2a. Review ISSUE_SUMMARY.md**
@@ -144,6 +159,10 @@ git checkout -b [type]/ISSUE-[NUMBER]-[kebab-case-title]
 ## Related
 - Branch: `[branch-name]`
 - RFC: [if applicable]
+ 
+ ## Failure Analysis (ZEVS)
+ - **Why did existing tests miss this?**: [Root cause analysis]
+ - **Regression Test ID**: [test_id to be added in test_registry.md]
 ```
 
 ---

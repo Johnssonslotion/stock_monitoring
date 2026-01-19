@@ -9,9 +9,9 @@ from src.api.main import app
 from datetime import datetime, timezone
 
 # 설정
-REDIS_URL = os.getenv("REDIS_URL", "redis://stock-redis:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 API_AUTH_SECRET = os.getenv("API_AUTH_SECRET", "super-secret-key")
-DB_HOST = os.getenv("DB_HOST", "stock-timescale")
+DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "stockval")
 
 @pytest.mark.asyncio
@@ -77,6 +77,8 @@ async def test_websocket_broadcast_e2e():
     
     with TestClient(app) as client:
         with client.websocket_connect("/ws") as websocket:
+            # 0.5초 대기하여 앱의 Redis 구독이 완료되도록 함
+            await asyncio.sleep(0.5)
             # Redis에 데이터 발행
             r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
             payload = {
@@ -88,10 +90,11 @@ async def test_websocket_broadcast_e2e():
             await r.publish("market_ticker", json.dumps(payload))
             await r.close()
             
-            # WebSocket으로부터 메시지 수신 (최대 2초)
-            # 수신 대기하는 동안 Redis Subscriber가 메시지를 가로챌 시간을 주어야 함.
-            message = websocket.receive_text()
-            data = json.loads(message)
-            
-            assert data["symbol"] == test_symbol
-            assert data["price"] == 55555.0
+            # WebSocket으로부터 메시지 수신 (최대 3초)
+            try:
+                message = await asyncio.wait_for(asyncio.to_thread(websocket.receive_text), timeout=3.0)
+                data = json.loads(message)
+                assert data["symbol"] == test_symbol
+                assert data["price"] == 55555.0
+            except asyncio.TimeoutError:
+                pytest.fail("WebSocket receive timeout: 메시지가 수신되지 않았습니다.")
