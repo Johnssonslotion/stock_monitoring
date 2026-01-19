@@ -1,17 +1,18 @@
-# ISSUE-011: Market Sector Service
+# ISSUE-011: Whale Alert System
 
 **Status**: Open
-**Priority**: P2 (Major)
+**Priority**: P3 (Analytical)
 **Type**: Feature
 **Created**: 2026-01-17
-**Assignee**: Data Engineer
+**Assignee**: Backend Engineer
 
 ## Problem Description
-Calculate and serve real-time market sector performance (e.g., Semiconductor, Bio). Requires a batch job to aggregate constituent stock returns.
+Send external notifications (Slack/Discord) when significant market events (Whale trades) occur.
 
 ## Acceptance Criteria
-- [ ] 10-second batch job to aggregate sector returns.
-- [ ] `GET /api/market/sectors` endpoint.
+- [ ] Webhook integration for Slack/Discord.
+- [ ] Configurable thresholds for alerts.
+- [ ] Async dispatch to avoid blocking main thread.
 
 ## Technical Details
-- **Computation**: Weighted average of constituent stocks.
+- **Queue**: Redis Queue (RQ) or Celery recommended.

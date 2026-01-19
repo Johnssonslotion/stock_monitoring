@@ -1,19 +1,18 @@
-# ISSUE-010: Candle Data Service
+# ISSUE-010: Correlation Engine
 
 **Status**: Open
-**Priority**: P2 (Major)
+**Priority**: P3 (Analytical)
 **Type**: Feature
 **Created**: 2026-01-17
-**Assignee**: Backend Engineer
+**Assignee**: Quant Developer
 
 ## Problem Description
-Expose historical candle data via REST API (`GET /api/candles`). Support various timeframes and efficient querying from TimescaleDB.
+Automatically identify related assets based on price correlation (Pearson) and news keyword limits.
 
 ## Acceptance Criteria
-- [ ] `GET /api/candles` endpoint.
-- [ ] Support 1m, 5m, 1h, 1d, 1w intervals.
-- [ ] Performance: < 100ms for standard range queries.
+- [ ] Pearson Correlation algorithm implementation.
+- [ ] News-based keyword association.
+- [ ] `RelatedAssets` API response.
 
 ## Technical Details
-- **DB**: TimescaleDB
-- **Integration**: Linked with ISSUE-005 (Gap Handling).
+- **Library**: `pandas` or `numpy` for correlation.
