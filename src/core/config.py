@@ -61,3 +61,24 @@ try:
 except FileNotFoundError:
     # Allow import without config file existing (e.g. during specialized tests)
     settings = None
+
+
+async def get_redis_connection():
+    """
+    Get async Redis connection for WebSocket collectors.
+    
+    Returns:
+        redis.asyncio.Redis: Async Redis client
+        
+    Note:
+        This function is used by WebSocket collectors (KIS, Kiwoom)
+        to establish Redis pub/sub connections for real-time data distribution.
+    """
+    import redis.asyncio as redis
+    
+    # Try to get from settings first, fallback to env var
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    if settings and hasattr(settings, 'data') and hasattr(settings.data, 'redis_url'):
+        redis_url = settings.data.redis_url
+    
+    return await redis.from_url(redis_url, decode_responses=False)

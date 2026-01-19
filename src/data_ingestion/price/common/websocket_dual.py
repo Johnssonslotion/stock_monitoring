@@ -38,8 +38,9 @@ class DualWebSocketManager:
         # Raw Logger (Shared)
         self.raw_logger = RawWebSocketLogger(retention_hours=120)  # 5일 보존
         
-        # Current URL (Both sockets use the same endpoint, just separate sessions)
-        self.current_ws_url: Optional[str] = None
+        # Current URLs (Separate endpoints for KIS)
+        self.ws_url_tick: Optional[str] = None
+        self.ws_url_orderbook: Optional[str] = None
 
         self.tick_tr_ids = {'H0STCNT0', 'HDFSCNT0'}
         self.orderbook_tr_ids = {'H0STASP0', 'HDFSASP0', 'HHDFS00000300'} # Add legacy/fallback IDs if needed
@@ -101,12 +102,26 @@ class DualWebSocketManager:
                         body_data = data['body']
                         msg = body_data.get('msg1') or body_data.get('msg_cd')
                         if msg:
-                            logger.error(f"🚨 PROTOCOL ERROR [{source.upper()}]: {msg} | Raw: {message}")
-                            
                             # 🚨 KEY EXPIRED DETECTION
                             if "invalid tr_key" in msg or "Expired" in msg:
                                 logger.error("🚨 DETECTED INVALID KEY! Triggering Auto-Refresh...")
+                                await self._publish_alert("CRITICAL", f"KIS Key Expired: {msg}")
                                 asyncio.create_task(self.trigger_refresh())
+                                return "ERROR"
+                            
+                            # ✅ SUCCESS DETECTION
+                            if "SUBSCRIBE SUCCESS" in msg:
+                                logger.info(f"✅ [SUCCESS] {source.upper()}: {msg}")
+                                return "SUCCESS"
+                            
+                            # 🚨 CRITICAL PROTOCOL ERRORS
+                            if "ALREADY IN USE" in msg:
+                                logger.critical(f"🚨 DUPLICATE CONNECTION: {msg}")
+                                await self._publish_alert("CRITICAL", f"KIS Connection Conflict: {msg}")
+                                return "ERROR"
+
+                            logger.error(f"🚨 PROTOCOL ERROR [{source.upper()}]: {msg} | Raw: {message}")
+                            await self._publish_alert("ERROR", f"KIS Protocol Error: {msg}")
                             return "ERROR"
                 except json.JSONDecodeError:
                     pass
@@ -194,7 +209,7 @@ class DualWebSocketManager:
                 
                 for sym in collector.symbols:
                     await self._send_request(socket_type, tr_id, sym, "1") # 1=Subscribe
-                    await asyncio.sleep(0.1) # Gentle rate limit
+                    await asyncio.sleep(0.5) # Safer rate limit (KIS TPS is strict)
         
         self.active_markets.add(market)
         logger.info(f"[{market}] Subscription Setup Complete.")
@@ -220,12 +235,22 @@ class DualWebSocketManager:
         """Dedicated loop for a single socket connection"""
         while True:
             try:
-                target_url = self.current_ws_url
+                target_url = self.ws_url_tick if socket_type == 'tick' else self.ws_url_orderbook
+                if not target_url:
+                    logger.warning(f"⚠️  No URL set for {socket_type} socket. Waiting...")
+                    await asyncio.sleep(5)
+                    continue
+
                 logger.info(f"🔌 [{socket_type.upper()}] Connecting to {target_url}...")
                 
+                # Enhanced connection with explicit heartbeat
                 async with websockets.connect(
                     target_url,
-                    ping_interval=20, ping_timeout=10, close_timeout=10
+                    ping_interval=30,      # Send ping every 30 seconds
+                    ping_timeout=10,       # Wait 10s for pong response
+                    close_timeout=10,      # Wait 10s for close frame
+                    max_size=10_000_000,   # 10MB max message size
+                    compression=None       # Disable compression for lower latency
                 ) as ws:
                     logger.info(f"✅ [{socket_type.upper()}] Connected.")
                     
@@ -264,10 +289,11 @@ class DualWebSocketManager:
                 
                 await asyncio.sleep(5) # Reconnect delay
 
-    async def switch_url(self, new_url: str):
-        """Updates the URL and forces reconnection for both sockets."""
-        logger.info(f"🔄 Switching Dual-Socket URL to: {new_url}")
-        self.current_ws_url = new_url
+    async def switch_urls(self, tick_url: str, orderbook_url: str):
+        """Updates the URLs and forces reconnection for both sockets."""
+        logger.info(f"🔄 Switching Dual-Socket URLs to: Tick={tick_url}, Orderbook={orderbook_url}")
+        self.ws_url_tick = tick_url
+        self.ws_url_orderbook = orderbook_url
         
         # Force Close to trigger reconnect loop
         if self.ws_tick:
@@ -275,10 +301,11 @@ class DualWebSocketManager:
         if self.ws_orderbook:
             await self.ws_orderbook.close()
 
-    async def run(self, ws_url: str, approval_key: str):
+    async def run(self, tick_url: str, orderbook_url: str, approval_key: str):
         """Main entry point: Launches parallel connection loops"""
         self.approval_key = approval_key
-        self.current_ws_url = ws_url
+        self.ws_url_tick = tick_url
+        self.ws_url_orderbook = orderbook_url
         
         await self.connect_redis()
         
@@ -287,10 +314,35 @@ class DualWebSocketManager:
             c.load_symbols()
             logger.info(f"[{c.market}] Loaded {len(c.symbols)} symbols for {c.tr_id}")
 
-        logger.info("🚀 Starting DUAL-SOCKET Manager...")
+        # Run sockets based on active collectors
+        tasks = []
+        if any(self._determine_socket_type(tr_id) == 'tick' for tr_id in self.collectors):
+            tasks.append(self._maintain_connection('tick'))
         
-        # Run both sockets concurrently
-        await asyncio.gather(
-            self._maintain_connection('tick'),
-            self._maintain_connection('orderbook')
-        )
+        if any(self._determine_socket_type(tr_id) == 'orderbook' for tr_id in self.collectors):
+            tasks.append(self._delayed_orderbook_start(5))
+
+        if tasks:
+            logger.info(f"🚀 Starting DUAL-SOCKET Manager with {len(tasks)} active sockets...")
+            await asyncio.gather(*tasks)
+        else:
+            logger.error("❌ No valid collectors found. Manager exiting.")
+
+    async def _publish_alert(self, level: str, message: str):
+        """Publish system alert to Redis"""
+        try:
+            if self.redis:
+                payload = {
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "KIS-Service",
+                    "level": level,
+                    "message": message
+                }
+                await self.redis.publish("system:alerts", json.dumps(payload))
+        except Exception as e:
+            logger.error(f"Failed to publish alert: {e}")
+
+    async def _delayed_orderbook_start(self, delay: int):
+        """Start orderbook connection after a delay to prevent KIS key conflicts"""
+        await asyncio.sleep(delay)
+        await self._maintain_connection('orderbook')
