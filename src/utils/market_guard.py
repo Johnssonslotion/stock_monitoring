@@ -69,3 +69,11 @@ class MarketAwareGuard:
         )
         print(msg) # Print to stdout for visibility in CLI
         sys.exit(1)
+
+if __name__ == "__main__":
+    # CLI Entry Point for Pre-flight Checks
+    # Usage: python -m src.utils.market_guard
+    logging.basicConfig(level=logging.INFO)
+    MarketAwareGuard.check_market_hours()
+    print("✅ Market is CLOSED. Operation Safe.")
+    sys.exit(0)
