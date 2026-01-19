@@ -40,7 +40,7 @@
 ### Architect
 "RFC는 '왜 이렇게 설계했는가'를 설명하는 문서이고, ISSUE는 '무엇을 할 것인가'를 추적하는 티켓입니다. 
 RFC가 승인되면 → 여러 개의 ISSUE로 분해되어야 합니다.
-예: `RFC-005: Virtual Investment` → `ISSUE-014: VirtualBroker`, `ISSUE-015: CostCalculator` 등"
+예: `RFC-005: Virtual Investment` → `ISSUE-013: VirtualBroker`, `ISSUE-014: CostCalculator` 등"
 
 ### Data Scientist
 "제 관점에서는 '데이터 영향도'도 기준이 되어야 합니다. 새로운 데이터 소스를 추가하거나, 집계 로직을 변경하는 것은 RFC가 필요합니다."

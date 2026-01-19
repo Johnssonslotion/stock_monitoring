@@ -18,7 +18,7 @@
 
 | ID | 제목 | RFC 필요? | 이유 | 권장 조치 |
 |----|------|-----------|------|-----------|
-| **ISSUE-001** | Virtual Investment Platform | ⚠️ **YES** | • DB Schema 변경 (virtual_accounts, orders, positions)<br>• Adapter Pattern 설계 필요<br>• 4개 이상 컴포넌트 (VirtualExchange, CostCalculator, StreamManager, Dashboard)<br>• E2E 테스트 필요 | **RFC-005로 전환**<br>승인 후 ISSUE-014~018로 분해 |
+| **ISSUE-001** | Virtual Investment Platform | ⚠️ **YES** | • DB Schema 변경 (virtual_accounts, orders, positions)<br>• Adapter Pattern 설계 필요<br>• 4개 이상 컴포넌트 (VirtualExchange, CostCalculator, StreamManager, Dashboard)<br>• E2E 테스트 필요 | **RFC-005로 전환**<br>승인 후 ISSUE-013~018로 분해 |
 | **ISSUE-002** | Backlog ID 표준화 | ✅ **NO** | • 문서 작업만 (코드 변경 없음)<br>• 단순 거버넌스 정리 | 유지 (완료됨) |
 | **ISSUE-003** | DB View 재생성 | ⚠️ **YES** | • TimescaleDB Schema 변경<br>• Continuous Aggregates 정책<br>• 데이터 무결성 검증 필요 | **RFC-006으로 전환**<br>(단, 단순 복구라면 ISSUE 유지 가능) |
 | **ISSUE-004** | WebSocket Manager | ⚠️ **YES** | • 아키텍처 결정 (Multiplexing 전략)<br>• Redis Pub/Sub 연동<br>• 3개 이상 컴포넌트 (Manager, Collector, Dashboard)<br>• 통합 테스트 필요 | **RFC-007로 전환** |

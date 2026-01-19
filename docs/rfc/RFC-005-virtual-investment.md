@@ -91,9 +91,9 @@ VirtualBroker   RealBroker (KIS/Kiwoom)
 ## 4. 구현 계획 (Implementation Plan)
 
 승인 시 다음 ISSUE로 분해:
-1. **ISSUE-014**: DB Schema 마이그레이션
-2. **ISSUE-015**: VirtualExchange 클래스 구현
-3. **ISSUE-016**: CostCalculator 유틸리티
+1. **ISSUE-013**: DB Schema 마이그레이션
+2. **ISSUE-014**: VirtualExchange 클래스 구현
+3. **ISSUE-015**: CostCalculator 유틸리티
 4. **ISSUE-017**: Dashboard Virtual Account UI
 5. **ISSUE-018**: E2E 테스트 (Place Order → Fill → PnL)
 

@@ -14,7 +14,7 @@
 ```
 RFC-005 (Virtual Investment 설계) 
   → 승인 후 
-  → ISSUE-014, 015, 016, 017, 018로 분해
+  → ISSUE-013, 015, 016, 017, 018로 분해
 ```
 
 이게 정말 필요한가? **RFC 하나 = 작업 하나**로 진행하면 안 되나?
@@ -60,9 +60,9 @@ PEP-484: Type Hints
 ```
 RFC-005: Virtual Investment Platform
   └─ 승인 후 분해:
-       ├─ ISSUE-014: DB Schema
-       ├─ ISSUE-015: VirtualExchange Class
-       ├─ ISSUE-016: CostCalculator
+       ├─ ISSUE-013: DB Schema
+       ├─ ISSUE-014: VirtualExchange Class
+       ├─ ISSUE-015: CostCalculator
        ├─ ISSUE-017: Dashboard UI
        └─ ISSUE-018: E2E Test
 ```
@@ -109,7 +109,7 @@ RFC-005: Virtual Investment Platform
 "데이터로 보면, Kubernetes는 10,000개 Issue 중 KEP는 100개 정도입니다. 그리고 KEP 1개당 Tracking Issue도 1개입니다. 절대 쪼개지 않습니다."
 
 ### QA Engineer
-"테스트 관점에서도, **통합 테스트는 전체 기능 완료 후**에만 의미가 있습니다. ISSUE-014만 완료되고 015가 안 되면 테스트할 수 없어요."
+"테스트 관점에서도, **통합 테스트는 전체 기능 완료 후**에만 의미가 있습니다. ISSUE-013만 완료되고 015가 안 되면 테스트할 수 없어요."
 
 ## 5. 올바른 프로세스 제안
 
