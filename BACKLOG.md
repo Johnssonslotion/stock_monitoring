@@ -98,3 +98,5 @@
 | [ISSUE-014](docs/issues/ISSUE-014.md) | 외부 모니터링 대시보드 | P1 | In Progress | Developer |
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
+| [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
+| [ISSUE-018](docs/issues/ISSUE-018.md) | Implement KIS Tick Recovery (Backfill Manager) | P2 | Open | Developer |

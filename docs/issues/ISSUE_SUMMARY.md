@@ -18,3 +18,5 @@
 | ISSUE-014 | External Health Monitoring Dashboard (Renumbered from 015) | P1 | In Progress | Developer + Architect | docs/issues/ISSUE-014.md |
 | ISSUE-015 | Data Gap Auto-Completion (Renumbered from 016) | P1 | Open | Developer | docs/issues/ISSUE-015.md |
 | ISSUE-016 | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect | docs/issues/ISSUE-016.md |
+| ISSUE-017 | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer | docs/issues/ISSUE-017.md |
+| ISSUE-018 | Implement KIS Tick Recovery (Backfill Manager) | P2 | Open | Developer | docs/issues/ISSUE-018.md |
