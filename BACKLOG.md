@@ -57,6 +57,7 @@
 - [x] **Governance v2: 헌법 개정 및 10대 워크플로우 구축**
 - [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
 - [x] **ISSUE-045: CPU 모니터링 수정 & 실시간 WS API (ISSUE-044) 전환**
+- [x] **ISSUE-016: 데이터 파이프라인 테스트 완벽성 강화 및 ZEVS 구축** (2026-01-19)
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
@@ -94,3 +95,4 @@
 | [ISSUE-013](docs/issues/ISSUE-013.md) | Virtual Trading Audit | P1 | Open | Architect |
 | [ISSUE-014](docs/issues/ISSUE-014.md) | 외부 모니터링 대시보드 | P1 | In Progress | Developer |
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
+| [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
