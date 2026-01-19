@@ -85,3 +85,8 @@ data/
 logs/
 scripts/**/*.csv
 .temp_venv/
+
+# Test artifacts & screenshots
+artifacts/
+**/test-results/
+tests/screenshot.spec.ts

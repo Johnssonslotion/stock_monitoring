@@ -24,6 +24,31 @@ This workflow creates a tracked issue, generates a feature/fix branch, and integ
 
 ---
 
+### 1.5. **RFC Requirement Check (Constitution v2.8)**
+**Action**: Automatically detect if this task requires RFC instead of direct ISSUE creation.
+
+**Check the following criteria (ANY = RFC needed)**:
+1. Will this modify **3+ files/components**?
+2. Does this require **DB Schema changes**?
+3. Will this add **new external dependencies** (libraries, APIs)?
+4. Does this need **architecture pattern decisions** (Adapter, Strategy, etc.)?
+5. Will this require **integration/E2E tests**?
+
+**If YES to any** → **STOP** and notify user:
+```
+⚠️ This task requires RFC first.
+
+Reason: [Matched criteria]
+Recommended: Create RFC-XXX via /create-rfc workflow
+After RFC approval → Split into multiple ISSUEs
+
+Proceed anyway? (Not recommended)
+```
+
+**If NO to all** → Continue to Step 2 (Generate Issue ID)
+
+---
+
 ### 2. Generate Issue ID
 **Action**: Auto-increment issue number
 - Scan `BACKLOG.md` for existing issues

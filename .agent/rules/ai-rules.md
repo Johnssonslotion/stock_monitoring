@@ -1,4 +1,4 @@
-# AI Rules v2.5 - The Constitution (Index)
+# AI Rules v2.8 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -24,7 +24,9 @@
 3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다.
 4.  **Auto-Proceed**: 단위 테스트가 통과된 Safe 작업은 즉시 실행한다.
 5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
-6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우 슬래시 커멘드**가 존재하는지 확인하고 이를 준수해야 한다. (No Spec, No Code)
+6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우**가 존재하는지 확인하고 이를 준수해야 한다.
+    - **Gemini Antigravity**: `.agent/workflows/` 문서 참조 (자연어 해석)
+    - **Claude Code**: `/slash-command` 실행 (`.claude/commands/` 심링크)
 7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
 
 ## 3. 언어 원칙
@@ -42,8 +44,18 @@
 - **AI Duty**: AI는 코드를 수정하기 전 `HISTORY.md`의 최근 변경사항(Decision Doc)을 읽어 변경의 맥락을 파악해야 한다.
 
 ## 5. Spec Verification Gate (자동 검증 체크리스트)
-AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다:
+AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다.
+
+0.  **Sync First (v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
 1.  **Spec Existence**: 해당 기능/API에 대한 Spec 문서(`docs/specs/`)가 존재하는가?
+1.5.  **Issue-First Principle (v2.10)**: 
+    - **모든 작업은 ISSUE로 시작**한다 (문제 정의).
+    - 복잡한 경우 ISSUE 내 **`## Design` 섹션** 추가 (아키텍처, DB Schema, API Spec 등).
+    - **RFC는 극히 제한적으로만 사용** (연간 0~2개):
+        - 프로젝트 전체 영향 (예: DB 교체, 언어 전환)
+        - 하위 호환성을 깨는 변경 (예: API v1 → v2 마이그레이션)
+    - **ISSUE 하나 = 완결된 스토리** (문제 → 설계 → 구현 → 완료)
+    - 브랜치 생성 = 진행 중 (SSoT), 브랜치 삭제 = 완료
 2.  **Schema Completeness**: Swagger/OpenAPI 또는 DDL이 포함되어 있는가?
 3.  **Edge Case Coverage**: 이상치(Null, Negative, Timeout) 처리 방침이 명시되어 있는가?
 4.  **Roadmap Alignment**: `master_roadmap.md`에서 승인된 작업인가?
@@ -51,5 +63,94 @@ AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야
 **검증 실패 시**: 즉시 작업 중단 → 사용자에게 보고 → Spec 작성 후 재개.
 
 ---
-## 6. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
+## 6. Dual AI Workflow Support (v2.8)
+
+### 6.1. 워크플로우 아키텍처
+본 프로젝트는 **Gemini Antigravity**와 **Claude Code** 두 AI를 동시에 지원한다.
+
+- **SSoT (Single Source of Truth)**: `.agent/workflows/` (원본, Git 추적)
+- **Execution Interface**:
+  - **Gemini Antigravity**: 자연어 요청 → `.agent/workflows/` 문서 참조
+  - **Claude Code**: Slash commands → `.claude/commands/` (심링크)
+
+### 6.2. 동기화 프로토콜
+- **스크립트**: `scripts/sync-workflows.sh`
+- **실행 시점**:
+  1. 새 워크플로우 추가 시
+  2. 워크플로우 수정 시
+  3. `.claude/` 디렉토리 초기화 시
+- **검증**: `ls -la .claude/commands/` 확인
+
+### 6.3. 워크플로우 인벤토리 (11개)
+1. `/create-issue` - ISSUE 등록 및 브랜치 생성
+2. `/run-gap-analysis` - 코드-문서 정합성 검증
+3. `/council-review` - 6인 페르소나 협의
+4. `/create-rfc` - RFC 문서 생성
+5. `/create-spec` - Spec 문서 작성
+6. `/activate-deferred` - 이연 작업 활성화
+7. `/create-roadmap` - 로드맵 생성
+8. `/brainstorm` - 아이디어 인큐베이팅
+9. `/amend-constitution` - 헌법 개정
+10. `/hotfix` - 긴급 프로덕션 수정
+11. `/merge-to-develop` - 품질 게이트 병합
+
+---
+## 7. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
+현재 프롬프트가 정확하게 포함되었는지 사용자에게 알린다.8. `/brainstorm` - 아이디어 인큐베이팅
+9. `/amend-constitution` - 헌법 개정
+10. `/hotfix` - 긴급 프로덕션 수정
+11. `/merge-to-develop` - 품질 게이트 병합
+
+---
+
+## 7. Task Management 3-Tier Architecture (v2.9)
+
+### 7.1. 문서 역할 정의 (Document Roles)
+
+본 프로젝트의 작업 관리는 **3-Tier 구조**를 따른다. 각 계층은 명확히 구분된 목적과 갱신 주기를 가진다.
+
+| Tier | 문서 | 역할 | 갱신 주기 | SSoT (Source of Truth) |
+|------|------|------|-----------|----------------------|
+| **Tier 1: Execution** | **Git Branches** | 실행 중인 작업 추적 | 실시간 | ✅ **YES** (브랜치 존재 = 진행 중) |
+| **Tier 2: Tactical** | **BACKLOG.md** | 단기 작업 목록 (1-2주) | 자동 (스크립트) | ❌ No (Git에서 파생) |
+| **Tier 3: Strategic** | **master_roadmap.md** | 분기별 전략 계획 | 수동 (Council 승인) | ✅ **YES** (전략 방향) |
+
+### 7.2. 동기화 프로토콜
+
+**자동 동기화** (Tier 1 → Tier 2):
+```bash
+# Git 브랜치 → BACKLOG 상태 자동 반영
+./scripts/sync-issue-status.sh
+```
+
+**수동 업데이트** (Tier 3):
+- Roadmap은 Council 결정에 따라 분기별로만 수정
+- RFC 승인 시 Roadmap에 "승인됨" 표시 추가
+
+### 7.3. 정합성 검증 규칙
+
+다음 경우는 **비정상 상태**로 간주하며, CI 또는 수동 검증 시 수정해야 한다:
+
+- ⚠️ **브랜치 존재 but BACKLOG [ ]**: 브랜치가 있는데 BACKLOG가 Open 상태
+  - **조치**: `./scripts/sync-issue-status.sh` 실행
+- ⚠️ **BACKLOG [/] but 브랜치 없음**: In Progress인데 브랜치 미생성
+  - **조치**: 브랜치 생성 또는 BACKLOG 상태 되돌리기
+- ⚠️ **완료된 작업이 Roadmap에 미반영**: ISSUE [x]인데 Roadmap에 "진행 중"
+  - **조치**: Roadmap 수동 업데이트 (분기말)
+
+### 7.4. 권장 워크플로우
+
+**새 작업 시작 시**:
+1. BACKLOG에 추가 (또는 `/create-issue`)
+2. 브랜치 생성 (`feature/ISSUE-XXX-name`)
+3. 자동으로 BACKLOG 상태 [/]로 변경됨
+
+**작업 완료 시**:
+1. PR 병합 → 브랜치 삭제
+2. BACKLOG 수동으로 [x] 표시
+3. 분기말에 Roadmap 업데이트
+
+---
+
+## 8. Governance 문서를 검토할때, 검토한 문서명을 출력하여,
 현재 프롬프트가 정확하게 포함되었는지 사용자에게 알린다.
