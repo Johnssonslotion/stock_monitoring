@@ -94,7 +94,10 @@ async def market_scheduler(manager):
             if is_kr_time:
                 if current_mode != 'KR':
                     logger.info("🔁 Market Switch: US/Idle -> KR")
-                    await manager.switch_url(f"{KIS_WS_URL}/H0STCNT0")
+                    await manager.switch_urls(
+                        f"{KIS_WS_URL}/H0STCNT0",
+                        f"{KIS_WS_URL}/H0STASP0"
+                    )
                     current_mode = 'KR'
                 if 'KR' not in manager.active_markets:
                      await manager.subscribe_market('KR')
@@ -109,7 +112,10 @@ async def market_scheduler(manager):
                     except Exception as e:
                         logger.error(f"US Start Key Refresh Failed: {e}")
 
-                    await manager.switch_url(f"{KIS_WS_URL}/HDFSCNT0")
+                    await manager.switch_urls(
+                        f"{KIS_WS_URL}/HDFSCNT0",
+                        f"{KIS_WS_URL}/HDFSASP0"
+                    )
                     current_mode = 'US'
                 if 'US' not in manager.active_markets:
                     await manager.subscribe_market('US')
@@ -163,9 +169,10 @@ async def main():
     asyncio.create_task(schedule_key_refresh(manager))
     
     # 6. Run
-    # Default URL (will be corrected by scheduler)
-    ws_url = f"{KIS_WS_URL}/HDFSCNT0"
-    await manager.run(ws_url, approval_key)
+    # Default URLs (will be corrected by scheduler)
+    tick_url = f"{KIS_WS_URL}/HDFSCNT0"
+    orderbook_url = f"{KIS_WS_URL}/HDFSASP0"
+    await manager.run(tick_url, orderbook_url, approval_key)
 
 if __name__ == "__main__":
     asyncio.run(main())
