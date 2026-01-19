@@ -420,27 +420,19 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Loading Indicator Overlay */}
-                      <AnimatePresence>
-                        {isLoading && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20"
-                          >
-                            <div className="flex flex-col items-center gap-3">
-                              <div className="relative w-12 h-12 text-blue-500">
-                                <Activity size={48} className="animate-pulse" />
-                              </div>
-                              <span className="text-xs text-gray-300 font-medium tracking-wide">
-                                Syncing {selectedInterval.toUpperCase()} Market Data...
-                              </span>
+                      {/* Loading Indicator Overlay - Simplified for Robustness */}
+                      {isLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-50">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="relative w-12 h-12 text-blue-500 animate-spin">
+                              <Activity size={48} />
                             </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                            <span className="text-sm text-gray-200 font-bold tracking-wide animate-pulse">
+                              LOADING MARKET DATA...
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       <CandleChart data={candles} symbol={selectedSymbol} interval={selectedInterval} />
                     </div>
