@@ -39,7 +39,7 @@ function App() {
   // Dashboard Data State
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [selectedInterval, setSelectedInterval] = useState<Timeframe>('1d');
-  const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [isLoading, setIsLoading] = useState(true); // Loading state (Default true for smooth transition)
   const [dataSource, setDataSource] = useState<'real' | 'mock' | 'partial'>('mock'); // Track data source
   const [dataGaps, setDataGaps] = useState<{ count: number, maxGapHours: number }>({ count: 0, maxGapHours: 0 }); // Track time gaps
   const [marketOpen, setMarketOpen] = useState<boolean>(true); // Track if market is currently open
