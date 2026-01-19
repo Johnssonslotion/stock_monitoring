@@ -18,20 +18,22 @@
 ## 2. 대기 중 (Todo)
 
 ### 🔴 P0 (긴급)
+
+### 🔴 P0 (긴급)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
-| **ISSUE-012: KIS WebSocket Approval Key 미적용** | Developer | - | 데이터 수집 완전 중단 (0 ticks) |
+| **ISSUE-019: Critical Bug Fixes** | Developer | - | (Placeholder) |
 
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **ISSUE-002: Virtual Investment Platform - Frontend UI** | Frontend Developer | ISSUE-001 | 화면 구현 대기 |
 | **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
-| **ISSUE-007: WebSocket 연결 관리자** | Backend | - | Single-Key 정책 대응, 구독 다중화 |
+| **ISSUE-002: Virtual Investment Platform - Frontend UI** | Frontend Developer | ISSUE-001 | 화면 구현 대기 |
+| **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
-| **ISSUE-015: 데이터 누락 자동 보완** | Developer | - | Integrity Checker & Recovery Worker |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -60,6 +62,9 @@
 - [x] **ISSUE-016: 데이터 파이프라인 테스트 완벽성 강화 및 ZEVS 구축** (2026-01-19)
 - [x] **ISSUE-012: KIS WebSocket Approval Key & Auth Fix (P0)** (2026-01-19)
 - [x] **ISSUE-015: 데이터 누락 자동 보완 (Gap Filler & Backfill)** (2026-01-19)
+- [x] **ISSUE-007: WebSocket 연결 관리자 (Dual/Unified Manager)** (2026-01-19)
+- [x] **ISSUE-018: Implement KIS Tick Recovery (Backfill Manager)** (2026-01-19)
+- [x] **ISSUE-017: Implement DuckDBArchiver (Hybrid Architecture)** (2026-01-19)
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
