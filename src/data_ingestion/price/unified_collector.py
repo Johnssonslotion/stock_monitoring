@@ -8,20 +8,48 @@ import logging
 import os
 from datetime import datetime, time, timedelta
 import pytz
+import yaml
 
-from src.data_ingestion.price.common import KISAuthManager
-from src.data_ingestion.price.common.websocket_dual import DualWebSocketManager
-from src.data_ingestion.price.common.websocket_base import UnifiedWebSocketManager
-import redis.asyncio as redis
-import json
-import sys
-from src.data_ingestion.price.kr.real_collector import KRRealCollector
-from src.data_ingestion.price.us.real_collector import USRealCollector
-from src.data_ingestion.price.kr.asp_collector import KRASPCollector
-from src.data_ingestion.price.us.asp_collector import USASPCollector
-from src.data_ingestion.price.kr.kiwoom_ws import KiwoomWSCollector
+# ... (existing imports)
 
-logging.basicConfig(level=logging.DEBUG)
+def load_all_kr_symbols() -> list:
+    """Strategy: Kiwoom collects ALL 70 symbols (Tick+Orderbook for Rotations, Orderbook for Core)"""
+    config_file = os.getenv("CONFIG_FILE", "configs/kr_symbols.yaml")
+    # Resolve absolute path if needed, similar to real_collector logic or trust CWD
+    if not os.path.exists(config_file):
+        # Fallback for nested execution
+        config_file = os.path.join(os.getcwd(), config_file)
+        
+    try:
+        with open(config_file, "r") as f:
+            config = yaml.safe_load(f)
+        
+        symbols_data = config.get('symbols', {})
+        targets = []
+        
+        # All Indices (Core)
+        for item in symbols_data.get('indices', []):
+            targets.append(item['symbol'])
+        
+        # All Leverage (Core)
+        for item in symbols_data.get('leverage', []):
+            targets.append(item['symbol'])
+        
+        # All Sectors (Core + Rotation)
+        for sector_data in symbols_data.get('sectors', {}).values():
+            if 'etf' in sector_data:
+                targets.append(sector_data['etf']['symbol'])
+            for stock in sector_data.get('top3', []):
+                targets.append(stock['symbol'])
+                
+        return list(set(targets))
+    except Exception as e:
+        logger.error(f"Failed to load full symbol list for Kiwoom: {e}")
+        return []
+
+# ...
+
+
 logger = logging.getLogger("UnifiedCollector")
 
 # 환경 변수
@@ -271,17 +299,16 @@ async def main():
 
     # 5. [NEW] Kiwoom Hybrid Collector (Core + Satellite)
     if KIWOOM_BACKUP_MODE and KIWOOM_APP_KEY and KIWOOM_APP_SECRET:
-        logger.info("🛡️ Starting Kiwoom Hybrid Collector (Backup/Satellite Mode)...")
+        logger.info("🛡️ Starting Kiwoom Hybrid Collector (Maximized Strategy: 70 Symbols)...")
         
-        # Load Core Symbols from Kist Config (Tier 1)
-        # Load Symbols
-        await kr_tick.load_symbols() # Fixed Method Name
-        core_symbols = kr_tick.symbols # Fixed Property
-        
+        # Load ALL Symbols (Core 40 + Rotation 30) for Kiwoom
+        kiwoom_symbols = load_all_kr_symbols()
+        logger.info(f"Kiwoom Target Coverage: {len(kiwoom_symbols)} symbols")
+
         kiwoom_collector = KiwoomWSCollector(
             app_key=KIWOOM_APP_KEY,
             app_secret=KIWOOM_APP_SECRET,
-            symbols=core_symbols,
+            symbols=kiwoom_symbols,
             mock_mode=KIWOOM_MOCK_MODE
         )
         # Run in background
@@ -289,14 +316,17 @@ async def main():
         
         # Scanner Integration (Dynamic Subscription)
         async def kiwoom_scanner_listener():
-            pubsub = r.pubsub()
-            await pubsub.subscribe("system:add_symbol")
-            logger.info("📡 [Kiwoom] Listening for Dynamic Subscription Events...")
-            async for msg in pubsub.listen():
-                if msg['type'] == 'message':
-                    symbol = msg['data']
-                    logger.info(f"🛰️ [Kiwoom] Dynamic Subscription Triggered: {symbol}")
-                    await kiwoom_collector.add_symbol(symbol)
+            try:
+                pubsub = r.pubsub()
+                await pubsub.subscribe("system:add_symbol")
+                logger.info("📡 [Kiwoom] Listening for Dynamic Subscription Events...")
+                async for msg in pubsub.listen():
+                     if msg['type'] == 'message':
+                        symbol = msg['data']
+                        logger.info(f"🛰️ [Kiwoom] Dynamic Subscription Triggered: {symbol}")
+                        await kiwoom_collector.add_symbol(symbol)
+            except Exception as e:
+                logger.error(f"Kiwoom Scanner Error: {e}")
                     
         asyncio.create_task(kiwoom_scanner_listener())
     else:

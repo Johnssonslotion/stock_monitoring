@@ -47,20 +47,33 @@ class KRRealCollector(BaseCollector):
         symbols_data = config.get('symbols', {})
         kr_targets = []
         
-        # 지수 ETF
+        # 지수 ETF (Core only)
         for item in symbols_data.get('indices', []):
-            kr_targets.append(item['symbol'])
+            if item.get('group', 'core') == 'core':
+                kr_targets.append(item['symbol'])
         
-        # 레버리지 ETF
+        # 레버리지 ETF (Core only)
         for item in symbols_data.get('leverage', []):
-            kr_targets.append(item['symbol'])
+            if item.get('group', 'core') == 'core':
+                kr_targets.append(item['symbol'])
         
-        # 섹터별
+        # 섹터별 (Core Sector + Group checking)
         for sector_data in symbols_data.get('sectors', {}).values():
+            # Check sector-level group
+            is_core_sector = sector_data.get('group', 'rotation') == 'core'
+            
             if 'etf' in sector_data:
-                kr_targets.append(sector_data['etf']['symbol'])
+                # Add ETF if sector is core OR if explicitly tagged (assuming strict structure)
+                # Strategy: KIS only collects Core 40.
+                if is_core_sector:
+                    kr_targets.append(sector_data['etf']['symbol'])
+            
+            # Stocks
             for stock in sector_data.get('top3', []):
-                kr_targets.append(stock['symbol'])
+                # If sector is core, assume stocks are core.
+                # If sector is rotation, stocks are likely rotation.
+                if is_core_sector:
+                    kr_targets.append(stock['symbol'])
         
         self.symbols = list(set(kr_targets))
         logger.info(f"Loaded {len(self.symbols)} KR symbols from {CONFIG_FILE}")
