@@ -193,8 +193,6 @@ function App() {
           const fallbackData = generateMockCandles(200, mockPrice, intervalSeconds);
 
           setCandles(fallbackData);
-        } finally {
-          setIsLoading(false);
         }
       };
 
@@ -434,7 +432,15 @@ function App() {
                         </div>
                       )}
 
-                      <CandleChart data={candles} symbol={selectedSymbol} interval={selectedInterval} />
+                      <CandleChart
+                        data={candles}
+                        symbol={selectedSymbol}
+                        interval={selectedInterval}
+                        onChartReady={() => {
+                          console.log("✅ Chart Rendered - Hiding Loading Indicator");
+                          setIsLoading(false);
+                        }}
+                      />
                     </div>
                   </div>
 

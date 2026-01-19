@@ -17,9 +17,10 @@ interface CandleChartProps {
     data: CandleData[];
     symbol: string;
     interval?: string;
+    onChartReady?: () => void;
 }
 
-export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval = '1d' }) => {
+export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval = '1d', onChartReady }) => {
     const [container, setContainer] = useState<HTMLElement | null>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const mainSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -180,7 +181,11 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
 
     // Handle Logic
     useEffect(() => {
-        if (!chartRef.current || !data || data.length === 0) return;
+        if (!chartRef.current || !data || data.length === 0) {
+            // Even if no data, if we mounted, we are 'ready' to show "No Data"
+            if ((!data || data.length === 0) && onChartReady) onChartReady();
+            return;
+        }
 
         updateData(data);
 
@@ -190,6 +195,13 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
             handleViewportReset();
             prevSymbol.current = symbol;
             prevInterval.current = interval;
+        }
+
+        // Notify parent that chart rendering is done
+        if (onChartReady) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => onChartReady());
+            });
         }
 
     }, [data, symbol, interval]);
