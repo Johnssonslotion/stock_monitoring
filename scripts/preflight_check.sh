@@ -19,6 +19,13 @@ if [ "$TARGET_ENV" == "local" ]; then
 fi
 
 if [ "$TARGET_ENV" == "production" ]; then
+    # 0. Time Lock: MarketAwareGuard
+    echo -e "⏳ Checking Market Status..."
+    if ! python -m src.utils.market_guard; then
+        echo -e "${RED}❌ BLOCKING: Market is OPEN. Deployment is unsafe.${NC}"
+        exit 1
+    fi
+
     # 1. Check Git Status
     if [ -n "$(git status --porcelain)" ]; then
         echo -e "${RED}❌ BLOCKING: You have uncommitted changes. Production deployment requires a clean git state.${NC}"
