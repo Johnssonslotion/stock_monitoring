@@ -47,19 +47,19 @@
   - *Related*: [ISSUE-003](file:///docs/issues/ISSUE-003.md) (API Error Handling)
 - **Phase 3.5 (Collector Isolation)**: 🆕 **2026-01-19** (IDEA-003) (✅ DONE)
   - **Strategy**: `kis-service` vs `kiwoom-service` 컨테이너 및 네트워크 완전 분리. (✅ DONE)
-  - **Recovery**: **Cross-Broker Tick Recovery** (KIS 틱 누락 시 키움 `opt10079` 조회를 통해 100% 틱 복구 달성). (✅ DONE)
+  - **Recovery**: **Cross-Broker Tick Recovery** (KIS 분봉 프록시를 통한 1월 19일 데이터 복구 완료). (✅ **COMPLETED** - 2026-01-19)
 - **Phase 3 (Hybrid Ingestion Strategy)**: 🆕 **2026-01-14**
   - **Strategy**: **Ticks (Real-time WS)** + **Orderbook (1s Polling REST)** 혼합 운용.
   - **Standard**: **FI-2010 Format** 준수 (10-level Ask/Bid Depth) 학습용 정밀 데이터 확보.
   - **Constraints**: Single-Key 환경에서의 최적화된 동시 수집 모델.
-  - *Related*: [ISSUE-007](file:///docs/issues/ISSUE-007.md) (WebSocket Manager), [ISSUE-012](file:///docs/issues/ISSUE-012.md) (KIS Auth Key Fix)
+  - *Related*: [ISSUE-007](file:///docs/issues/ISSUE-007.md) (WebSocket Manager), [ISSUE-012](file:///docs/issues/ISSUE-012.md) (KIS Auth Fix ✅ DONE)
 - **Phase 4 (Quality Guardrail)**:
   - **Tier 2 기체 품질 게이트 강제 적용** (Schema Validation 승인 완료). (✅ DONE)
   - **Protocol Auto-Validation**: `invalid tr_key` 등 프로토콜 에러 자동 검출 및 차단 로직 구현. (✅ DONE)
 - **Phase 4.5 (Data Integrity & Continuity)**: 🆕 **2026-01-19** (IDEA-001)
   - **Standard**: "No Gaps Allowed" - 99.9% 일단위 데이터 무결성 보장.
-  - **Pre-flight Check**: 장 시작 전(08:30) API 키 및 소켓 연결 자동 점검 로직 구축.
-  - **Daily Gap-Filler**: 장 마감 후 REST API를 통해 누락된 틱/분봉 데이터를 자동 보충하는 워커 도입.
+  - **Pre-flight Check**: 장 시작 전(08:30) API 키 및 소켓 연결 자동 점검 로직 구축. (✅ DONE)
+  - **Daily Gap-Filler**: 장 마감 후 REST API를 통해 누락된 틱/분봉 데이터를 자동 보충하는 워커 도입 (`backfill_manager.py`). (✅ **COMPLETED** - 2026-01-19)
   - **Watchdog Evolution**: 5분간 데이터 유입 중단 시 컨테이너 자동 재시작 및 알림. (✅ DONE)
   - *Related*: [ISSUE-004](file:///docs/issues/ISSUE-004.md) (Market Open Failure Fix)
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**

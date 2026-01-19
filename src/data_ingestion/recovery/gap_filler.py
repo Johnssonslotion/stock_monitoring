@@ -8,14 +8,17 @@ import pytz
 
 import os
 
+from dotenv import load_dotenv
+
+# Load Environment
+load_dotenv()
+
 # Constants
-BASE_URL = "https://openapi.koreainvestment.com:9443"
-# Debugging Environment
-print(f"🔍 Environment Keys: {[k for k in os.environ.keys() if 'KIS' in k]}")
+BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
 APP_KEY = os.getenv("KIS_APP_KEY")
 APP_SECRET = os.getenv("KIS_APP_SECRET")
 SYMBOL = "005930"  # Target: Samsung Electronics
-OUTPUT_DIR = "/app/data/recovery"
+OUTPUT_DIR = "data/recovery"
 OUTPUT_FILE = f"{OUTPUT_DIR}/tick_recovery_{datetime.now().strftime('%Y%m%d')}_{SYMBOL}.csv"
 
 def get_token():
