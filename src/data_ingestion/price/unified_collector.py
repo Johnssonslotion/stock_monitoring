@@ -9,6 +9,7 @@ import os
 from datetime import datetime, time, timedelta
 import pytz
 import yaml
+from src.data_ingestion.price.common.kis_auth import KISAuthManager
 
 # ... (existing imports)
 

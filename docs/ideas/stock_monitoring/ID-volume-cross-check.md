@@ -34,4 +34,4 @@
 
 ## 5. 로드맵 연동
 - [ ] `scripts/quality/cross_validate_volume.py` 작성.
-- [ ] `docs/data_acquisition_strategy.md` 업데이트 (검증 섹션 추가).
+- [ ] `docs/data_management_strategy.md` 업데이트 (검증 섹션 추가).
