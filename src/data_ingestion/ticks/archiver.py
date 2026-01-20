@@ -77,15 +77,25 @@ class TickArchiver:
             for d in self.buffer:
                 # Redis message format might vary, standardize it
                 # Assuming data object from Pydantic model dump
+                # Data standardization
                 symbol = d.get("symbol")
-                timestamp = d.get("timestamp") or d.get("dt") # Handle alias
+                raw_ts = d.get("timestamp") or d.get("dt") # Handle alias
+                
+                # Timestamp Normalization Logic
+                timestamp = raw_ts
+                if isinstance(raw_ts, (int, float)):
+                    # Check if milliseconds (usually > 10^10 for seconds since 1970 is 20th century, 
+                    # but KIS/Upbit timestamps are often ms ~ 1.6e12)
+                    # 3000-01-01 is about 3.2e10 (seconds), so anything larger is likely ms or us
+                    if raw_ts > 10000000000: # 10 billion - safe threshold for ms
+                         timestamp = datetime.fromtimestamp(raw_ts / 1000.0)
+                    else:
+                         timestamp = datetime.fromtimestamp(float(raw_ts))
+                
                 price = d.get("price")
                 volume = d.get("volume")
                 source = d.get("source", "REALTIME")
                 execution_no = str(d.get("execution_no", "")) # execution_id?
-                
-                # Timestamp conversion if string
-                # DuckDB handles ISO strings well usually
                 
                 data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
             

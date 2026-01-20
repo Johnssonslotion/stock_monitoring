@@ -16,12 +16,38 @@ logger = logging.getLogger("PreFlight")
 
 # Status Flags
 STATUS = {
+    "SMOKE_TEST": False,
     "KIS_API": False,
     "KIWOOM_API": False,
     "REDIS": False,
     "TIMESCALE": False,
     "DISK": False
 }
+
+def run_smoke_test():
+    """Run pytest based smoke tests (ISSUE-027)"""
+    import subprocess
+    logger.info("🧪 Running Smoke Tests (Modules & Basic Infra)...")
+    try:
+        result = subprocess.run(
+            ["poetry", "run", "pytest", "-q", "tests/test_smoke_modules.py"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            logger.error("❌ Smoke Test FAILED")
+            for line in result.stdout.splitlines():
+                logger.error(f"   {line}")
+            for line in result.stderr.splitlines():
+                logger.error(f"   {line}")
+            return False
+        else:
+            logger.info("✅ Smoke Test PASSED")
+            STATUS["SMOKE_TEST"] = True
+            return True
+    except Exception as e:
+        logger.error(f"❌ Smoke Test Execution Error: {e}")
+        return False
 
 async def check_kis_api():
     """Check KIS API Authentication and Simple Query"""
@@ -90,6 +116,11 @@ async def check_disk_space():
 
 async def main():
     logger.info("🚀 Starting Pre-flight Check for Market Open...")
+    
+    # 0. Smoke Test (Blocking)
+    if not run_smoke_test():
+        logger.error("🚨 Smoke Test Failed. Aborting Pre-flight Check.")
+        sys.exit(1)
     
     await asyncio.gather(
         check_kis_api(),
