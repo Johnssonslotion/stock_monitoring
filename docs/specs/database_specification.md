@@ -52,6 +52,30 @@
 | **value** | `DOUBLE` | 측정값 |
 | **meta** | `JSONB` | 추가 메타데이터 (예: `{"host": "prod-1"}`) |
 
+### 3.4. Data Validation (ISSUE-029)
+**Table**: `market_ticks_validation`
+**Type**: Hypertable (Partition by `bucket_time`)
+
+| Column | Type | Nullable | Description |
+| :--- | :--- | :--- | :--- |
+| `bucket_time` | TIMESTAMPTZ | NO | Minute bucket timestamp (PK) |
+| `symbol` | TEXT | NO | Stock symbol (PK) |
+| `tick_count_collected` | INTEGER | YES | Number of ticks collected in this minute |
+| `volume_sum` | DOUBLE PRECISION | YES | Sum of validation volume |
+| `price_open` | DOUBLE PRECISION | YES | Open price of the minute |
+| `price_high` | DOUBLE PRECISION | YES | High price of the minute |
+| `price_low` | DOUBLE PRECISION | YES | Low price of the minute |
+| `price_close` | DOUBLE PRECISION | YES | Close price of the minute |
+| `updated_at` | TIMESTAMPTZ | YES | Last update timestamp (Default: NOW()) |
+| `validation_status` | TEXT | YES | Validation result status |
+
+**Indexes**:
+- `market_ticks_validation_bucket_time_idx` (Derived from Hypertable)
+- Unique Constraint: `(bucket_time, symbol)`
+
+**Retention Policy**:
+- 30 days (Validation data is for short-term audit)
+
 ## 4. 인덱스 전략 (Indexing Strategy)
 - `market_ticks_symbol_time_idx`: `(symbol, time DESC)` - 종목별 최신 조회 최적화.
 - `market_orderbook_symbol_time_idx`: `(symbol, time DESC)`
