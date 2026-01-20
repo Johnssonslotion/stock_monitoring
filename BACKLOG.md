@@ -69,6 +69,16 @@
 - [x] **ISSUE-019: API E2E Test Environment Fix** (2026-01-19)
 - [x] **ISSUE-020: Dual Data Collection (70 Symbols)** (2026-01-19)
 
+### Hotfix Batch (2026-01-20)
+- [x] **ISSUE-022: DuckDB Timestamp Format Fix**
+- [x] **ISSUE-023: TimescaleArchiver Channel Standardization**
+- [x] **ISSUE-024: Dockerfile Dependency Update (httpx)**
+- [x] **ISSUE-025: Recovery Script Implementation**
+- [x] **ISSUE-026: Kiwoom Orderbook Publishing Standardization**
+- [x] **ISSUE-028: Kiwoom Tick Publishing Standardization**
+- [x] **ISSUE-029: Docker Volume Path Standardization**
+- [x] **ISSUE-030: Channel Naming Standardization**
+
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
 - [x] 가변적 워커 아키텍처 설계 (`worker_architecture.md`)
@@ -108,7 +118,4 @@
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
 | [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
-| [ISSUE-022](docs/issues/ISSUE-022_to_025.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
-| [ISSUE-023](docs/issues/ISSUE-022_to_025.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
-| [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
-| [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
+| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
