@@ -27,6 +27,12 @@
 - [ ] **ISSUE-015**: Data Gap Auto-Completion (Renumbered from 016) (P1)
 
 ## Done
+- [x] **ISSUE-031**: [Feature] RFC-008 Tick Completeness QA System Implementation (P1)
+  - API Target Registry (KIS/Kiwoom dual provider)
+  - Cron/Interval Scheduler with market hours awareness
+  - Producer/Consumer verification worker
+  - Real-time verifier (장중 검증)
+  - 23 unit/integration tests passing
 - [x] **ISSUE-027**: [SDLC] Smoke Test (test_smoke_modules.py) 구축 (P1)
 - [x] **ISSUE-030**: [Strategy] Data Management & Hybrid Storage Tiering Policy (P1)
 - [x] **ISSUE-029**: [Feature] Minute-Level Data Validation Table Schema & Aggregation (P1)
