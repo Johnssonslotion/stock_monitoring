@@ -6,7 +6,6 @@
 
 ## Todo
 - [ ] **ISSUE-029**: [Feature] Minute-Level Data Validation Table Schema & Aggregation (P1)
-- [ ] **ISSUE-027**: [SDLC] Smoke Test (test_smoke_modules.py) 구축 (P1)
 - [ ] **ISSUE-022**: [Bug] TickArchiver DuckDB 타입 변환 오류 수정 (P1)
 - [ ] **ISSUE-023**: [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 수정 (P1)
 - [ ] **ISSUE-024**: [Bug] Recovery Worker 의존성(httpx) 누락 수정 (P2)
@@ -28,6 +27,7 @@
 - [ ] **ISSUE-015**: Data Gap Auto-Completion (Renumbered from 016) (P1)
 
 ## Done
+- [x] **ISSUE-027**: [SDLC] Smoke Test (test_smoke_modules.py) 구축 (P1)
 - [x] **ISSUE-030**: [Strategy] Data Management & Hybrid Storage Tiering Policy (P1)
 - [x] **ISSUE-029**: [Feature] Minute-Level Data Validation Table Schema & Aggregation (P1)
 - [x] **ISSUE-028**: [Bug] Chart UI Controls Overlap & Env Indicator (P2)
