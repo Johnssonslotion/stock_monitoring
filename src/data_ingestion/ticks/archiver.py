@@ -79,25 +79,33 @@ class TickArchiver:
                 symbol = d.get("symbol")
                 raw_ts = d.get("timestamp") or d.get("dt")
                 
-                # Robust Timestamp Handling
+                # Timestamp Normalization Logic
+                ts_obj = datetime.now()
                 if isinstance(raw_ts, (int, float)):
-                    timestamp = datetime.fromtimestamp(raw_ts)
+                    # Check if milliseconds (usually > 10^10 for seconds since 1970 is 20th century, 
+                    # but KIS/Upbit timestamps are often ms ~ 1.6e12)
+                    # 3000-01-01 is about 3.2e10 (seconds), so anything larger is likely ms or us
+                    if raw_ts > 10000000000: # 10 billion - safe threshold for ms
+                         ts_obj = datetime.fromtimestamp(raw_ts / 1000.0)
+                    else:
+                         ts_obj = datetime.fromtimestamp(float(raw_ts))
                 elif isinstance(raw_ts, str):
                     try:
-                        timestamp = datetime.fromisoformat(raw_ts)
+                        ts_obj = datetime.fromisoformat(raw_ts)
                     except:
-                        timestamp = datetime.now()
-                else:
-                    timestamp = datetime.now()
-
+                        ts_obj = datetime.now()
+                
+                # Use ISO string for DuckDB TIMESTAMP compatibility
+                timestamp = ts_obj.strftime('%Y-%m-%d %H:%M:%S.%f')
+                
                 price = float(d.get("price") or 0)
-                volume = int(float(d.get("volume") or 0)) # Handle float strings
+                volume = int(float(d.get("volume") or 0))
                 source = d.get("source", "REALTIME")
                 execution_no = str(d.get("execution_no", ""))
                 
                 # [FIX] Explicit conversions for DuckDB (INTEGER -> TIMESTAMP error prevention)
                 # ISO format string is safest for DuckDB binding
-                data_to_insert.append((symbol, timestamp.isoformat(), price, volume, source, execution_no))
+                data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
             
             self.conn.executemany("""
                 INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
@@ -109,9 +117,9 @@ class TickArchiver:
             
         except Exception as e:
             logger.error(f"Failed to flush to DuckDB: {e}")
-            # [Debug] Print sample data on error
             if data_to_insert:
-                 logger.error(f"Sample Row: {data_to_insert[0]}")
+                logger.error(f"Sample Row: {data_to_insert[0]}")
+                logger.error(f"Types: {[type(x) for x in data_to_insert[0]]}")
 
     def merge_recovery_files(self):
         """
