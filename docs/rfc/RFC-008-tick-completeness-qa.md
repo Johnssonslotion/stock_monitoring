@@ -389,4 +389,87 @@ Week 4: 전체 100개 종목 (Full Deployment)
 2. DevOps Lead 최종 승인 대기
 3. Phase 1 구현 시작 (EnhancedTickCollector)
 
+
 **Status Update**: 2026-01-19 - Council 만장일치 승인 (조건부)
+
+---
+
+## Appendix C: API Verification Strategy (Updated 2026-01-20)
+
+### C.1 API Experiment Results
+
+#### Kiwoom Tick Chart API (`ka10079`)
+
+**실험 일시**: 2026-01-20 11:40 KST  
+**대상**: 삼성전자 (005930)
+
+**결과**:
+- ✅ **900 ticks 반환** (1분간 데이터)
+- ✅ Pagination 지원 (`next-key` 헤더)
+- ✅ Token 자동 발급 성공 (Container와 충돌 없음)
+- ❌ **TODAY ONLY** - 날짜 파라미터 없음
+- ⚠️ Rate Limit 발생 (HTTP 429, 7/23 calls)
+
+**제약사항**:
+1. **TODAY ONLY**: 과거 날짜 조회 불가 → 주간 Full Scan 불가능
+2. **Rate Limit**: 전수 검사 시 2,000+ calls 필요 → 실용성 낮음
+3. **실용성**: 당일 실시간 모니터링용으로만 사용 가능
+
+#### KIS Tick API (`FHKST01010300`)
+
+**결과**:
+- ✅ API 작동 확인
+- ❌ Tick Count 직접 조회 불가 (전체 틱을 받아야 COUNT 가능)
+- ⚠️ 비효율적 (검증만 하려는데 GB급 다운로드 필요)
+
+---
+
+### C.2 최종 Verification Strategy
+
+#### Option B: Volume + OHLCV Cross-Check (ADOPTED) ✅
+
+**2-Tier Adaptive Strategy**:
+
+```
+Tier 1: Volume Cross-Check (빠른 전수 스캔)
+├─ KIS/Kiwoom 분봉 API로 거래량 조회
+├─ DB 틱 거래량 합계와 비교
+├─ 임계값: |API_Vol - DB_Vol| / API_Vol < 0.1%
+└─ API 호출: ~40 calls/일 (전체 종목)
+
+Tier 2: OHLCV Consistency (정밀 검증)
+├─ Tier 1 실패 구간만 검증
+├─ 틱 기반 분봉 vs API 분봉 OHLCV 비교
+├─ 임계값: OHLC < 0.5%, Volume < 5%
+└─ API 호출: 이상 구간만 (평균 < 10 calls/일)
+```
+
+**일일 스케줄**:
+```
+09:00-15:30  실시간 수집 (Container만)
+15:30-16:00  Volume Cross-Check (Tier 1)
+16:00-17:00  Targeted Recovery (Tier 2 이상치만)
+```
+
+**장점**:
+- ✅ 효율적: 정상 구간은 빠르게 패스
+- ✅ 정확: 의심 구간은 OHLCV로 정밀 검증
+- ✅ Rate Limit 안전: 소수 구간만 Tier 2 호출
+- ✅ 모든 날짜 가능: TODAY ONLY 제약 없음
+
+**한계 (acknowledged)**:
+- ⚠️ **소수 누락 탐지 불가**: Volume < 0.1% 차이는 놓칠 수 있음
+- **수용 근거**: 백테스트 영향 미미, 완벽보다 실용성 우선
+
+---
+
+### C.3 Council Review Summary (2026-01-20)
+
+**주요 결정**:
+1. ✅ Volume + OHLCV 전략 만장일치 승인
+2. ✅ API Gateway Rate Limiter 승인 (30 calls/sec)
+3. ❌ Tick Count 전략 거부 (TODAY ONLY 제약)
+
+**PM 최종 결정**:
+> "실용성과 효율성을 우선합니다. Volume Cross-Check로 대부분의 오류를 탐지하고, 소수 누락은 허용합니다. 백테스트에 실질적 영향 있는 오류(Volume > 0.1%)만 검출하는 것으로 충분합니다."
+
