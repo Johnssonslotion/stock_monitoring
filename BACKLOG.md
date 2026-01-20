@@ -124,11 +124,8 @@
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
 | [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
-<<<<<<< HEAD
 | [ISSUE-022](docs/issues/ISSUE-022_to_025.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
 | [ISSUE-023](docs/issues/ISSUE-022_to_025.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
 | [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
 | [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
-=======
-| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
->>>>>>> hotfix/observation-report-jan20
+| [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
