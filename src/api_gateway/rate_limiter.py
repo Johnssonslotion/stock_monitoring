@@ -1,0 +1,90 @@
+import asyncio
+import time
+import os
+import json
+import redis.asyncio as redis
+from datetime import datetime
+
+class RedisRateLimiter:
+    """
+    Distributed Rate Limiter using Redis (Token Bucket Algorithm)
+    Targeted for KIS/Kiwoom API Gateway.
+    """
+    def __init__(self, redis_url=None, db=1):
+        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/1")
+        # Ensure we use DB 1 as planned for isolation
+        if "/0" in self.redis_url:
+            self.redis_url = self.redis_url.replace("/0", f"/{db}")
+        
+        self.redis = None
+        # {API_NAME: (Rate, Capacity)}
+        self.config = {
+            "KIS": (30, 5),    # 30 calls/sec, max 5 burst
+            "KIWOOM": (30, 5)  # 30 calls/sec, max 5 burst
+        }
+
+    async def connect(self):
+        if not self.redis:
+            self.redis = await redis.from_url(self.redis_url, decode_responses=True)
+            print(f"✅ Rate Limiter connected to Redis: {self.redis_url}")
+
+    async def acquire(self, api_name: str, priority: int = 2) -> bool:
+        """
+        Try to acquire a token for the specified API.
+        Implementation using Lua script for atomicity.
+        """
+        if not self.redis:
+            await self.connect()
+
+        rate, capacity = self.config.get(api_name, (10, 2))
+        key = f"rate_limit:{api_name}"
+        
+        # Lua script for Token Bucket
+        # KEYS[1]: rate limit key
+        # ARGV[1]: limit (capacity)
+        # ARGV[2]: refill rate (per sec)
+        # ARGV[3]: now (timestamp)
+        lua_script = """
+        local key = KEYS[1]
+        local limit = tonumber(ARGV[1])
+        local rate = tonumber(ARGV[2])
+        local now = tonumber(ARGV[3])
+        
+        local bucket = redis.call("HMGET", key, "tokens", "last_refill")
+        local tokens = tonumber(bucket[1]) or limit
+        local last_refill = tonumber(bucket[2]) or now
+        
+        -- Refill tokens
+        local elapsed = math.max(0, now - last_refill)
+        tokens = math.min(limit, tokens + (elapsed * rate))
+        
+        if tokens >= 1 then
+            tokens = tokens - 1
+            redis.call("HMSET", key, "tokens", tokens, "last_refill", now)
+            return 1
+        else
+            return 0
+        end
+        """
+        
+        try:
+            now = time.time()
+            # ARGV[1]: capacity, ARGV[2]: refill rate
+            result = await self.redis.eval(lua_script, 1, key, capacity, rate, now)
+            return bool(result)
+        except Exception as e:
+            print(f"❌ Rate Limiter Error: {e}")
+            # Fallback: Allow on error to avoid system halt
+            return True
+
+    async def wait_acquire(self, api_name: str, timeout: float = 5.0) -> bool:
+        """Wait until a token is available or timeout"""
+        start = time.time()
+        while time.time() - start < timeout:
+            if await self.acquire(api_name):
+                return True
+            await asyncio.sleep(0.05) # Check every 50ms
+        return False
+
+# Global instance for reuse
+gatekeeper = RedisRateLimiter()

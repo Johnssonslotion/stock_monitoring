@@ -146,6 +146,40 @@ class Sentinel:
             except Exception as e:
                 logger.error(f"Failed to publish metrics: {e}")
 
+    async def monitor_redis(self):
+        """Monitor Redis (Memory, Clients, Performance)"""
+        logger.info("📡 Redis Health Monitor Started...")
+        while self.is_running:
+            if self.redis:
+                try:
+                    # Get REDIS INFO
+                    info = await self.redis.info()
+                    ts = datetime.now().isoformat()
+                    
+                    # Essential metrics for Rate Limiting stability
+                    metrics = [
+                        ("redis_used_memory", float(info.get('used_memory', 0))),
+                        ("redis_connected_clients", float(info.get('connected_clients', 0))),
+                        ("redis_ops_per_sec", float(info.get('instantaneous_ops_per_sec', 0))),
+                        # Calculate hit rate safely
+                        ("redis_hit_rate", float(info.get('keyspace_hits', 0)) / (max(1, float(info.get('keyspace_hits', 0)) + float(info.get('keyspace_misses', 0)))))
+                    ]
+                    
+                    for m_type, val in metrics:
+                        payload = {
+                            "timestamp": ts,
+                            "type": m_type,
+                            "value": val,
+                            "meta": {"status": "ok"}
+                        }
+                        await self.redis.publish("system.metrics", json.dumps(payload))
+                    
+                    logger.info(f"📊 Redis Health: MEM {info.get('used_memory_human')} | CLIENTS {info.get('connected_clients')} | OPS {info.get('instantaneous_ops_per_sec')}/s")
+                except Exception as e:
+                    logger.error(f"Redis Health Poll Error: {e}")
+            
+            await asyncio.sleep(60) # Every 1 minute for detailed health
+
     async def monitor_governance(self):
         """Monitor Governance Compliance (Based on Registry & Audit docs)"""
         logger.info("⚖️ Governance Monitor Started...")
@@ -342,6 +376,9 @@ class Sentinel:
         
         # Start governance monitor (Every 5 minutes)
         asyncio.create_task(self.monitor_governance())
+        
+        # Start redis health monitor
+        asyncio.create_task(self.monitor_redis())
         
         async for message in pubsub.listen():
             msg_type = message['type']

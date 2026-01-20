@@ -76,16 +76,24 @@ class TickArchiver:
             data_to_insert = []
             for d in self.buffer:
                 # Redis message format might vary, standardize it
-                # Assuming data object from Pydantic model dump
                 symbol = d.get("symbol")
-                timestamp = d.get("timestamp") or d.get("dt") # Handle alias
-                price = d.get("price")
-                volume = d.get("volume")
-                source = d.get("source", "REALTIME")
-                execution_no = str(d.get("execution_no", "")) # execution_id?
+                raw_ts = d.get("timestamp") or d.get("dt")
                 
-                # Timestamp conversion if string
-                # DuckDB handles ISO strings well usually
+                # Robust Timestamp Handling
+                if isinstance(raw_ts, (int, float)):
+                    timestamp = datetime.fromtimestamp(raw_ts)
+                elif isinstance(raw_ts, str):
+                    try:
+                        timestamp = datetime.fromisoformat(raw_ts)
+                    except:
+                        timestamp = datetime.now()
+                else:
+                    timestamp = datetime.now()
+
+                price = float(d.get("price") or 0)
+                volume = int(float(d.get("volume") or 0)) # Handle float strings
+                source = d.get("source", "REALTIME")
+                execution_no = str(d.get("execution_no", ""))
                 
                 data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
             

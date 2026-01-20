@@ -60,6 +60,9 @@
   - **Standard**: "No Gaps Allowed" - 99.9% 일단위 데이터 무결성 보장.
   - **Pre-flight Check**: 장 시작 전(08:30) API 키 및 소켓 연결 자동 점검 로직 구축. (✅ DONE)
   - **Daily Gap-Filler**: 장 마감 후 REST API를 통해 누락된 틱/분봉 데이터를 자동 보충하는 워커 도입 (`backfill_manager.py`). (✅ **COMPLETED** - 2026-01-19)
+  - **Dual-Provider HA Strategy**: 🆕 **2026-01-20** (IDEA-007)
+    - **Status**: 🌿 Sprouting (Drafting)
+    - **Goal**: KIS + Kiwoom 동시 수집 또는 Fail-over 구성을 통한 분봉 데이터 무결성 100% 달성.
   - **Watchdog Evolution**: 5분간 데이터 유입 중단 시 컨테이너 자동 재시작 및 알림. (✅ DONE)
   - *Related*: [ISSUE-004](file:///docs/issues/ISSUE-004.md) (Market Open Failure Fix)
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**

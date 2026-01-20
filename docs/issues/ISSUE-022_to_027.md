@@ -65,3 +65,39 @@
 - [ ] KIS/Kiwoom 원본 로그 파싱 엔진 구현.
 - [ ] 파싱된 데이터를 DuckDB 및 TimescaleDB에 중복 없이(On Conflict Do Nothing) 적재하는 기능.
 - [ ] 복구 후 DB 건수와 로그 파일 라인 수 비교 검증.
+
+---
+
+# ISSUE-026: [Debt] Kiwoom Orderbook Pub/Sub 및 아카이빙 구현
+
+**Status**: Open  
+**Priority**: P2  
+**Type**: refactor  
+**Created**: 2026-01-20  
+**Assignee**: Developer
+
+## Problem Description
+- `KiwoomWSCollector`가 실시간 호가(`0D`) 데이터를 수신하고 있으나, Redis로 발행하지 않아 TimescaleDB에 저장되지 않음.
+- KIS는 이미 호가 수집 및 저장 로직이 존재하므로 Kiwoom도 동일 규격으로 구현 필요.
+
+## Acceptance Criteria
+- [ ] `KiwoomWSCollector`에서 `0D` 메시지 발생 시 Redis 채널로 발행.
+- [ ] `TimescaleArchiver`에서 해당 데이터를 수신하여 `market_orderbook` 테이블에 적재.
+
+---
+
+# ISSUE-027: [SDLC] Smoke Test (test_smoke_modules.py) 구축
+
+**Status**: Open  
+**Priority**: P1  
+**Type**: docs  
+**Created**: 2026-01-20  
+**Assignee**: Developer
+
+## Problem Description
+- 시스템 배포 또는 프리플라이트 체크 시 주요 모듈의 임포트 가능 여부 및 문법 오류를 자동으로 검증할 수 있는 스모크 테스트가 누락됨.
+- 이로 인해 `recovery-worker`의 의존성 오류 등을 사전에 발견하지 못함.
+
+## Acceptance Criteria
+- [ ] `tests/test_smoke_modules.py` 작성: 모든 주요 Service(KIS, Kiwoom, Archiver) 및 유틸 모듈의 임포트 시도.
+- [ ] 프리플라이트 체크(`scripts/preflight_check.py`)와 연동하여 장 시작 전 자동 실행.
