@@ -26,7 +26,7 @@ symbols:
       group: "core"
 
   sectors:
-    # 1. Semiconductor (Core)
+    # Core Sectors (KIS Tick + Kiwoom Orderbook)
     semiconductor:
       group: "core"
       etf:
@@ -42,7 +42,6 @@ symbols:
         - symbol: "005935"
           name: "삼성전자우"
     
-    # 2. Battery (Core)
     battery:
       group: "core"
       etf:
@@ -66,7 +65,6 @@ symbols:
         - symbol: "096770"
           name: "SK이노베이션"
 
-    # 3. Bio (Core)
     biotech:
       group: "core"
       etf:
@@ -81,8 +79,9 @@ symbols:
           name: "유한양행"
         - symbol: "128940"
           name: "한미약품"
+        - symbol: "028300"
+          name: "HLB"
     
-    # 4. Auto (Core)
     auto:
       group: "core"
       etf:
@@ -96,8 +95,7 @@ symbols:
         - symbol: "012330"
           name: "현대모비스"
 
-    # 5. ICT & Service (Core Mix)
-    ict:
+    ict_service:
       group: "core"
       top3:
         - symbol: "035420"
@@ -109,7 +107,6 @@ symbols:
         - symbol: "011070"
           name: "LG이노텍"
 
-    # 6. Finance (Core Mix)
     finance:
       group: "core"
       top3:
@@ -122,11 +119,7 @@ symbols:
         - symbol: "032830"
           name: "삼성생명"
 
-    # ==========================================
-    # Sector Rotation (Group: rotation)
-    # Kiwoom Tick + Orderbook
-    # ==========================================
-
+    # Rotation Sectors (Kiwoom Tick + Kiwoom Orderbook)
     defense:
       group: "rotation"
       top3:
@@ -136,20 +129,40 @@ symbols:
           name: "LIG넥스원"
         - symbol: "064350"
           name: "현대로템"
+        - symbol: "000880"
+          name: "한화"
 
-    power:
+    heavy_industry:
+      group: "rotation"
+      top3:
+        - symbol: "042660"
+          name: "한화오션"
+        - symbol: "015760"
+          name: "한국전력"
+        - symbol: "009540"
+          name: "HD한국조선해양"
+        - symbol: "034020"
+          name: "두산에너빌리티"
+        - symbol: "010130"
+          name: "고려아연"
+        - symbol: "003490"
+          name: "대한항공"
+        - symbol: "277810"
+          name: "레인보우로보틱스"
+
+    power_energy:
       group: "rotation"
       top3:
         - symbol: "010120"
           name: "LS ELECTRIC"
         - symbol: "298040"
           name: "효성중공업"
-        - symbol: "034020"
-          name: "두산에너빌리티"
         - symbol: "267260"
           name: "HD현대일렉트릭"
+        - symbol: "000720"
+          name: "현대건설"
 
-    ship:
+    ship_logis:
       group: "rotation"
       top3:
         - symbol: "329180"
@@ -158,26 +171,34 @@ symbols:
           name: "삼성중공업"
         - symbol: "011200"
           name: "HMM"
-        - symbol: "042660"
-          name: "한화오션"
-        - symbol: "009540"
-          name: "HD한국조선해양"
+        - symbol: "010620"
+          name: "현대미포조선"
 
-    food:
+    food_beverage:
       group: "rotation"
       top3:
         - symbol: "003230"
           name: "삼양식품"
         - symbol: "004370"
           name: "농심"
+        - symbol: "097950"
+          name: "CJ제일제당"
+        - symbol: "001680"
+          name: "대상"
 
-    cosmetic:
+    cosmetic_medical:
       group: "rotation"
       top3:
         - symbol: "090430"
           name: "아모레퍼시픽"
         - symbol: "257720"
           name: "실리콘투"
+        - symbol: "051900"
+          name: "LG생활건강"
+        - symbol: "192080"
+          name: "더네이쳐홀딩스"
+        - symbol: "102460"
+          name: "이연제약"
 
     ent_game:
       group: "rotation"
@@ -190,50 +211,83 @@ symbols:
           name: "에스엠"
         - symbol: "035900"
           name: "JYP Ent."
+        - symbol: "036570"
+          name: "NC소프트"
+        - symbol: "251270"
+          name: "넷마블"
 
-    robot:
+    robot_ai:
       group: "rotation"
       top3:
         - symbol: "454910"
           name: "두산로보틱스"
-        - symbol: "277810"
-          name: "레인보우로보틱스"
+        - symbol: "304100"
+          name: "솔루엠"
+        - symbol: "383310"
+          name: "에코프로에이치엔"
+        - symbol: "403490"
+          name: "루닛"
 
-    utility_raw:
+    raw_mat_util:
       group: "rotation"
       top3:
-        - symbol: "015760"
-          name: "한국전력"
-        - symbol: "010130"
-          name: "고려아연"
-        - symbol: "047050"
-          name: "포스코인터내셔널"
         - symbol: "011780"
           name: "금호석유"
+        - symbol: "047050"
+          name: "포스코인터내셔널"
+        - symbol: "000670"
+          name: "영풍"
+        - symbol: "010060"
+          name: "OCI홀딩스"
+        - symbol: "009830"
+          name: "한화솔루션"
 
-    construction:
+    construction_infra:
       group: "rotation"
       top3:
         - symbol: "028050"
           name: "삼성엔지니어링"
+        - symbol: "006360"
+          name: "GS건설"
+        - symbol: "000210"
+          name: "DL이앤씨"
 
-    bio_2:
+    bio_rotation:
       group: "rotation"
       top3:
         - symbol: "196170"
           name: "알테오젠"
-        - symbol: "028300"
-          name: "HLB"
+        - symbol: "141080"
+          name: "리그켐바이오"
+        - symbol: "237690"
+          name: "에스티팜"
+        - symbol: "068760"
+          name: "셀트리온제약"
 
-    transport:
+    finance_holding:
       group: "rotation"
       top3:
-        - symbol: "003490"
-          name: "대한항공"
-        - symbol: "0282330"
-          name: "BGF리테일"
+        - symbol: "008560"
+          name: "메리츠금융지주"
+        - symbol: "028260"
+          name: "삼성물산"
+        - symbol: "000030"
+          name: "우리금융지주"
+        - symbol: "034730"
+          name: "SK"
 
-    # Special ETFs (US/Bond)
+    retail_tech:
+      group: "rotation"
+      top3:
+        - symbol: "028230"
+          name: "BGF리테일"
+        - symbol: "240810"
+          name: "원익IPS"
+        - symbol: "357780"
+          name: "솔브레인"
+        - symbol: "032640"
+          name: "LG유플러스"
+
     etf_special:
       group: "rotation"
       top3:
@@ -243,3 +297,5 @@ symbols:
           name: "TIGER 미국나스닥100"
         - symbol: "152380"
           name: "KODEX 국고채10년"
+        - symbol: "225130"
+          name: "KODEX 골드선물(H)"

@@ -25,7 +25,7 @@ services:
     command: python -m src.data_ingestion.ticks.archiver
     restart: unless-stopped
     volumes:
-      - ${HOST_MOUNT_PATH:-..}/data:/app/data
+      - /home/ubuntu/workspace/stock_monitoring/data:/app/data
 
   # [RFC-007] KIS Service (Unified)
   kis-service:
@@ -36,7 +36,7 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
-      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
+      - /home/ubuntu/workspace/stock_monitoring/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -59,8 +59,8 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
-      - ${HOST_MOUNT_PATH:-..}/data/raw/kiwoom:/app/data/raw/kiwoom
-      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
+      - /home/ubuntu/workspace/stock_monitoring/data/raw/kiwoom:/app/data/raw/kiwoom
+      - /home/ubuntu/workspace/stock_monitoring/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -299,8 +299,8 @@ services:
     env_file:
       - ../${ENV_FILE:-.env.prod}
     volumes:
-      - ${HOST_MOUNT_PATH:-..}/data:/app/data
-      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
+      - /home/ubuntu/workspace/stock_monitoring/data:/app/data
+      - /home/ubuntu/workspace/stock_monitoring/configs:/app/configs
       - ../src:/app/src
       - ../scripts:/app/scripts
     environment:

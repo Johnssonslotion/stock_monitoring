@@ -22,40 +22,63 @@ KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
 KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
 CONFIG_FILE = os.getenv("CONFIG_FILE", "configs/kr_symbols.yaml")
 
-def load_symbols():
-    """Load target symbols from config"""
-    # Assuming standard config structure
-    # We need to resolve path relative to project root since this runs as module
-    # or rely on absolute path logic in config loader.
-    # Ideally, we read the yaml directly here.
-    
+# Explicit Core ETF List (matches kiwoom_ws.py's old CORE_ETFS)
+CORE_ETFS = {"122630", "252670", "114800", "069500"}
+
+def load_symbol_configs():
+    """Load symbols and determine their subscription types based on group"""
     try:
-        # Resolve config path relative to workspace root (assuming CWD is root)
         config_path = Path(CONFIG_FILE)
         if not config_path.exists():
-            # Fallback for nested exec
             config_path = Path("/app") / CONFIG_FILE
             
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
             
-        symbols = []
-        # Simple extraction logic (can be refined to match shared logic)
+        symbol_configs = {}
         symbols_data = config.get('symbols', {})
-        for cat in ['indices', 'leverage']:
-            for item in symbols_data.get(cat, []):
-                symbols.append(item['symbol'])
+        
+        # 1. Helper to add symbols by group
+        def add_from_list(items):
+            for item in items:
+                sym = item['symbol']
+                group = item.get('group', 'rotation')
+                # Strategy: Core = Orderbook Only, Rotation = Tick + Orderbook
+                if group == 'core' or sym in CORE_ETFS:
+                    symbol_configs[sym] = ["0D"]
+                else:
+                    symbol_configs[sym] = ["0B", "0D"]
+
+        # 2. Process all categories
+        add_from_list(symbols_data.get('indices', []))
+        add_from_list(symbols_data.get('leverage', []))
         
         for sector in symbols_data.get('sectors', {}).values():
-            if 'etf' in sector: symbols.append(sector['etf']['symbol'])
+            group = sector.get('group', 'rotation')
+            
+            # ETF
+            if 'etf' in sector:
+                sym = sector['etf']['symbol']
+                if group == 'core' or sym in CORE_ETFS:
+                    symbol_configs[sym] = ["0D"]
+                else:
+                    symbol_configs[sym] = ["0B", "0D"]
+            
+            # Stocks
             for stock in sector.get('top3', []):
-                symbols.append(stock['symbol'])
+                sym = stock['symbol']
+                # Individual stock group takes priority if exists, else sector group
+                s_group = stock.get('group', group)
+                if s_group == 'core' or sym in CORE_ETFS:
+                    symbol_configs[sym] = ["0D"]
+                else:
+                    symbol_configs[sym] = ["0B", "0D"]
                 
-        return list(set(symbols))
+        return symbol_configs
         
     except Exception as e:
-        logger.error(f"Failed to load symbols: {e}")
-        return []
+        logger.error(f"Failed to load symbol configs: {e}")
+        return {}
 
 async def main():
     logger.info("🚀 Starting Kiwoom Service (RFC-007 Isolated)...")
@@ -64,9 +87,9 @@ async def main():
         logger.error("❌ MISSING KIWOOM API KEYS. Exiting.")
         return
 
-    # 1. Load Symbols
-    symbols = load_symbols()
-    logger.info(f"Target Symbols: {len(symbols)}")
+    # 1. Load Symbols with Configs
+    symbol_configs = load_symbol_configs()
+    logger.info(f"Target Symbols: {len(symbol_configs)}")
     
     # Check mock mode
     mock_mode = os.getenv("KIWOOM_MOCK", "False").lower() == "true"
@@ -76,7 +99,7 @@ async def main():
     collector = KiwoomWSCollector(
         app_key=KIWOOM_APP_KEY,
         app_secret=KIWOOM_APP_SECRET,
-        symbols=symbols,
+        symbol_configs=symbol_configs,
         mock_mode=mock_mode
     )
     
