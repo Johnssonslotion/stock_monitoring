@@ -112,9 +112,10 @@ class TimescaleArchiver:
 
 
         # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us, system.*)
+        # [ISSUE-030] Add tick:* for Kiwoom/Standardized channels
         pubsub = self.redis.pubsub()
-        await pubsub.psubscribe("ticker.*", "orderbook.*", "system.*")
-        logger.info("📡 Subscribed to: ticker.*, orderbook.*, system.*")
+        await pubsub.psubscribe("ticker.*", "tick:*", "orderbook.*", "system.*")
+        logger.info("📡 Subscribed to: ticker.*, tick:*, orderbook.*, system.*")
         
         # 3. Flush Task
         asyncio.create_task(self.periodic_flush())
@@ -130,9 +131,18 @@ class TimescaleArchiver:
                     channel = message["channel"]
                     data = json.loads(message["data"])
                     
-                    if channel.startswith("ticker."):
-                        # Extract market from channel (ticker.kr -> KR, ticker.us -> US)
-                        market = channel.split('.')[-1].upper()
+                    # Handle both ticker.* (KIS) and tick:* (Kiwoom/Standard)
+                    if channel.startswith("ticker.") or channel.startswith("tick:"):
+                        # Extract market
+                        if channel.startswith("tick:"):
+                            # tick:KR:005930 -> KR
+                            try:
+                                market = channel.split(':')[1].upper()
+                            except:
+                                market = "KR"
+                        else:
+                            # ticker.kr -> KR
+                            market = channel.split('.')[-1].upper()
                         
                         # Ticks
                         ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
