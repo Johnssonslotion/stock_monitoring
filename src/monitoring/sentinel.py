@@ -276,8 +276,8 @@ class Sentinel:
                     
                     # Restart Logic (Only if gap > 300 to avoid flapping on short glitches)
                     if gap > 300:
-                        now_ts = datetime.now().timestamp()
-                        if not self.last_restart_time or (now_ts - self.last_restart_time > 1800):
+                        now = datetime.now()
+                        if not self.last_restart_time or (now - self.last_restart_time).total_seconds() > 1800:
                             logger.critical(f"RESTARTING CONTAINER due to silence...")
                             # In real production, call Docker API or Supervisor
                             # subprocess.run(["docker", "restart", "deploy-kis-service-1"]) 
@@ -357,6 +357,8 @@ class Sentinel:
         symbol = data.get('symbol', 'UNKNOWN')
         market = "US" if any(p in symbol for p in ["NYS", "NAS", "AMS"]) else "KR"
         self.last_arrival[f"{market}_ORDERBOOK"] = datetime.now()
+        # Also count as market heartbeat to avoid pre-market silence alerts
+        self.last_arrival[market] = datetime.now()
 
     async def run(self):
         self.redis = await redis.from_url(REDIS_URL, decode_responses=True)
