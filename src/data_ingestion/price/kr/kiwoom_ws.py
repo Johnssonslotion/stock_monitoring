@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Set
 import aiohttp
 import websockets
 
-from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData
+from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData, KiwoomOrderbookData
 from src.core.config import get_redis_connection
 from src.data_ingestion.logger.raw_logger import RawWebSocketLogger
 
@@ -208,24 +208,35 @@ class KiwoomWSCollector:
                     
                     if symbol and values:
                         msg_type = item.get("type")
+
                         if msg_type == "0B":
                             # KiwoomTickData로 변환
                             tick = KiwoomTickData.from_ws_json(values, symbol)
                             await self._publish_to_redis(tick)
                         elif msg_type == "0D":
-                            # FID 확인을 위해 로그 출력 (추후 스키마 적용)
-                            # logger.info(f"Orderbook(0D) keys: {list(values.keys())}")
-                            # Too verbose, log sample only
-                            pass
+                            # Orderbook (0D) Handling [ISSUE-026]
+                            ob = KiwoomOrderbookData.from_ws_json(values, symbol)
+                            await self._publish_orderbook_to_redis(ob)
                 
         except Exception as e:
             logger.debug(f"Msg Parse Error: {e}")
 
     async def _publish_to_redis(self, tick: KiwoomTickData):
-        """Redis Pub/Sub 발행"""
+        """Redis Pub/Sub 발행 (Tick)"""
+        # [ISSUE-030] Standardized Channel: tick:KR:{symbol}
         channel = f"tick:KR:{tick.symbol}"
-        message = tick.json()
-        await self.redis.publish(channel, message)
+        # Inject Source
+        data = tick.model_dump() # Pydantic v2
+        data['source'] = 'KIWOOM'
+        await self.redis.publish(channel, json.dumps(data, default=str))
+
+    async def _publish_orderbook_to_redis(self, ob: KiwoomOrderbookData):
+        """Redis Pub/Sub 발행 (Orderbook)"""
+        # [ISSUE-030] Channel: orderbook.kiwoom.{symbol} (Matches orderbook.*)
+        channel = f"orderbook.kiwoom.{ob.symbol}"
+        data = ob.model_dump()
+        data['source'] = 'KIWOOM'
+        await self.redis.publish(channel, json.dumps(data, default=str))
 
     async def _publish_alert(self, level: str, message: str):
         """Publish system alert to Redis"""
