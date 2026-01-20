@@ -68,6 +68,12 @@
 - [x] **ISSUE-017: Implement DuckDBArchiver (Hybrid Architecture)** (2026-01-19)
 - [x] **ISSUE-019: API E2E Test Environment Fix** (2026-01-19)
 - [x] **ISSUE-020: Dual Data Collection (70 Symbols)** (2026-01-19)
+- [x] **RFC-003 Enhancement: Environment Variable Standardization** (2026-01-20)
+  - ✅ `.env.schema.yaml`: Define required/optional variables
+  - ✅ `scripts/validate_env.py`: Automated validation
+  - ✅ `.env.template`: Base template for all environments
+  - ✅ Makefile integration: Auto-validation on `up-dev`/`up-prod`
+  - ✅ Security: Remove `.env.test` from Git tracking
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)

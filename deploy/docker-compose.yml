@@ -36,6 +36,8 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
+      - ../data:/app/data
+
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
