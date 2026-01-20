@@ -99,6 +99,33 @@
 
 ---
 
+## 2.5 Tier 4: 데이터 무결성 검증 (Data Integrity Validation)
+
+### 2.5.1 Volume Cross-Check (Primary)
+- **목적**: 데이터 누락 및 이상치 탐지 (Anomaly Detection)
+- **방법**: `API.MinuteVolume` vs `DB.SumTickVolume` 교차 검증
+    - API: KIS 분봉(`FHKST03010200`) 또는 Kiwoom 분봉(`ka10080`)
+    - 오차율 허용범위: < 0.1%
+- **장점**: O(1) 비용으로 전체 정합성 확인 가능
+
+### 2.5.2 Tick Counting (Secondary)
+- **목적**: 정밀 검증 (Deep Verification)
+- **Trigger**: Volume Cross-Check 실패 시 수행
+- **방법**: Kiwoom 틱 차트(`ka10079`) 페이징 조회로 전수 카운팅
+
+---
+
+## 2.6 복구 전략 (Recovery Strategy)
+
+### 2.6.1 Dual Tick Recovery
+- **Primary**: KIS REST API (`FHKST01010300`)
+    - 장점: 단순함, Rate Limit (20req/sec) 준수 필요
+- **Secondary**: Kiwoom REST API (`ka10079`)
+    - 장점: 틱 차트 제공, 당일 전수 복구 가능
+    - 조건: Primary 실패 시 자동 절체 (Failover)
+
+---
+
 ## 3. 6인 페르소나 의견
 
 ### 👔 PM (Product Manager)

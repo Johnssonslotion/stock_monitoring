@@ -1,36 +1,27 @@
-# Project Backlog: Backend Integration & Data Pipeline
+# BACKLOG
 
-> **Governance Notice**: 
-> 본 백로그의 작업은 **Live Market Data Collection**에 영향을 주지 않도록, 장 마감 후 또는 별도의 Staging 환경에서 진행해야 합니다.
+## In Progress
+- [ ] **ISSUE-021**: Critical KIS Auth Failure Remediation (P0)
 
-## Issues (All Work Items)
+## Todo
+- [ ] **ISSUE-017**: Implement DuckDBArchiver (Hybrid Architecture) (P1)
+- [ ] **ISSUE-018**: Implement KIS Tick Recovery (Backfill Manager) (P2)
+- [ ] **ISSUE-003**: API Error Handling & Logging (P1)
+- [ ] **ISSUE-005**: Candle Data Service (P2)
+- [ ] **ISSUE-006**: Market Sector Service (P2)
+- [ ] **ISSUE-007**: WebSocket Connection Manager (P1)
+- [ ] **ISSUE-008**: OrderBook Streaming (P1)
+- [ ] **ISSUE-009**: Execution Streaming (P1)
+- [ ] **ISSUE-010**: Correlation Engine (P3)
+- [ ] **ISSUE-011**: Whale Alert System (P3)
+- [ ] **ISSUE-012**: KIS WebSocket Approval Key Not Applied (P0)
+- [ ] **ISSUE-013**: Virtual Trading Audit (Renumbered from 014) (P1)
+- [ ] **ISSUE-015**: Data Gap Auto-Completion (Renumbered from 016) (P1)
 
-**Note (v2.10)**: RFC는 폐지되었습니다. 복잡한 작업은 ISSUE 내 `## Design` 섹션으로 관리합니다.
-
-- [ ] **ISSUE-001**: 데이터 누락 감지 및 채우기 로직 (Data Gap Detection) | P2
-- [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
-- [ ] **ISSUE-003**: API 에러 핸들링 및 로깅 (API Error Handling & Logging) | P2
-- [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
-- [ ] **ISSUE-005**: 가상 투자 시뮬레이션 플랫폼 (Virtual Investment) | P1 | Epic
-- [ ] **ISSUE-006**: DB 뷰 및 집계 복구 (DB Aggregation Restoration) | P0
-- [ ] **ISSUE-007**: 웹소켓 연결 관리자 (WebSocket Manager) | P1 | Epic
-- [ ] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug
-
----
-
-## 참고: 재정렬 내역 (2026-01-17)
-
-**v2.10 변경** (Issue-First Principle):
-- RFC-005~010 삭제 (RFC는 연간 0~2개만)
-- 모든 작업은 ISSUE로 통합
-- 복잡한 작업은 ISSUE 내 Design 섹션 추가
-
-**이전 재정렬** (v2.8):
-- `ISSUE-005` → `ISSUE-001` (Data Gap Detection)
-- `ISSUE-006` → `ISSUE-003` (API Error Handling)
-- `ISSUE-007` → `ISSUE-004` (Chart Zoom - 완료)
-- `ISSUE-010` → `ISSUE-005` (Virtual Investment)
-- `ISSUE-011` → `ISSUE-006` (DB Aggregation)
-- `ISSUE-013` → `ISSUE-007` (WebSocket Manager)
-
-상세: `docs/governance/issue_reorganization_plan_2026-01-17.md`
+## Done
+- [x] **ISSUE-001**: Virtual Investment Simulation Platform (Paper Trading)
+- [x] **ISSUE-004**: Fix Market Open Failure (Kiwoom NameError & KIS Protocol Fix)
+- [x] **ISSUE-014**: External Health Monitoring Dashboard (Renumbered from 015)
+- [x] **ISSUE-016**: Enhance Data Pipeline Test Completeness & ZEVS
+- [x] **ISSUE-019**: API E2E Test Environment Fix
+- [x] **ISSUE-020**: Implement Dual Data Collection Strategy (70 Symbols)

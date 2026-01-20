@@ -68,6 +68,14 @@
             symbol (str): 수집 대상 심볼 (예: 'KRW-BTC')
         """
     ```
+
+### 2.2. Testing Standards
+- **Framework**: `pytest`
+- **Command**: `PYTHONPATH=. poetry run pytest tests/` (Always run from project root)
+- **Coverage**: `pytest-cov` (Optional but recommended for PRs)
+- **Unit Tests**: `tests/unit/` (Fast, isolated)
+- **Integration Tests**: `tests/integration/` (DB/Redis required)
+
 -   **Git**: Conventional Commits + **Strict Git Flow**.
     -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
     -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.

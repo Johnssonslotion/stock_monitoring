@@ -22,3 +22,5 @@
 | ISSUE-018 | Implement KIS Tick Recovery (Backfill Manager) | P2 | Open | Developer | docs/issues/ISSUE-018.md |
 | ISSUE-019 | API E2E Test Environment Fix | P1 | Closed | Developer | docs/issues/ISSUE-019.md |
 | ISSUE-020 | Implement Dual Data Collection Strategy (70 Symbols) | P1 | Closed | Developer | docs/issues/ISSUE-020.md |
+| ISSUE-021 | Critical KIS Auth Failure Remediation | P0 | Open | Developer | docs/issues/ISSUE-021.md |
+
