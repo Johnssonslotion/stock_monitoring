@@ -69,6 +69,10 @@
     - **Goal**: KIS + Kiwoom 동시 수집 또는 Fail-over 구성을 통한 분봉 데이터 무결성 100% 달성.
   - **Watchdog Evolution**: 5분간 데이터 유입 중단 시 컨테이너 자동 재시작 및 알림. (✅ DONE)
   - *Related*: [ISSUE-004](file:///docs/issues/ISSUE-004.md) (Market Open Failure Fix)
+  - **Phase 4.6 (Real-time Gap Recovery)**: 🆕 **2026-01-20** (IDEA-Hybrid-Verification)
+    - **Concept**: Minute API Volume Checksum → KIS REST API Patching.
+    - **Goal**: 장중(In-Market) 데이터 완전성 확보 (Correlation 0.99 상시 유지).
+    - **Status**: 🌿 Sprouting (Ready for Dev)
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**
   - **구독 응답 확인**: 서버 응답(SUCCESS/FAILED) 파싱 및 성공/실패 판정. (✅ DONE)
   - **재시도 로직**: 구독 실패 시 심볼당 최대 3회 즉시 재시도. (✅ DONE)
