@@ -4,6 +4,7 @@
 .env.local
 .env.dev
 .env.prod
+.env.test
 .env.*.local
 .env.backtest
 
