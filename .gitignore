@@ -53,10 +53,12 @@ Thumbs.db
 .docker_temp/
 
 # Data & Database
-data/*.duckdb
-data/*.wal
-data/*.parquet
-data/*.csv
+*.duckdb
+*.wal
+*.parquet
+*.csv
+data/
+
 data/timescale/
 migrations/.applied
 
