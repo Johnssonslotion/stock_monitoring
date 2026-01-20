@@ -107,4 +107,8 @@
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
-| [ISSUE-018](docs/issues/ISSUE-018.md) | Implement KIS Tick Recovery (Backfill Manager) | P2 | Open | Developer |
+| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
+| [ISSUE-022](docs/issues/ISSUE-022_to_025.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
+| [ISSUE-023](docs/issues/ISSUE-022_to_025.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
+| [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
+| [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
