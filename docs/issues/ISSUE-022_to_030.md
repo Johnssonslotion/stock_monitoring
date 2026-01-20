@@ -135,7 +135,8 @@
 
 ## Acceptance Criteria
 - [ ] `docker-compose.yml` 수정하여 모든 서비스에 `../configs:/app/configs` 볼륨 마운트 추가.
-- [ ] 컨테이너 재시작 시 최신 종목 리스트가 로그에 출력되는지 확인.
+- [ ] **[Consistency Test Case]**: 컨테이너 내에서 `cat /app/configs/kr_symbols.yaml` 실행 시 호스트의 파일과 내용(Hash)이 일치하는지 확인하는 헬스체크 스크립트 또는 프리플라이트 테스트 추가.
+- [ ] 컨테이너 재시작 시 최신 종목 리스트(70종목)가 로그에 파싱되어 출력되는지 최종 확인.
 
 ---
 
