@@ -69,6 +69,33 @@ class TimescaleArchiver:
             except Exception as e:
                 logger.warning(f"Hypertable creation msg (system_metrics): {e}")
 
+            # Create market_ticks_validation table (ISSUE-029)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS market_ticks_validation (
+                    bucket_time TIMESTAMPTZ NOT NULL,
+                    symbol TEXT NOT NULL,
+                    tick_count_collected INTEGER,
+                    volume_sum DOUBLE PRECISION,
+                    price_open DOUBLE PRECISION,
+                    price_high DOUBLE PRECISION,
+                    price_low DOUBLE PRECISION,
+                    price_close DOUBLE PRECISION,
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    validation_status TEXT,
+                    UNIQUE (bucket_time, symbol)
+                );
+            """)
+            try:
+                await conn.execute("SELECT create_hypertable('market_ticks_validation', 'bucket_time', if_not_exists => TRUE);")
+                logger.info("Hypertable 'market_ticks_validation' ensured.")
+            except Exception as e:
+                logger.warning(f"Hypertable creation msg (validation): {e}")
+            try:
+                await conn.execute("SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);")
+                logger.info("Hypertable 'system_metrics' ensured.")
+            except Exception as e:
+                logger.warning(f"Hypertable creation msg (system_metrics): {e}")
+
         finally:
             await conn.close()
 

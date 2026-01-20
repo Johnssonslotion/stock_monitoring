@@ -23,10 +23,12 @@
 | ISSUE-019 | API E2E Test Environment Fix | P1 | Closed | Developer | docs/issues/ISSUE-019.md |
 | ISSUE-020 | Implement Dual Data Collection Strategy (70 Symbols) | P1 | Closed | Developer | docs/issues/ISSUE-020.md |
 | ISSUE-021 | Critical KIS Auth Failure Remediation | P0 | Open | Developer | docs/issues/ISSUE-021.md |
-| ISSUE-022 | [Bug] TickArchiver DuckDB 타입 변환 오류 수정 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-023 | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 수정 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-024 | [Bug] Recovery Worker 의존성(httpx) 누락 수정 | P2 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-025 | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 개발 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-026 | [Debt] Kiwoom Orderbook Pub/Sub 및 아카이빙 구현 | P2 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-027 | [SDLC] Smoke Test (test_smoke_modules.py) 구축 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
+| ISSUE-022 | [Bug] TickArchiver DuckDB 타입 변환 오류 수정 | P1 | Open | Developer | docs/issues/ISSUE-022.md |
+| ISSUE-023 | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 수정 | P1 | Open | Developer | docs/issues/ISSUE-023.md |
+| ISSUE-024 | [Bug] Recovery Worker 의존성(httpx) 누락 수정 | P2 | Open | Developer | docs/issues/ISSUE-024.md |
+| ISSUE-025 | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 개발 | P1 | Open | Developer | docs/issues/ISSUE-025.md |
+| ISSUE-026 | [Debt] Kiwoom Orderbook Pub/Sub 및 아카이빙 구현 | P2 | Open | Developer | docs/issues/ISSUE-026.md |
+| ISSUE-027 | [SDLC] Smoke Test (test_smoke_modules.py) 구축 | P1 | Open | Developer | docs/issues/ISSUE-027.md |
+| ISSUE-028 | [Bug] Chart UI Controls Overlap & Env Indicator | P2 | In Progress | Developer | docs/issues/ISSUE-028.md |
+| ISSUE-029 | [Feature] Minute-Level Data Validation Table Schema & Aggregation | P1 | Open | Developer | docs/issues/ISSUE-029.md |
 
