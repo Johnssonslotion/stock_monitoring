@@ -1,21 +1,18 @@
-# ISSUE-008: Chart UI Controls Overlap
+# ISSUE-008: OrderBook Streaming
 
-**Status**: Done ✅
-**Priority**: P1 (High)
-**Type**: Bug
+**Status**: Open
+**Priority**: P1 (Critical)
+**Type**: Feature
 **Created**: 2026-01-17
-**Completed**: 2026-01-20
-**Assignee**: Frontend Engineer
+**Assignee**: Backend Engineer
 
 ## Problem Description
-The timeframe selector and zoom controls were overlapping with the chart's price axis or other UI elements, making them difficult to use.
+Real-time OrderBook (Hoga) data streaming is required for day traders. Bandwidth usage must be optimized by sending only deltas (changes) rather than full snapshots every time.
 
 ## Acceptance Criteria
-- [x] Group timeframe selector and zoom controls together.
-- [x] Position them on the right-top of the chart, avoiding overlap with the price axis.
-- [x] Ensure they are visible and functional across different screen sizes.
+- [ ] Implement `stream_orderbook` handler.
+- [ ] Send OrderBook Deltas to reduce bandwidth.
 
 ## Technical Details
-- **Implementation**: Grouped in `App.tsx` at `absolute top-3 right-16`.
-- **Controls**: Includes `TimeframeSelector`, Zoom In/Out, and Reset Zoom.
-- **Styling**: Uses `glass` background and `z-10` to stay above the chart.
+- **Source**: KIS WebSocket (H0STASP0)
+- **Optimization**: Check diff before broadcast.

@@ -9,11 +9,12 @@
 - [ ] **ISSUE-005**: 가상 투자 시뮬레이션 플랫폼 (Virtual Investment) | P1 | Epic
 - [ ] **ISSUE-006**: DB 뷰 및 집계 복구 (DB Aggregation Restoration) | P0
 - [ ] **ISSUE-007**: 웹소켓 연결 관리자 (WebSocket Manager) | P1 | Epic
+- [ ] **ISSUE-008**: OrderBook Streaming | P1
 - [ ] **ISSUE-017**: Implement DuckDBArchiver (Hybrid Architecture) (P1)
 - [ ] **ISSUE-018**: Implement KIS Tick Recovery (Backfill Manager) (P2)
 
 ## Done
-- [x] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | ✅ 완료
+- [x] **ISSUE-028**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | ✅ 완료
 - [x] **ISSUE-001**: Virtual Investment Simulation Platform (Paper Trading)
 - [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
 - [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
