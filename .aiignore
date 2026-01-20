@@ -1,0 +1,6 @@
+# AI Visibility Whitelist
+# These files are ignored by git (.gitignore) but should be visible to AI tools
+
+!*.duckdb
+!*.wal
+!data/

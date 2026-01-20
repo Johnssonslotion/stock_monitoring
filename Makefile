@@ -29,11 +29,11 @@ up: ## Start environment (Smart Detect: Mac=Local, Linux=Real)
 build-api: ## Rebuild API Server
 	docker compose -f deploy/docker-compose.yml build api-server
 
-up-dev: ## Force start development environment (Linux mode)
+up-dev: validate-env-dev ## Force start development environment (Linux mode)
 	@./scripts/preflight_check.sh dev
 	docker compose --env-file .env.dev -f deploy/docker-compose.yml --profile real up -d
 
-up-prod: ## Start production environment (Danger Zone)
+up-prod: validate-env-prod ## Start production environment (Danger Zone)
 	@./scripts/preflight_check.sh production
 	docker compose --env-file .env.prod -f deploy/docker-compose.yml --profile real up -d
 	@echo "Cleaning up unused Docker resources for Stability..."
@@ -75,6 +75,18 @@ sync-db-prod: ## [Local] Fetch Snapshot from Production (Requires Tailscale/SSH)
 audit: ## Run governance checks (Branch, Commit, Docstrings)
 	@echo "🛡️ Governance Check..."
 	@python3 scripts/governance.py
+
+validate-env-dev: ## Validate .env.dev against schema
+	@echo "🔍 Validating development environment variables..."
+	@python3 scripts/validate_env.py --env-file .env.dev
+
+validate-env-prod: ## Validate .env.prod against schema
+	@echo "🔍 Validating production environment variables..."
+	@python3 scripts/validate_env.py --env-file .env.prod
+
+validate-env-test: ## Validate .env.test against schema
+	@echo "🔍 Validating test environment variables..."
+	@python3 scripts/validate_env.py --env-file .env.test
 
 clean: ## Remove all containers, volumes, and data
 	docker compose -f deploy/docker-compose.yml down -v

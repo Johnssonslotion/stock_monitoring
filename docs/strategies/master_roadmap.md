@@ -27,6 +27,10 @@
 - **Phase 2 (Standardization)**:
   - Backend/Database/UI **3대 명세서(Specification Sheet)** 제정. (✅ DONE)
   - **RFC & ADR Process** 도입으로 변경 관리 체계화. (✅ DONE)
+  - **RFC-003 Enhancement: Environment Variable Standardization** (✅ **COMPLETED** - 2026-01-20):
+    - `.env.schema.yaml` + `validate_env.py` 구현으로 로컬-운영 환경 파리티 보장
+    - Makefile 자동 검증 통합 (Fail-Fast Principle)
+    - `.env.test` Git tracking 제거 (보안 강화)
   - **Mandatory Secret Management (IDEA-002)**: 모든 비밀 정보의 하드코딩 금지 및 환경 변수 강제화 (🆕 2026-01-19).
 - **Phase 3 (Audit)**: 주기적인 문서-코드 정합성 감사 (Gap Analysis). (✅ DONE)
   - **RFC Enforcement**: Single Socket 강제(RFC-001) 및 Strategy Spec 의무화(RFC-002) 적용. (✅ DONE)

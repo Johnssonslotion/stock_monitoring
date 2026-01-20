@@ -129,7 +129,7 @@ class DualWebSocketManager:
             return None
 
         # Logging (Sampled or Full)
-        # await self.raw_logger.log(message, direction="RX") # Optional: High load logging
+        await self.raw_logger.log(message, direction="RX") # Enabled for debugging/persistence
 
         parts = message.split('|')
         if len(parts) < 4:
