@@ -1,14 +1,36 @@
-# KRX 데이터 획득 전략 (Data Acquisition Strategy)
+# 트레이딩 데이터 관리 전략 (Trading Data Management Strategy)
 
-**Version**: 1.0  
-**Date**: 2026-01-12  
-**Status**: Strategy Document
+**Version**: 2.0 (Integrated)
+**Date**: 2026-01-20
+**Scope**: Acquisition -> Storage -> Retention -> Access
+**Status**: Active Strategy
 
 ---
 
 ## 1. Executive Summary
 
-한국거래소(KRX)는 **50+ 종목 메타데이터 및 시장 미시구조 지표**를 제공합니다. 본 문서는 Zero-Cost 원칙과 리소스 제약 하에서 **어떤 데이터를 우선 획득할지** 전략적 우선순위를 정의합니다.
+본 문서는 주식 데이터의 **획득(Acquisition)**부터 **저장(Storage)**, **수명 주기(Lifecycle)**, **접근(Access)**에 이르는 전 과정을 규정합니다.
+Zero-Cost 원칙과 고성능 조회를 위해 **Hybrid Storage Tiering (TimescaleDB + DuckDB)** 전략을 채택합니다.
+
+---
+
+## 2. 데이터 수명 주기 및 저장 정책 (Data Lifecycle & Storage Policy)
+
+### 2.1 Hybrid Storage Tiering
+데이터의 접근 빈도(Hot/Cold)와 용도에 따라 저장소를 이원화하여 비용 효율성과 성능을 극대화합니다.
+
+| Tier | Role | Storage | Retention | Scope | Access Pattern |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Tier 1 (Hot)** | 실시간 모니터링, 단기 차트, 알림 | **TimescaleDB** (Hypertable) | **최근 7일** (Raw Tick), **영구** (Candle) | Raw Tick, Orderbook | `SELECT * FROM market_ticks WHERE time > NOW() - 7d` |
+| **Tier 2 (Cold)** | 백테스팅, 장기 차트 분석, 감사 | **DuckDB** (Parquet) | **영구 (Permanent)** | Raw Tick, Orderbook (Full) | API(File Read) or Local Analysis |
+
+### 2.2 Retention Rules
+1. **Raw Data (Tick/Orderbook)**:
+   - TimescaleDB: 7일 후 **자동 삭제 (Drop Chunk)**.
+   - DuckDB: **영구 보관**. (매일/매주 배치로 TimescaleDB -> Parquet 이관 후 Timescale에서 삭제).
+2. **Candle Data (1m/1h/1d)**:
+   - TimescaleDB: **영구 보관**. (용량이 작으므로 삭제 불필요).
+   - 앱/차트에서는 주로 이 데이터를 조회함.
 
 ---
 

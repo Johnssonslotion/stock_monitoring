@@ -13,7 +13,7 @@
 ### 3.1 틱 데이터 (Market Ticks)
 - **Table Name**: `market_ticks`
 - **Type**: Hypertable (Partition by `time`)
-- **Retention**: 30 Days (Hot), S3 Export after (Cold)
+- **Retention**: 7 Days (Hot), DuckDB Export after (Cold) - See `docs/data_management_strategy.md`
 
 | Column | Type | Nullable | Description |
 | :--- | :--- | :--- | :--- |
