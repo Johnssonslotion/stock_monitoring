@@ -25,7 +25,8 @@ RUN pip install --no-cache-dir \
     finance-datareader==0.9.60 \
     aiofiles \
     psutil \
-    docker
+    docker \
+    httpx
 
 # Copy application code
 COPY . .

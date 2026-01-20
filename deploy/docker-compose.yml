@@ -25,7 +25,7 @@ services:
     command: python -m src.data_ingestion.ticks.archiver
     restart: unless-stopped
     volumes:
-      - ../data:/app/data
+      - ${HOST_MOUNT_PATH:-..}/data:/app/data
 
   # [RFC-007] KIS Service (Unified)
   kis-service:
@@ -36,6 +36,7 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
+      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -58,7 +59,8 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
-      - ../data/raw/kiwoom:/app/data/raw/kiwoom
+      - ${HOST_MOUNT_PATH:-..}/data/raw/kiwoom:/app/data/raw/kiwoom
+      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -293,9 +295,14 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: recovery-worker
-    command: python scripts/recovery/validate_and_recover.py
+    command: sleep infinity
     env_file:
       - ../${ENV_FILE:-.env.prod}
+    volumes:
+      - ${HOST_MOUNT_PATH:-..}/data:/app/data
+      - ${HOST_MOUNT_PATH:-..}/configs:/app/configs
+      - ../src:/app/src
+      - ../scripts:/app/scripts
     environment:
       - DB_HOST=stock-timescale
       - DB_PORT=5432

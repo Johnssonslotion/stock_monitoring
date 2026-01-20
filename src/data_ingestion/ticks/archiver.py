@@ -95,11 +95,13 @@ class TickArchiver:
                 source = d.get("source", "REALTIME")
                 execution_no = str(d.get("execution_no", ""))
                 
-                data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
+                # [FIX] Explicit conversions for DuckDB (INTEGER -> TIMESTAMP error prevention)
+                # ISO format string is safest for DuckDB binding
+                data_to_insert.append((symbol, timestamp.isoformat(), price, volume, source, execution_no))
             
             self.conn.executemany("""
                 INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, CAST(? AS TIMESTAMP), ?, ?, ?, ?)
             """, data_to_insert)
             
             self.buffer.clear()
@@ -107,6 +109,9 @@ class TickArchiver:
             
         except Exception as e:
             logger.error(f"Failed to flush to DuckDB: {e}")
+            # [Debug] Print sample data on error
+            if data_to_insert:
+                 logger.error(f"Sample Row: {data_to_insert[0]}")
 
     def merge_recovery_files(self):
         """
@@ -159,8 +164,10 @@ class TickArchiver:
         await self.connect_redis()
         
         pubsub = self.redis_client.pubsub()
-        await pubsub.psubscribe("market:ticks", "tick.*") # Updated channel name
-        logger.info("Subscribed to market:ticks / tick.*")
+        # [ISSUE-030] Subscribe to standardized channels tick:* used by Kiwoom and ticker.kr used by KIS
+        # Also keeping market:ticks for backward compat
+        await pubsub.psubscribe("market:ticks", "tick:*", "ticker.*") 
+        logger.info("Subscribed to market:ticks / tick:* / ticker.*")
 
         try:
             while self.running:
