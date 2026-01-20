@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 import aiohttp
 import redis.asyncio as redis
+import asyncpg
 
 from src.api_gateway.rate_limiter import gatekeeper
 from src.verification.api_registry import (
@@ -98,6 +99,7 @@ class RealtimeVerifier:
         self.redis: Optional[redis.Redis] = None
         self.kiwoom_client = KiwoomAPIClient()
         self.producer = VerificationProducer(redis_url)
+        self.db_pool: Optional[asyncpg.Pool] = None
 
         self._session: Optional[aiohttp.ClientSession] = None
         self._running = False
@@ -114,6 +116,12 @@ class RealtimeVerifier:
         self._session = aiohttp.ClientSession()
         await gatekeeper.connect()
         await self.producer.connect()
+        
+        # DB Pool initialization
+        if self.db_url:
+            self.db_pool = await asyncpg.create_pool(self.db_url)
+            logger.info("RealtimeVerifier DB pool connected")
+        
         logger.info("RealtimeVerifier initialized")
 
     async def cleanup(self):
@@ -123,6 +131,8 @@ class RealtimeVerifier:
             await self._session.close()
         if self.redis:
             await self.redis.close()
+        if self.db_pool:
+            await self.db_pool.close()
         await self.producer.close()
         logger.info("RealtimeVerifier cleaned up")
 
@@ -248,32 +258,40 @@ class RealtimeVerifier:
         minute: datetime
     ) -> Optional[int]:
         """
-        DB에서 틱 거래량 합계 조회
-
-        Args:
-            symbol: 종목 코드
-            minute: 조회 대상 분
-
-        Returns:
-            거래량 합계 또는 None
+        DB(TimescaleDB)에서 틱 거래량 합계 조회
         """
-        # TODO: 실제 DB 연결 구현
-        # 현재는 Redis에 캐시된 값 조회 시도
+        # 1. Redis 캐시 조회 (Archiver 등이 기록했을 경우)
         cache_key = f"tick_volume:{symbol}:{minute.strftime('%Y%m%d%H%M')}"
         cached = await self.redis.get(cache_key)
         if cached:
             return int(cached)
 
-        # DB 조회 (TimescaleDB/DuckDB)
-        # query = """
-        #     SELECT COALESCE(SUM(volume), 0) as total_volume
-        #     FROM market_ticks
-        #     WHERE symbol = $1
-        #       AND timestamp >= $2
-        #       AND timestamp < $3
-        # """
-        # 임시: None 반환 (실제 구현 필요)
-        logger.debug(f"DB volume query for {symbol} @ {minute} - not implemented")
+        # 2. DB 조회 (TimescaleDB)
+        if not self.db_pool:
+            logger.warning("DB pool not initialized, cannot query tick volume")
+            return None
+
+        try:
+            start_time = minute
+            end_time = minute + timedelta(minutes=1)
+            
+            async with self.db_pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT COALESCE(SUM(volume), 0) as total_volume
+                    FROM market_ticks
+                    WHERE symbol = $1
+                      AND time >= $2
+                      AND time < $3
+                """, symbol, start_time, end_time)
+                
+                if row:
+                    volume = int(row['total_volume'])
+                    # Cache for 5 minutes
+                    await self.redis.setex(cache_key, 300, str(volume))
+                    return volume
+        except Exception as e:
+            logger.error(f"Error querying DB volume for {symbol} @ {minute}: {e}")
+            
         return None
 
     def _extract_minute_volume(
