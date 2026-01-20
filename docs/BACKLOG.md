@@ -1,7 +1,6 @@
 # BACKLOG
 
 ## In Progress
-- [/] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | `[bug/ISSUE-008-chart-controls-overlap]`
 - [ ] **ISSUE-021**: Critical KIS Auth Failure Remediation (P0)
 
 ## Todo
@@ -14,6 +13,7 @@
 - [ ] **ISSUE-018**: Implement KIS Tick Recovery (Backfill Manager) (P2)
 
 ## Done
+- [x] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | ✅ 완료
 - [x] **ISSUE-001**: Virtual Investment Simulation Platform (Paper Trading)
 - [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
 - [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
