@@ -1,6 +1,6 @@
 import pytest
-from src.data_ingestion.price.asp_collector import KISASPCollector
-from src.data_ingestion.price.asp_collector_us import KISASPCollectorUS
+from src.data_ingestion.price.kr.asp_collector import KRASPCollector as KISASPCollector
+from src.data_ingestion.price.us.asp_collector import USASPCollector as KISASPCollectorUS
 
 def test_kr_orderbook_parsing():
     collector = KISASPCollector()
@@ -45,3 +45,12 @@ def test_us_orderbook_parsing():
     assert parsed.bids[0].vol == 150
     assert len(parsed.asks) == 5
     assert len(parsed.bids) == 5
+
+def test_kr_collector_syntax_validity():
+    """ISSUE-021: Regression test for SyntaxError in KRASPCollector"""
+    from src.data_ingestion.price.kr.asp_collector import KRASPCollector
+    collector = KRASPCollector()
+    assert collector is not None
+    assert collector.get_channel() == "orderbook.kr"
+    # Verify strict role separation logic (should return empty symbols)
+    assert collector.load_symbols() == []
