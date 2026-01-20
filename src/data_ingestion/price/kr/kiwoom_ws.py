@@ -36,10 +36,10 @@ class KiwoomWSCollector:
     REST_URL = "https://api.kiwoom.com/oauth2/token"  # Official API domain
     MAX_SYMBOLS_PER_SCREEN = 50  # 안전하게 50으로 설정 (Max 100)
     
-    def __init__(self, app_key: str, app_secret: str, symbols: List[str], mock_mode: bool = False):
+    def __init__(self, app_key: str, app_secret: str, symbol_configs: Dict[str, List[str]], mock_mode: bool = False):
         self.app_key = app_key
         self.app_secret = app_secret
-        self.target_symbols = set(symbols) | CORE_ETFS
+        self.symbol_configs = symbol_configs # {symbol: ['0B', '0D']}
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.session: Optional[aiohttp.ClientSession] = None
         self.token: Optional[str] = None
@@ -55,13 +55,13 @@ class KiwoomWSCollector:
         # Screen Number Management
         # screen_no -> set(symbols)
         self.screen_map: Dict[str, Set[str]] = {}
-        self._assign_screens(list(self.target_symbols))
+        self._assign_screens(list(self.symbol_configs.keys()))
 
         # Raw Logger (Separate Directory to avoid conflict with KIS)
         self.raw_logger = RawWebSocketLogger(log_dir="data/raw/kiwoom", retention_hours=48)
 
     def _assign_screens(self, symbols: List[str]):
-        """종목들을 화면번호에 분산 할당"""
+        """종목들을 화면번호에 분산 할당 (화면번호당 여러 타입을 가질 수 있음)"""
         self.screen_map.clear()
         chunk_size = self.MAX_SYMBOLS_PER_SCREEN
         
@@ -142,41 +142,53 @@ class KiwoomWSCollector:
                 await self._handle_message(msg)
 
     async def _send_login(self):
-        """LOGIN 메시지 전송 (필수)"""
+        """LOGIN 메시지 전송 (FLAT structure verified by test)"""
+        if not self.token:
+            logger.error("❌ Cannot login: Token is missing!")
+            return
+
         login_msg = {
             "trnm": "LOGIN",
             "token": self.token
         }
         await self.ws.send(json.dumps(login_msg))
-        logger.info("📤 SENT LOGIN")
+        logger.info(f"📤 SENT LOGIN (Flat) | Token: {self.token[:10]}...")
 
     async def _subscribe_all(self):
-        """할당된 모든 화면번호에 대해 REG 요청"""
+        """할당된 모든 화면번호에 대해 그룹화하여 REG 요청"""
         for screen_no, symbols in self.screen_map.items():
             if not symbols:
                 continue
             
-            # Kiwoom REG 포맷
-            reg_msg = {
-                "trnm": "REG",
-                "grp_no": screen_no,
-                "refresh": "1",
-                "data": [{
-                    "item": list(symbols),
-                    "type": ["0B", "0D"]  # 주식체결(0B), 주식호가잔량(0D)
-                }]
-            }
-            
-            await self.ws.send(json.dumps(reg_msg))
-            msg = f"📤 REG Screen {screen_no}: {len(symbols)} symbols"
-            logger.info(msg)
-            await self._publish_alert("INFO", msg)
-            
-            # 응답 대기
-            resp = await self.ws.recv()
-            await self._handle_message(resp)
-            
-            await asyncio.sleep(0.2)  # Rate Limit
+            # 구독 타입을 기준으로 종목들을 그룹화 (화면번호 내에서 부하 최적화)
+            type_to_symbols = {}
+            for s in symbols:
+                types = tuple(sorted(self.symbol_configs.get(s, ["0B", "0D"])))
+                if types not in type_to_symbols:
+                    type_to_symbols[types] = []
+                type_to_symbols[types].append(s)
+
+            for types, s_list in type_to_symbols.items():
+                reg_msg = {
+                    "trnm": "REG",
+                    "grp_no": screen_no,
+                    "refresh": "1",
+                    "data": [{
+                        "item": s_list,
+                        "type": list(types)
+                    }]
+                }
+                
+                await self.ws.send(json.dumps(reg_msg))
+                msg = f"📤 REG Screen {screen_no}: {len(s_list)} symbols with {list(types)}"
+                logger.info(msg)
+                await self._publish_alert("INFO", msg)
+                
+                # 응답 대기
+                resp = await self.ws.recv()
+                await self._handle_message(resp)
+                
+                await asyncio.sleep(0.2)  # Rate Limit
 
     async def _handle_message(self, raw_data: str):
         """메시지 처리"""

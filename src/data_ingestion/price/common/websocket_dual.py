@@ -8,6 +8,7 @@ import logging
 import json
 import websockets
 import redis.asyncio as redis
+from datetime import datetime
 from typing import Optional, List, Dict
 from src.data_ingestion.price.common.websocket_base import BaseCollector
 from src.data_ingestion.logger.raw_logger import RawWebSocketLogger
@@ -195,6 +196,13 @@ class DualWebSocketManager:
         if market in self.active_markets:
             return
 
+        # [P0 FIX] Unsubscribe other markets first to stay within KIS limit (40)
+        # KIS only allows 40 symbols per session. 
+        # KR(36) + US(26) = 62, which exceeds the limit if both are active.
+        others = [m for m in list(self.active_markets) if m != market]
+        for old_market in others:
+            await self.unsubscribe_market(old_market)
+
         logger.info(f"[{market}] Starting DUAL-SOCKET Subscription...")
         
         for tr_id, collector in self.collectors.items():
@@ -289,7 +297,32 @@ class DualWebSocketManager:
                 else:
                     async with self.lock_orderbook: self.ws_orderbook = None
                 
+                # 🧹 EMERGENCY FIX: Attempt cleanup on reconnect if still active
+                # (Actual cleanup needs a working socket, so we mostly rely on server-side drop 
+                # or explicit UNREG if we can catch it before close)
+                
                 await asyncio.sleep(5) # Reconnect delay
+
+    async def cleanup_subscriptions(self, socket_type: str):
+        """
+        🧹 Explicitly unsubscribe all for a specific socket type before reconnect
+        Matches UnifiedWebSocketManager logic to prevent 'ALREADY IN SUBSCRIBE' or 'MAX OVER'
+        """
+        target_ws = self.ws_tick if socket_type == 'tick' else self.ws_orderbook
+        if not target_ws or not self.active_markets:
+            return
+
+        logger.warning(f"🧹 [CLEANUP] Unsubscribing {socket_type.upper()} before reconnect...")
+        for market in list(self.active_markets):
+            for tr_id, collector in self.collectors.items():
+                if collector.market == market:
+                    detected_type = self._determine_socket_type(tr_id)
+                    if detected_type == socket_type:
+                        for sym in collector.symbols:
+                            await self._send_request(socket_type, tr_id, sym, "2") # 2=Unsubscribe
+                            await asyncio.sleep(0.05)
+        
+        await asyncio.sleep(1) # Grace period
 
     async def switch_urls(self, tick_url: str, orderbook_url: str):
         """Updates the URLs and forces reconnection for both sockets."""

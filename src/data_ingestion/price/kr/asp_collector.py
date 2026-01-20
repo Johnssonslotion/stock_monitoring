@@ -56,3 +56,7 @@ class KRASPCollector(BaseCollector):
         except Exception as e:
             logger.error(f"KR ASP Parse Error: {e}")
             return None
+
+    def parse_orderbook(self, body_str: str):
+        """Test compatibility alias"""
+        return self.parse_tick(body_str)

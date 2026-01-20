@@ -11,7 +11,7 @@ import pytest
 import asyncio
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch, AsyncMock
 
 import aiohttp
@@ -164,7 +164,6 @@ class TestKiwoomTokenMocked:
     # TC-G004: 토큰 캐싱 로직 테스트
     def test_token_caching_logic(self):
         """토큰 캐싱 로직 (RFC-008 Appendix G.5)"""
-        from datetime import timedelta
 
         # 시뮬레이션: 토큰 만료 1시간 전 갱신 필요
         token_expires = datetime.now() + timedelta(hours=24)

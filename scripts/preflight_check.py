@@ -10,7 +10,16 @@ from dotenv import load_dotenv
 
 # Setup
 sys.path.append(os.getcwd())
-load_dotenv()
+
+# 🔍 Environment Selection
+# actual code in Docker uses env_file from compose, so vars are already in environment.
+# For host execution, we default to .env.prod if not specified.
+env_file = os.getenv("ENV_FILE", ".env.prod")
+if os.path.exists(env_file):
+    load_dotenv(env_file)
+else:
+    load_dotenv() # Fallback to .env
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("PreFlight")
 
@@ -80,7 +89,11 @@ async def check_kiwoom_api():
 
 async def check_redis():
     try:
-        r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+        url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        if "stock-redis" in url: # Host-side execution correction
+            url = url.replace("stock-redis", "localhost")
+            
+        r = redis.from_url(url)
         await r.ping()
         await r.close()
         logger.info("✅ Redis: Connected")
@@ -90,11 +103,15 @@ async def check_redis():
 
 async def check_timescaledb():
     try:
+        host = os.getenv("DB_HOST", "localhost")
+        if host == "stock-timescale": # Host-side execution correction
+             host = "localhost"
+             
         conn = await asyncpg.connect(
             user=os.getenv("DB_USER", "postgres"),
             password=os.getenv("DB_PASSWORD", "password"),
             database=os.getenv("DB_NAME", "stockval"),
-            host=os.getenv("DB_HOST", "localhost"),
+            host=host,
             port=os.getenv("DB_PORT", "5432")
         )
         await conn.close()
