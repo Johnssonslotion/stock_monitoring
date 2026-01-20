@@ -1,4 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Header, HTTPException, Depends
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 import redis.asyncio as redis
 import asyncio
@@ -11,24 +12,12 @@ from datetime import datetime
 from typing import List, Optional, Dict
 from .auth import verify_api_key
 from .routes import system
+from .routes import virtual
+from src.broker.virtual import VirtualExchange
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api")
-
-app = FastAPI(title="Antigravity API", version="1.0.0")
-
-# Register Routers
-app.include_router(system.router)
-
-# CORS 설정 (로컬 개발 및 Electron 앱 지원)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # 환경 변수 및 설정
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -38,6 +27,9 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 DB_NAME = os.getenv("DB_NAME", "stockval")
 API_AUTH_SECRET = os.getenv("API_AUTH_SECRET", "super-secret-key")
+
+# Global manager & pool
+db_pool: Optional[asyncpg.Pool] = None
 
 class ConnectionManager:
     """웹소켓 연결 관리 클래스"""
@@ -61,7 +53,6 @@ class ConnectionManager:
                 self.disconnect(connection)
 
 manager = ConnectionManager()
-db_pool: Optional[asyncpg.Pool] = None
 
 # Global Configuration Cache
 SYMBOLS_CACHE: Dict[str, Dict] = {}
@@ -76,72 +67,95 @@ def load_config():
             if os.path.exists(path):
                 with open(path, "r") as f:
                     config = yaml.safe_load(f)
-                    market = config.get("market", "UNKNOWN")
-                    
-                    # 1. Indices
                     for item in config.get("symbols", {}).get("indices", []):
                         SYMBOLS_CACHE[item["symbol"]] = {**item, "category": "MARKET"}
-                    
-                    # 2. Leverage
                     for item in config.get("symbols", {}).get("leverage", []):
                         SYMBOLS_CACHE[item["symbol"]] = {**item, "category": "MARKET"}
-                        
-                    # 3. Stocks (from sectors)
                     for sector_name, sector_data in config.get("symbols", {}).get("sectors", {}).items():
-                        # Sector ETF also MARKET (if present)
                         if "etf" in sector_data:
                             SYMBOLS_CACHE[sector_data["etf"]["symbol"]] = {**sector_data["etf"], "category": "MARKET"}
-                        
                         for stock in sector_data.get("top3", []):
                             SYMBOLS_CACHE[stock["symbol"]] = {**stock, "category": "STOCK"}
-        
-        logger.info(f"✅ Loaded {len(SYMBOLS_CACHE)} symbols from configuration files.")
+        logger.info(f"✅ Loaded {len(SYMBOLS_CACHE)} symbols.")
     except Exception as e:
         logger.error(f"❌ Failed to load config: {e}")
 
-@app.on_event("startup")
-async def startup_event():
-    global db_pool
-    logger.info("🚀 Starting API server...")
-    # 0. Load Symbols
-    load_config()
-    # Redis 구독 타스크 시작
-    asyncio.create_task(redis_subscriber())
-    # DB 커넥션 풀 초기화
-    try:
-        logger.info(f"📊 Connecting to DB: {DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
-        db_pool = await asyncpg.create_pool(
-            user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
-        )
-        # Attach to app state for routers
-        app.state.db_pool = db_pool
-        logger.info("✅ Database Pool initialized successfully!")
-        
-        # Diagnostic: Check tables
-        async with db_pool.acquire() as conn:
-            tables = await conn.fetch("""
-                SELECT table_schema, table_name 
-                FROM information_schema.tables 
-                WHERE table_name LIKE '%candle%'
-            """)
-            logger.info(f"🔍 Found {len(tables)} candle-related tables: {[dict(r) for r in tables]}")
-            
-    except Exception as e:
-        logger.error(f"❌ DB Pool Init Failed: {e}")
-
 async def redis_subscriber():
     """Redis Pub/Sub 메시지를 브로드캐스트하는 타스크"""
+    logger.info("Initializing redis_subscriber...")
     try:
         r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
         pubsub = r.pubsub()
         await pubsub.subscribe("market_ticker", "market_orderbook", "news_alert", "system_alerts", "system.metrics")
-        logger.info("Connected to Redis Pub/Sub.")
+        logger.info(f"Connected to Redis Pub/Sub: {REDIS_URL}")
 
         async for message in pubsub.listen():
             if message["type"] == "message":
                 await manager.broadcast(message["data"])
     except Exception as e:
         logger.error(f"Redis Subscriber Exception: {e}")
+
+async def virtual_redis_subscriber():
+    """가상 거래 이벤트를 WebSocket으로 전달하는 타스크"""
+    try:
+        r = redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe("virtual.execution", "virtual.account", "virtual.position")
+        logger.info("Connected to Virtual Trading Redis Pub/Sub.")
+
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                await manager.broadcast(message["data"])
+    except Exception as e:
+        logger.error(f"Virtual Redis Subscriber Exception: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global db_pool
+    logger.info("🚀 Starting API server...")
+    load_config()
+    
+    sub_task = asyncio.create_task(redis_subscriber())
+    v_sub_task = asyncio.create_task(virtual_redis_subscriber())
+    
+    try:
+        db_pool = await asyncpg.create_pool(
+            user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT,
+            min_size=1, max_size=2
+        )
+        app.state.db_pool = db_pool
+        db_config = {'user':DB_USER, 'password':DB_PASSWORD, 'database':DB_NAME, 'host':DB_HOST, 'port':int(DB_PORT)}
+        virtual.virtual_exchange = VirtualExchange(db_config, account_id=1)
+        await virtual.virtual_exchange.connect()
+        logger.info("✅ Services initialized!")
+    except Exception as e:
+        logger.error(f"❌ Initialization Failed: {e}")
+
+    yield
+    
+    logger.info("🛑 Shutting down...")
+    sub_task.cancel()
+    v_sub_task.cancel()
+    if db_pool:
+        await db_pool.close()
+    if virtual.virtual_exchange:
+        await virtual.virtual_exchange.close()
+    logger.info("👋 Good bye!")
+
+app = FastAPI(title="Antigravity API", version="1.0.0", lifespan=lifespan)
+
+# Register Routers
+app.include_router(system.router)
+app.include_router(virtual.router)
+
+# CORS 설정 (로컬 개발 및 Electron 앱 지원)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- REST API Endpoints ---
 
@@ -646,4 +660,22 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+@app.websocket("/ws/virtual")
+async def virtual_websocket_endpoint(websocket: WebSocket, api_key: Optional[str] = None):
+    """Virtual Trading WebSocket - Real-time updates for orders, positions, account"""
+    # Simple auth check (in production, use proper token validation)
+    if not api_key or api_key != API_AUTH_SECRET:
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+    
+    await manager.connect(websocket)
+    logger.info("Virtual Trading WebSocket client connected")
+    try:
+        while True:
+            # Keep connection alive, actual data comes from Redis subscriber
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        logger.info("Virtual Trading WebSocket client disconnected")
 

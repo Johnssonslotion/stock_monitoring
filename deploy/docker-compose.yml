@@ -27,6 +27,50 @@ services:
     volumes:
       - ../data:/app/data
 
+  # [RFC-007] KIS Service (Unified)
+  kis-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: python -m src.data_ingestion.instances.kis_main
+    profiles: [ "collection", "real" ]
+    volumes:
+      - ../src:/app/src
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    depends_on:
+      - redis
+      - timescaledb
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          memory: 512M
+        limits:
+          memory: 2G
+
+  # [RFC-007] Kiwoom Service (Isolated Sub)
+  kiwoom-service:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: python -m src.data_ingestion.instances.kiwoom_sub
+    profiles: [ "collection", "real" ]
+    volumes:
+      - ../src:/app/src
+      - ../data/raw/kiwoom:/app/data/raw/kiwoom
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    depends_on:
+      - redis
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          memory: 512M
+        limits:
+          memory: 2G
+
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: stock-timescale
@@ -162,31 +206,6 @@ services:
     networks:
       - default
 
-  # Unified Realtime Collector (KIS Korean Stock - Primary)
-  real-collector:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: real-collector
-    command: python -m src.data_ingestion.price.unified_collector
-    env_file:
-      - ../${ENV_FILE:-.env}
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - APP_ENV=${APP_ENV}
-      - KIS_WS_URL=ws://ops.koreainvestment.com:21000
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ../configs:/app/configs
-      - ../src:/app/src
-      - ../data:/app/data # 로그 및 데이터 영구 저장을 위해 추가
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - default
-    restart: unless-stopped
-
   history-collector:
     build:
       context: ..
@@ -194,7 +213,7 @@ services:
     container_name: history-collector
     command: python -m src.data_ingestion.history.main
     env_file:
-      - ../${ENV_FILE:-.env}
+      - ../${ENV_FILE:-.env.prod}
     environment:
       - REDIS_URL=redis://stock-redis:6379/0
       - APP_ENV=${APP_ENV}
@@ -232,6 +251,7 @@ services:
       - default
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../src:/app/src
     restart: unless-stopped
     # Prioritize Sentinel Survival
     oom_score_adj: -500
@@ -275,7 +295,7 @@ services:
     container_name: recovery-worker
     command: python scripts/recovery/validate_and_recover.py
     env_file:
-      - ../${ENV_FILE:-.env}
+      - ../${ENV_FILE:-.env.prod}
     environment:
       - DB_HOST=stock-timescale
       - DB_PORT=5432
@@ -288,6 +308,12 @@ services:
     networks:
       - default
     restart: always
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
     profiles:
       - real
 

@@ -62,7 +62,7 @@ ISSUE 템플릿에 '## Design (Optional)' 섹션을 추가하면, 간단한 것�
 - Q1 Goal: Virtual Investment 기능
 - Deliverable: ISSUE-001 (완료 or 진행 중)
 
-RFC-005 + ISSUE-014~018이라고 하면, PM이 '뭘 봐야 하나?'라고 헷갈립니다."
+RFC-005 + ISSUE-013~018이라고 하면, PM이 '뭘 봐야 하나?'라고 헷갈립니다."
 
 ### Data Scientist
 "데이터로 검증:

@@ -48,7 +48,7 @@ graph TD
 - **Database**:
   - **TimescaleDB**: 실시간 틱 데이터 저장 (Hot/Warm).
   - **DuckDB**: 분석용 데이터 레이크 (Cold).
-- **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch).
+- **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch + Real-time Alerts).
 - **Dashboard**: React 기반 웹 대시보드 (`port: 5173`) 및 FastAPI 백엔드 가동 중.
 - **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
 - **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](docs/BACKLOG.md) 참조)

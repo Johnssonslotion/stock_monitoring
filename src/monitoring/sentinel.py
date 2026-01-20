@@ -233,21 +233,24 @@ class Sentinel:
                 else:
                     gap = (now - last_time).total_seconds()
                 
-                # Trigger: 60s Silence
-                if gap > 60:
-                    logger.error(f"💀 DEAD MAN'S SWITCH: {market} silent for {gap:.1f}s!")
+                # Trigger: Dynamic Threshold (60s during Market Hours, 300s otherwise)
+                threshold = 60 if self.is_market_open(market) else 300
+                
+                if gap > threshold:
+                    logger.error(f"💀 DEAD MAN'S SWITCH: {market} silent for {gap:.1f}s! (Threshold: {threshold}s)")
+                    await self.alert(f"No Data for {market}", f"Silence detected for {gap:.0f}s")
                     
-                    # Logic: Level 2 (Degrade) vs Level 1 (Restart)
-                    if self.last_restart_time and (now - self.last_restart_time).total_seconds() < 300:
-                        # Level 2: Persistent Failure -> Degrade Mode
-                        logger.critical("🚨 LEVEL 2 TRIGGERED: Persistent Failure -> Disabling Dual Socket")
-                        if self.redis:
+                    # Restart Logic (Only if gap > 300 to avoid flapping on short glitches)
+                    if gap > 300:
+                        now_ts = datetime.now().timestamp()
+                        if not self.last_restart_time or (now_ts - self.last_restart_time > 1800):
+                            logger.critical(f"RESTARTING CONTAINER due to silence...")
+                            # In real production, call Docker API or Supervisor
+                            # subprocess.run(["docker", "restart", "deploy-kis-service-1"]) 
+                            self.last_restart_time = now_ts
                             await self.redis.set("config:enable_dual_socket", "false")
                             logger.info("💾 Config Saved: config:enable_dual_socket = false")
                             await self.alert(f"Failed to recover {market}. Switching to SINGLE SOCKET mode.", "CRITICAL")
-                    else:
-                        # Circuit Breaker Check
-                        if await self.check_circuit_breaker():
                             # Level 1: First Failure -> Just Restart
                             logger.warning("🔨 LEVEL 1 TRIGGERED: Attempting Hard Restart")
                             await self.alert(f"{market} data stopped. Sending Suicide Packet.", "WARNING")
@@ -326,9 +329,10 @@ class Sentinel:
         pubsub = self.redis.pubsub()
         # 패턴 구독: ticker.kr, ticker.us 모두 수신
         await pubsub.psubscribe("ticker.*")
-        await pubsub.subscribe("market_orderbook")  # orderbook은 직접 구독 유지
+        await pubsub.subscribe("market_orderbook")
+        await pubsub.subscribe("system:alerts")  # 🚨 Critical Alerts Channel
         
-        logger.info("Sentinel started. Monitoring 'ticker.*' pattern and 'market_orderbook'...")
+        logger.info("Sentinel started. Monitoring 'ticker.*', 'market_orderbook', and 'system:alerts'...")
         
         # Start heartbeat monitor
         asyncio.create_task(self.monitor_heartbeat())
@@ -344,7 +348,7 @@ class Sentinel:
             
             if msg_type == 'pmessage':  # 패턴 구독 메시지 (ticker.*)
                 try:
-                    channel = message['channel']  # ticker.kr 또는 ticker.us
+                    channel = message['channel']  
                     raw_data = message['data']
                     
                     # ticker.* 채널은 모두 MarketData 포맷
@@ -362,6 +366,17 @@ class Sentinel:
                     if channel == "market_orderbook":
                         data = json.loads(raw_data)
                         await self.process_orderbook(data)
+                    
+                    elif channel == "system:alerts":
+                        logger.critical(f"🚨 SYSTEM ALERT RECEIVED: {raw_data}")
+                        # Here we could forward to Slack/PagerDuty
+                        try:
+                            alert = json.loads(raw_data)
+                            if alert.get("level") == "CRITICAL" and "ALREADY IN USE" in alert.get("message", ""):
+                                logger.critical("🔥 DETECTED 'ALREADY IN USE' -> IMMEDIATE ACTION REQUIRED")
+                                # Future: Trigger auto-restart or kill specific socket
+                        except:
+                            pass
                         
                 except Exception as e:
                     logger.error(f"Error processing {channel} in Sentinel: {e}")

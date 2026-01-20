@@ -1,4 +1,4 @@
-# AI Rules v2.8 - The Constitution (Index)
+# AI Rules v2.11 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -28,6 +28,8 @@
     - **Gemini Antigravity**: `.agent/workflows/` 문서 참조 (자연어 해석)
     - **Claude Code**: `/slash-command` 실행 (`.claude/commands/` 심링크)
 7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
+8.  **Environment Integrity**: 모든 패키지 관리는 **Poetry**(`pyproject.toml`)를 통해서만 수행한다. 임의의 `pip install` 사용은 엄격히 금지된다.
+    - AI는 스크립트 실행 전 `poetry install` 및 `poetry run`을 사용하여 의존성 정합성을 보장해야 한다.
 
 ## 3. 언어 원칙
 -   **Artifacts**: 모든 산출물(Task, Implementation Plan, Walkthrough)은 **반드시 한국어**로 작성한다. (영어 혼용 금지)
