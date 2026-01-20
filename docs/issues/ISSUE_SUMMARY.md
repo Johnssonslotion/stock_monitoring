@@ -26,7 +26,10 @@
 | ISSUE-022 | [Bug] TickArchiver DuckDB 타입 변환 오류 수정 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
 | ISSUE-023 | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 수정 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
 | ISSUE-024 | [Bug] Recovery Worker 의존성(httpx) 누락 수정 | P2 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-025 | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 개발 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-026 | [Debt] Kiwoom Orderbook Pub/Sub 및 아카이빙 구현 | P2 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
-| ISSUE-027 | [SDLC] Smoke Test (test_smoke_modules.py) 구축 | P1 | Open | Developer | docs/issues/ISSUE-022_to_027.md |
+| ISSUE-025 | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 개발 | P1 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
+| ISSUE-026 | [Debt] Kiwoom Orderbook Pub/Sub 및 아카이빙 구현 | P2 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
+| ISSUE-027 | [SDLC] Smoke Test (test_smoke_modules.py) 구축 | P1 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
+| ISSUE-028 | [Bug] Kiwoom Tick Subscription Failure | P1 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
+| ISSUE-029 | [Debt] Container Configuration Sync | P2 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
+| ISSUE-030 | [Bug] Pipeline Channel Name Inconsistency | P1 | Open | Developer | docs/issues/ISSUE-022_to_030.md |
 
