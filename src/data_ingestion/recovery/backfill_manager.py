@@ -122,7 +122,7 @@ class BackfillManager:
                 expected_minutes = []
                 for hour in range(start_hour, end_hour + 1):
                     for minute in range(60):
-                        if hour == end_hour and minute > 30:  # Market closes at 15:30
+                        if hour == 15 and minute > 30:  # Market closes at 15:30
                             break
                         expected_minutes.append(f"{hour:02d}:{minute:02d}")
                 
