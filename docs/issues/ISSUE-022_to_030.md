@@ -101,3 +101,56 @@
 ## Acceptance Criteria
 - [ ] `tests/test_smoke_modules.py` 작성: 모든 주요 Service(KIS, Kiwoom, Archiver) 및 유틸 모듈의 임포트 시도.
 - [ ] 프리플라이트 체크(`scripts/preflight_check.py`)와 연동하여 장 시작 전 자동 실행.
+
+---
+
+# ISSUE-028: [Bug] Kiwoom Tick Subscription Failure (No `0B` data)
+
+**Status**: Open  
+**Priority**: P1  
+**Type**: bug  
+**Created**: 2026-01-20  
+**Assignee**: Developer
+
+## Problem Description
+- RAW 로그 분석 결과, `KiwoomWSCollector`가 실시간 체결(`0B`) 데이터를 전혀 수신하지 못하고 있음 (`0D` 호가 잔량만 수신됨).
+- 이는 `REG` 메시지 포맷 문제 또는 구독 요청 방식의 문제로 추정됨.
+
+## Acceptance Criteria
+- [ ] `KiwoomWSCollector` 구독 로직 수정 (체결/호가 구독 분리 등).
+- [ ] RAW 로그에 `type: 0B` 메시지가 기록되는지 확인.
+
+---
+
+# ISSUE-029: [Debt] Container Configuration Sync (Mount `configs/`)
+
+**Status**: Open  
+**Priority**: P2  
+**Type**: refactor  
+**Created**: 2026-01-20  
+**Assignee**: Developer
+
+## Problem Description
+- 현재 컬렉터 컨테이너들이 `configs/` 디렉토리를 볼륨 마운트하지 않아, 빌드 시점의 구버전 YAML 설정을 사용하고 있음 (현재 70종목이 아닌 22종목만 수집 중).
+
+## Acceptance Criteria
+- [ ] `docker-compose.yml` 수정하여 모든 서비스에 `../configs:/app/configs` 볼륨 마운트 추가.
+- [ ] 컨테이너 재시작 시 최신 종목 리스트가 로그에 출력되는지 확인.
+
+---
+
+# ISSUE-030: [Bug] Pipeline Channel Name Inconsistency
+
+**Status**: Open  
+**Priority**: P1  
+**Type**: bug  
+**Created**: 2026-01-20  
+**Assignee**: Developer
+
+## Problem Description
+- KIS 컬렉터는 `ticker.kr`, Kiwoom 컬렉터는 `tick:KR:{symbol}` 채널을 사용하고 있어 아카이버의 구독 패턴(`ticker.*`)과 일치하지 않음.
+- 이로 인해 Kiwoom 데이터가 TimescaleDB에 저장되지 않는 현상 발생.
+
+## Acceptance Criteria
+- [ ] Redis 채널 명명 규칙 표준화 (예: `market:tick:{market}:{symbol}`).
+- [ ] 아카이버 구독 영역 확장 및 모든 브로커 데이터 수용 확인.
