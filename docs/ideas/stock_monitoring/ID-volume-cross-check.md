@@ -1,5 +1,5 @@
 # IDEA: Volume Cross-Check Strategy (Anomaly Detection)
-**Status**: 🌿 Sprouting
+**Status**: 🌿 Sprouting → Referenced in [RFC-008 Appendix C/D](file:///home/ubuntu/workspace/stock_monitoring/docs/rfc/RFC-008-tick-completeness-qa.md)
 **Priority**: P1
 
 ## 1. 개요 (Abstract)
