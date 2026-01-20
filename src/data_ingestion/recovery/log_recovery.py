@@ -33,7 +33,8 @@ class LogRecoveryManager:
                     price DOUBLE,
                     volume INTEGER,
                     source VARCHAR,
-                    execution_no VARCHAR
+                    execution_no VARCHAR,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             logger.info(f"✅ Connected to DuckDB: {self.db_path}")
@@ -47,30 +48,17 @@ class LogRecoveryManager:
             self.conn.close()
             logger.info("🔌 DB Connection Closed")
 
-    def _parse_line(self, line: str) -> Optional[Tuple]:
+    def _parse_line(self, line: str) -> Optional[List[Tuple]]:
         """Parse a single JSONL line into a tuple for DuckDB"""
         try:
             data = json.loads(line)
-            # Supporting multiple potential formats from different loggers
+            # RawWebSocketLogger logs: {"ts": "...", "dir": "RX", "msg": "..."}
+            raw_msg = data.get("msg")
+            if not raw_msg:
+                return None
             
-            # 1. Standard Kiwoom WS Log Format
-            # Kiwoom WS logic might wrap data. Structure depends on `RawWebSocketLogger`
-            # Typically: {"timestamp": "...", "data": "..."} or direct message
-            
-            # Let's assume the raw log contains the direct WebSocket message or a wrapped version
-            # Based on `kiwoom_ws.py`, it logs `raw_data`. 
-            # `RawWebSocketLogger` typically logs: {"timestamp": ..., "direction": "RX", "data": ...}
-            
-            payload = data.get("data")
-            if not payload:
-                # Try direct if not wrapped
-                payload = data
-            
-            if isinstance(payload, str):
-                try:
-                    payload = json.loads(payload)
-                except:
-                    return None # Non-JSON string
+            # msg is a JSON string of the actual Kiwoom response
+            payload = json.loads(raw_msg)
 
             # Kiwoom 'REAL' Message Only
             trnm = payload.get("trnm")
@@ -80,19 +68,18 @@ class LogRecoveryManager:
             real_data = payload.get("data", [])
             extracted_rows = []
             
+            # Log timestamp (outer)
+            outer_ts = data.get("ts")
+            if outer_ts:
+                try:
+                    dt_obj = datetime.fromisoformat(outer_ts)
+                    date_str = dt_obj.strftime("%Y-%m-%d")
+                except:
+                    date_str = datetime.now().strftime("%Y-%m-%d")
+            else:
+                date_str = datetime.now().strftime("%Y-%m-%d")
+
             for item in real_data:
-                # values: { '10': '000660', '20': '145000', ... } or mapped keys
-                # `KiwoomTickData.from_ws_json` uses fields. 
-                # Raw logs might be 'mapped' or 'raw fid'. 
-                # Assuming `kiwoom_ws.py` logic: It receives JSON with mapped keys if coming from mock
-                # OR if coming from API, it is parsed then logged? 
-                # Wait, `RawWebSocketLogger` logs `raw_data` passed to `_handle_message`.
-                # In `kiwoom_ws.py`: `data = json.loads(raw_data)`. 
-                # So the log contains the JSON structure from Kiwoom.
-                
-                # Kiwoom JSON format (assumed based on previous view):
-                # { "trnm": "REAL", "data": [ { "item": "005930", "values": { ... } } ] }
-                
                 symbol = item.get("item")
                 values = item.get("values", {})
                 msg_type = item.get("type")
@@ -100,50 +87,17 @@ class LogRecoveryManager:
                 if msg_type != "0B": # Only process Ticks (0B)
                     continue
 
-                # Parse Fields (standardized keys or FID?)
-                # Kiwoom WS usually sends FIDs (20: price, 15: volume, 16: time, etc.)
-                # But `kiwoom_ws.py` (mock/wrapper) uses keys like 'st_price', 'cvolume' etc?
-                # Let's look at `KiwoomTickData.from_ws_json` if possible, but safe to assume keys
-                # might be varying. Implementation plan didn't specify strict schema.
-                # Use basic parsing logic.
-                
-                # Try common keys
-                price = float(values.get("cprice") or values.get("20") or values.get("10") or 0) # 10 is current price usually, 20? 
-                # Let's rely on standard names if available, else FID.
-                # Kiwoom FIDs: 20(ChegyeolTime), 10(CurrentPrice), 15(Vol)
-                
-                # Actually, `kiwoom_ws` Mock sends: `stck_cntg_hour` etc? 
-                # Safe bet: `KiwoomTickData` schema.
-                
-                # If we don't have the schema, we parse defensively.
-                
-                # Time
-                tick_time = values.get("cntg_hour") or values.get("20") # 20 is time in real
-                today = datetime.now().strftime("%Y-%m-%d") # Log doesn't have date usually?
-                # Actually `RawWebSocketLogger` wrapper has outer timestamp. Use that if possible.
-                
-                outer_ts = data.get("timestamp") # ISO string from wrapper
-                if outer_ts:
-                    # Prefer outer timestamp for consistency with log time
-                    # But tick time is more accurate for market data.
-                    # Mix: Date from outer, Time from tick.
-                    try:
-                        dt_obj = datetime.fromisoformat(outer_ts)
-                        date_str = dt_obj.strftime("%Y-%m-%d")
-                    except:
-                        date_str = datetime.now().strftime("%Y-%m-%d")
-                else:
-                    date_str = datetime.now().strftime("%Y-%m-%d")
+                # Kiwoom FID 10: Current Price, 15: Tick Volume, 20: Time (HHMMSS)
+                price = float(values.get("10") or 0)
+                tick_time = values.get("20")
+                volume = int(values.get("15") or 0)
 
-                if tick_time:
-                    # Format HHMMSS
+                if tick_time and len(tick_time) == 6:
                     full_ts = f"{date_str} {tick_time[:2]}:{tick_time[2:4]}:{tick_time[4:6]}.000000"
                 elif outer_ts:
                     full_ts = outer_ts.replace("T", " ")
                 else:
                     full_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S.000000")
-
-                volume = int(values.get("cntg_vol") or values.get("15") or 0)
                 
                 # Execution NO: Synthetic (Time + Vol + Symbol)
                 execution_no = f"{full_ts}_{volume}_{symbol}"
@@ -195,8 +149,11 @@ class LogRecoveryManager:
         # Temp Table approach for bulk insert & dedupe
         self.conn.execute("CREATE TEMP TABLE temp_recovery AS SELECT * FROM market_ticks WHERE 0=1")
         
-        # Bulk Insert to Temp
-        self.conn.executemany("INSERT INTO temp_recovery VALUES (?, ?, ?, ?, ?, ?)", all_ticks)
+        # Bulk Insert to Temp (Specify columns to skip created_at)
+        self.conn.executemany("""
+            INSERT INTO temp_recovery (symbol, timestamp, price, volume, source, execution_no) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, all_ticks)
         
         # Merge to Main
         query = """
