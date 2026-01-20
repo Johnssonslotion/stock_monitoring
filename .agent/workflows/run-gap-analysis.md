@@ -29,6 +29,9 @@ This workflow scans the codebase to identify gaps between implementation and doc
    - Compare spec interfaces with actual code signatures
    - Check if DB schema matches migration files
    - Validate API spec against actual endpoints
+   - **Check Strategy Alignment**:
+     - Verify `docs/data_acquisition_strategy.md` reflects current API capabilities
+     - Flag if new APIs (e.g., Recovery/Validation) are missing from Strategy
 
 4. **Identify Governance Violations**
    - Check for hardcoded values (Config should be external)
