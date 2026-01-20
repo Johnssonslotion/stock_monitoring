@@ -31,3 +31,61 @@
     - **Option A (Port Only)**: `VITE_API_PORT` (Default: 8000). Host는 `window.location.hostname` 사용.
     - **Option B (Full URL)**: `VITE_API_URL` (예: `ws://remote:8000/ws`). Cross-Origin 개발 시 유용.
 - **Backtest**: 전략 파라미터는 실험의 재현성이 중요하므로 **Config 파일**로 관리해야 함.
+
+---
+
+## Implementation Standards (2026-01-20 Update)
+
+### 1. Environment Variable Schema (`.env.schema.yaml`)
+모든 환경 파일이 준수해야 하는 변수 목록을 정의:
+- **required**: 필수 변수 (KIS/Kiwoom API 키, DB 자격증명 등)
+- **optional**: 선택적 변수 (APP_ENV, KIWOOM_MOCK 등)
+- **defaults**: 기본값 (URL, 포트 등)
+
+### 2. Validation Script (`scripts/validate_env.py`)
+컨테이너 시작 전 환경변수 완전성을 검증:
+```bash
+# Manual validation
+python3 scripts/validate_env.py --env-file .env.dev
+
+# Automatic validation via Makefile
+make validate-env-dev
+make validate-env-prod
+```
+
+**Validation Checks**:
+- 필수 변수 존재 여부
+- 빈 값 또는 플레이스홀더 감지 (예: `YOUR_KEY_HERE`)
+- OS 환경변수 우선순위 고려
+
+### 3. Environment Parity Enforcement
+**원칙**: 로컬에서 테스트 성공 → 운영 배포 시 바로 동작
+- `.env.dev`, `.env.prod`, `.env.test` 모두 동일한 변수 구조 유지
+- 차이점은 **값(value)**만 (예: `DB_NAME=stock_dev` vs `DB_NAME=stock_prod`)
+- `.env.template`을 모든 환경 파일의 베이스로 사용
+
+### 4. Makefile Integration
+```makefile
+up-dev: validate-env-dev  # Development 환경 시작 전 자동 검증
+up-prod: validate-env-prod  # Production 환경 시작 전 자동 검증
+```
+
+**Fail-Fast Principle**: 환경변수 누락 시 컨테이너 시작을 차단하여, 런타임 실패를 사전 방지.
+
+### 5. Pre-commit Hook (Future Enhancement)
+```yaml
+# .pre-commit-config.yaml
+- repo: local
+  hooks:
+    - id: validate-env
+      name: Validate environment files
+      entry: python3 scripts/validate_env.py --env-file
+      language: python
+```
+
+---
+
+## References
+- **Implementation Plan**: `docs/governance/decisions/RFC-003_implementation.md`
+- **Council Review**: [Implementation Plan - Council of Six Section](file:///home/ubuntu/.gemini/antigravity/brain/c28c0160-33b4-40ae-aa0c-28a3d8bfc166/implementation_plan.md#council-of-six---페르소나-협의)
+- **Issue**: ISSUE-022 (Environment Variable Standardization)
