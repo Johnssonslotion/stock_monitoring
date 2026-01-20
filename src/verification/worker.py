@@ -249,6 +249,39 @@ class KISAPIClient:
                 logger.error(f"KIS API error: {resp.status}")
             return None
 
+    async def fetch_tick_data(
+        self,
+        session: aiohttp.ClientSession,
+        symbol: str,
+        target_time: str
+    ) -> List[Dict[str, Any]]:
+        """틱 데이터 조회 (복구용)"""
+        token = await self.get_token(session)
+        
+        # TR_ID: 실전/모의 구분
+        tr_id = "FHKST01010300" if "openapi" in self.BASE_URL else "VTKST01010300"
+
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "authorization": f"Bearer {token}",
+            "appkey": os.getenv("KIS_APP_KEY"),
+            "appsecret": os.getenv("KIS_APP_SECRET"),
+            "tr_id": tr_id,
+            "custtype": "P"
+        }
+        params = {
+            "fid_cond_mrkt_div_code": "J",
+            "fid_input_iscd": symbol,
+            "fid_input_hour_1": target_time
+        }
+
+        url = f"{self.BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
+        async with session.get(url, headers=headers, params=params) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                return data.get('output1', [])
+            return []
+
 
 # === Producer ===
 
@@ -413,7 +446,12 @@ class VerificationConsumer:
                 # 3. 작업 실행
                 try:
                     task = VerificationTask.from_json(raw_task)
-                    result = await self._process_task(session, task)
+                    
+                    if task.task_type == "recovery":
+                        result = await self._handle_recovery_task(session, task)
+                    else:
+                        result = await self._process_task(session, task)
+                    
                     self._results.append(result)
 
                     if result.status == VerificationStatus.NEEDS_RECOVERY:
@@ -424,6 +462,83 @@ class VerificationConsumer:
                     # Dead Letter Queue로 이동
                     if raw_task:
                         await self.redis.lpush(VerificationConfig.DLQ_KEY, raw_task)
+
+    async def _handle_recovery_task(
+        self,
+        session: aiohttp.ClientSession,
+        task: VerificationTask
+    ) -> VerificationResult:
+        """긴급 복구 작업 처리"""
+        symbol = task.symbol
+        # minute format: "2026-01-20T09:00:00"
+        dt_min = datetime.fromisoformat(task.minute)
+        # KIS API expects HHMMSS of the end of the window (approx)
+        target_time_req = (dt_min + timedelta(minutes=1)).strftime("%H%M%S")
+        
+        logger.info(f"🛠️ Handling recovery task for {symbol} @ {dt_min.strftime('%H:%M')}")
+        
+        # Rate Limit
+        if await gatekeeper.wait_acquire("KIS", timeout=5.0):
+            items = await self.kis_client.fetch_tick_data(session, symbol, target_time_req)
+            
+            if items:
+                # Filter and Save Ticks
+                recovered_count = await self._save_recovered_ticks(symbol, dt_min, items)
+                
+                return VerificationResult(
+                    symbol=symbol,
+                    minute=task.minute,
+                    status=VerificationStatus.PASS,
+                    confidence=ConfidenceLevel.HIGH,
+                    message=f"Recovered {recovered_count} ticks"
+                )
+        
+        return VerificationResult(
+            symbol=symbol,
+            minute=task.minute,
+            status=VerificationStatus.FAIL,
+            confidence=ConfidenceLevel.LOW,
+            message="Recovery failed (API error or Rate Limit)"
+        )
+
+    async def _save_recovered_ticks(self, symbol: str, dt_min: datetime, items: List[Dict]) -> int:
+        """복구된 틱 데이터를 DB에 저장 (TimescaleDB)"""
+        import asyncpg
+        target_hhmm = dt_min.strftime("%H%M")
+        date_prefix = dt_min.strftime("%Y%m%d")
+        
+        rows = []
+        for item in items:
+            t_str = item.get('stck_cntg_hour')
+            if t_str and t_str[:4] == target_hhmm:
+                # Build Row (time, symbol, source, price, volume, change)
+                tick_dt = datetime.strptime(f"{date_prefix} {t_str}", "%Y%m%d %H%M%S")
+                rows.append((
+                    tick_dt, symbol, "KIS_RECOVERY",
+                    float(item['stck_prpr']), float(item['cntg_vol']), float(item.get('prdy_vrss', 0))
+                ))
+        
+        if rows:
+            db_url = os.getenv("TIMESCALE_URL")
+            if not db_url: return 0
+            
+            try:
+                conn = await asyncpg.connect(db_url)
+                # INSERT ON CONFLICT is hard with copy_records, but for multi-row we can use a temp table or executemany
+                # Since real-time recovery is small (one minute), executemany is fine.
+                query = """
+                    INSERT INTO market_ticks (time, symbol, source, price, volume, change)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                """
+                # Note: No primary key on market_ticks for speed, so no ON CONFLICT needed for now?
+                # Actually, duplicate prevention is better.
+                await conn.executemany(query, rows)
+                await conn.close()
+                return len(rows)
+            except Exception as e:
+                logger.error(f"Failed to save recovered ticks: {e}")
+        
+        return 0
 
     async def _process_task(
         self,
