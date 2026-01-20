@@ -73,6 +73,7 @@ htmlcov/
 # Temporary & Debug
 .venv_test/
 debug_*.py
+scripts/diagnostic_*.py
 logs.txt
 *.jsonl
 data/raw/*.jsonl

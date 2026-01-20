@@ -20,7 +20,7 @@ async def test_news_processing_and_publish(collector):
     mock_feed.entries = [mock_entry]
     
     # 2. Setup Redis Mock
-    import mock
+    from unittest import mock
     collector.redis = mock.AsyncMock()
     
     # 3. Patch asyncio.to_thread to return our mock feed
@@ -43,7 +43,7 @@ async def test_news_duplicate_filter(collector):
     mock_feed = MagicMock()
     mock_feed.entries = [mock_entry]
     
-    import mock
+    from unittest import mock
     collector.redis = mock.AsyncMock()
     
     with patch("asyncio.to_thread", return_value=mock_feed):

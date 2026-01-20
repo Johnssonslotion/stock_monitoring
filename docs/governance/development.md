@@ -68,6 +68,14 @@
             symbol (str): 수집 대상 심볼 (예: 'KRW-BTC')
         """
     ```
+
+### 2.2. Testing Standards
+- **Framework**: `pytest`
+- **Command**: `PYTHONPATH=. poetry run pytest tests/` (Always run from project root)
+- **Coverage**: `pytest-cov` (Optional but recommended for PRs)
+- **Unit Tests**: `tests/unit/` (Fast, isolated)
+- **Integration Tests**: `tests/integration/` (DB/Redis required)
+
 -   **Git**: Conventional Commits + **Strict Git Flow**.
     -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
     -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
@@ -88,6 +96,15 @@
 1.  단위 테스트 (함수 로직만) ✅
 2.  **통합 테스트** (실제 Redis/DB 연결) ✅ ⬅️ 필수
 3.  **E2E 테스트** (전체 파이프라인) ✅ ⬅️ 배포 전 필수
+### 3.1.5 에러 분석 게이트 (Error Analysis Gate - ZEVS)
+**배경**: 동일한 에러가 다른 형태로 재발하는 것을 방지하기 위함.
+
+**규칙**:
+1. 모든 버그 수정 PR은 해당 이슈 문서의 `Failure Analysis` 섹션이 작성되어 있어야 한다.
+2. 기발생 에러를 재현하는 **Regression Test**가 반드시 `tests/`에 포함되어야 하며, `test_registry.md`에 등록되어야 한다.
+3. 이 과정이 생략된 PR은 품질 게이트(Gate 1~3) 통과 여부와 상관없이 반려할 수 있다.
+
+---
 
 ### 3.2 Zero Data 알람 (Zero Data Alarm)
 **규칙**: 데이터 수집 컴포넌트가 **5분 이상 0건 수집 → 즉시 디버깅 모드**.

@@ -8,28 +8,62 @@ import logging
 import os
 from datetime import datetime, time, timedelta
 import pytz
+import yaml
 
-from src.data_ingestion.price.common import KISAuthManager
-from src.data_ingestion.price.common.websocket_dual import DualWebSocketManager
-from src.data_ingestion.price.common.websocket_base import UnifiedWebSocketManager
-import redis.asyncio as redis
-import json
-import sys
-from src.data_ingestion.price.kr.real_collector import KRRealCollector
-from src.data_ingestion.price.us.real_collector import USRealCollector
-from src.data_ingestion.price.kr.asp_collector import KRASPCollector
-from src.data_ingestion.price.us.asp_collector import USASPCollector
-from src.data_ingestion.price.kr.kiwoom_ws import KiwoomWSCollector
+# ... (existing imports)
 
-logging.basicConfig(level=logging.DEBUG)
+def load_all_kr_symbols() -> list:
+    """Strategy: Kiwoom collects ALL 70 symbols (Tick+Orderbook for Rotations, Orderbook for Core)"""
+    config_file = os.getenv("CONFIG_FILE", "configs/kr_symbols.yaml")
+    # Resolve absolute path if needed, similar to real_collector logic or trust CWD
+    if not os.path.exists(config_file):
+        # Fallback for nested execution
+        config_file = os.path.join(os.getcwd(), config_file)
+        
+    try:
+        with open(config_file, "r") as f:
+            config = yaml.safe_load(f)
+        
+        symbols_data = config.get('symbols', {})
+        targets = []
+        
+        # All Indices (Core)
+        for item in symbols_data.get('indices', []):
+            targets.append(item['symbol'])
+        
+        # All Leverage (Core)
+        for item in symbols_data.get('leverage', []):
+            targets.append(item['symbol'])
+        
+        # All Sectors (Core + Rotation)
+        for sector_data in symbols_data.get('sectors', {}).values():
+            if 'etf' in sector_data:
+                targets.append(sector_data['etf']['symbol'])
+            for stock in sector_data.get('top3', []):
+                targets.append(stock['symbol'])
+                
+        return list(set(targets))
+    except Exception as e:
+        logger.error(f"Failed to load full symbol list for Kiwoom: {e}")
+        return []
+
+# ...
+
+
 logger = logging.getLogger("UnifiedCollector")
 
 # 환경 변수
+APP_ENV = os.getenv("APP_ENV", "development").lower()
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 KIS_WS_URL = os.getenv("KIS_WS_URL", "ws://ops.koreainvestment.com:21000")
+KIS_BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
+KIS_APP_KEY = os.getenv("KIS_APP_KEY")
+KIS_APP_SECRET = os.getenv("KIS_APP_SECRET")
+
 KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
 KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
 KIWOOM_BACKUP_MODE = os.getenv("KIWOOM_BACKUP_MODE", "False").lower() == "true"
+KIWOOM_MOCK_MODE = os.getenv("KIWOOM_MOCK_MODE", "False").lower() == "true"
 
 # 인증 관리자
 auth_manager = KISAuthManager()
@@ -165,9 +199,22 @@ def check_time_cross_midnight(current: time, start: time, end: time) -> bool:
         return start <= current or current <= end
 
 async def main():
-    logger.info("🚀 Starting Unified Real-time Collector (Dual-Socket Mode)...")
+    # 0. Startup Banner
+    env_tag = "[PROD]" if APP_ENV == "production" else "[DEV]"
+    print("\n" + "="*60)
+    print(f"🚀 {env_tag} Unified Real-time Collector")
+    print(f"📍 KIS Base: {KIS_BASE_URL}")
+    print(f"📍 KIS WS:   {KIS_WS_URL}")
+    print(f"📍 Redis:    {REDIS_URL}")
+    print(f"🔐 KIS Key:  {KIS_APP_KEY[:4]}****" if KIS_APP_KEY else "🔐 KIS Key:  MISSING")
+    print("="*60 + "\n")
 
-    # 1. Approval Key 발급
+    # 1. API 키 및 연결성 사전 검증 (Pre-flight)
+    if not await auth_manager.verify_connectivity():
+        logger.critical("🛑 CRITICAL: API Connectivity Verification Failed. Shutting down.")
+        sys.exit(1)
+
+    # 1.5 Approval Key 발급
     approval_key = await auth_manager.get_approval_key()
     
     # 2. 수집기 인스턴스 생성 (KR/US Tick & Orderbook)
@@ -249,44 +296,50 @@ async def main():
     # 4. 실행 (WebSocket Loop + Scheduler + Key Refresh)
     asyncio.create_task(market_scheduler(manager))
     asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
-    
-    asyncio.create_task(market_scheduler(manager))
-    asyncio.create_task(schedule_key_refresh(manager))  # ✅ 키 자동 갱신 활성화
 
     # 5. [NEW] Kiwoom Hybrid Collector (Core + Satellite)
     if KIWOOM_BACKUP_MODE and KIWOOM_APP_KEY and KIWOOM_APP_SECRET:
-        logger.info("🛡️ Starting Kiwoom Hybrid Collector (Backup/Satellite Mode)...")
+        logger.info("🛡️ Starting Kiwoom Hybrid Collector (Maximized Strategy: 70 Symbols)...")
         
-        # Load Core Symbols from Kist Config (Tier 1)
-        # Note: KRRealCollector.load_config() is sync, but IO bound. Safe for startup.
-        kr_tick.load_config() 
-        core_symbols = kr_tick.kr_symbols
-        
+        # Load ALL Symbols (Core 40 + Rotation 30) for Kiwoom
+        kiwoom_symbols = load_all_kr_symbols()
+        logger.info(f"Kiwoom Target Coverage: {len(kiwoom_symbols)} symbols")
+
         kiwoom_collector = KiwoomWSCollector(
             app_key=KIWOOM_APP_KEY,
             app_secret=KIWOOM_APP_SECRET,
-            symbols=core_symbols
+            symbols=kiwoom_symbols,
+            mock_mode=KIWOOM_MOCK_MODE
         )
         # Run in background
         asyncio.create_task(kiwoom_collector.start())
         
         # Scanner Integration (Dynamic Subscription)
         async def kiwoom_scanner_listener():
-            pubsub = r.pubsub()
-            await pubsub.subscribe("system:add_symbol")
-            logger.info("📡 [Kiwoom] Listening for Dynamic Subscription Events...")
-            async for msg in pubsub.listen():
-                if msg['type'] == 'message':
-                    symbol = msg['data']
-                    logger.info(f"🛰️ [Kiwoom] Dynamic Subscription Triggered: {symbol}")
-                    await kiwoom_collector.add_symbol(symbol)
+            try:
+                pubsub = r.pubsub()
+                await pubsub.subscribe("system:add_symbol")
+                logger.info("📡 [Kiwoom] Listening for Dynamic Subscription Events...")
+                async for msg in pubsub.listen():
+                     if msg['type'] == 'message':
+                        symbol = msg['data']
+                        logger.info(f"🛰️ [Kiwoom] Dynamic Subscription Triggered: {symbol}")
+                        await kiwoom_collector.add_symbol(symbol)
+            except Exception as e:
+                logger.error(f"Kiwoom Scanner Error: {e}")
                     
         asyncio.create_task(kiwoom_scanner_listener())
     else:
         logger.info("ℹ️ Kiwoom Collector Disabled (Env Not Set)")
     
     # Run Manager (Block)
-    await manager.run(ws_url, approval_key)
+    if use_dual:
+        # P0 FIX: DualWebSocketManager needs specific URLs for each socket
+        tick_url = f"{KIS_WS_URL}/H0STCNT0" if "H0STCNT0" not in ws_url else ws_url
+        orderbook_url = f"{KIS_WS_URL}/H0STASP0" # Real-time Orderbook TR
+        await manager.run(tick_url, orderbook_url, approval_key)
+    else:
+        await manager.run(ws_url, approval_key)
 
 if __name__ == "__main__":
     asyncio.run(main())

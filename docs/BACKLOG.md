@@ -1,20 +1,26 @@
-# Project Backlog: Backend Integration & Data Pipeline
+# BACKLOG
 
-> **Governance Notice**: 
-> 본 백로그의 작업은 **Live Market Data Collection**에 영향을 주지 않도록, 장 마감 후 또는 별도의 Staging 환경에서 진행해야 합니다.
+## In Progress
+- [/] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | `[bug/ISSUE-008-chart-controls-overlap]`
+- [ ] **ISSUE-021**: Critical KIS Auth Failure Remediation (P0)
 
-## Issues (All Work Items)
-
-**Note (v2.10)**: RFC는 폐지되었습니다. 복잡한 작업은 ISSUE 내 `## Design` 섹션으로 관리합니다.
-
+## Todo
 - [ ] **ISSUE-001**: 데이터 누락 감지 및 채우기 로직 (Data Gap Detection) | P2
-- [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
 - [ ] **ISSUE-003**: API 에러 핸들링 및 로깅 (API Error Handling & Logging) | P2
-- [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
 - [ ] **ISSUE-005**: 가상 투자 시뮬레이션 플랫폼 (Virtual Investment) | P1 | Epic
 - [ ] **ISSUE-006**: DB 뷰 및 집계 복구 (DB Aggregation Restoration) | P0
 - [ ] **ISSUE-007**: 웹소켓 연결 관리자 (WebSocket Manager) | P1 | Epic
-- [/] **ISSUE-008**: 차트 UI 컨트롤 겹침 현상 (Chart Controls Overlap) | P1 | Bug | `[bug/ISSUE-008-chart-controls-overlap]`
+- [ ] **ISSUE-017**: Implement DuckDBArchiver (Hybrid Architecture) (P1)
+- [ ] **ISSUE-018**: Implement KIS Tick Recovery (Backfill Manager) (P2)
+
+## Done
+- [x] **ISSUE-001**: Virtual Investment Simulation Platform (Paper Trading)
+- [x] **ISSUE-002**: 백로그 이슈 ID 표준화 | P1 | ✅ 완료
+- [x] **ISSUE-004**: 차트 줌 오류 및 휴장일 처리 | P1 | ✅ 완료
+- [x] **ISSUE-014**: External Health Monitoring Dashboard (Renumbered from 015)
+- [x] **ISSUE-016**: Enhance Data Pipeline Test Completeness & ZEVS
+- [x] **ISSUE-019**: API E2E Test Environment Fix
+- [x] **ISSUE-020**: Implement Dual Data Collection Strategy (70 Symbols)
 
 ---
 

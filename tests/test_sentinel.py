@@ -2,6 +2,12 @@ import pytest
 import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import sys
+# Mock docker module before any imports that might use it
+mock_docker = MagicMock()
+sys.modules["docker"] = mock_docker
+
 from src.monitoring.sentinel import Sentinel
 
 @pytest.mark.asyncio
@@ -31,11 +37,11 @@ async def test_sentinel_resource_monitor():
         sentinel.is_running = False
         await task
 
-        # Check if alert was published
-        sentinel.redis.publish.assert_called()
-        args = sentinel.redis.publish.call_args[0]
-        assert args[0] == "system_alerts"
-        data = json.loads(args[1])
+        # Check if alert was published to system_alerts channel
+        # Sentinel now publishes both metrics and alerts
+        alert_calls = [call for call in sentinel.redis.publish.call_args_list if call[0][0] == "system_alerts"]
+        assert len(alert_calls) > 0
+        data = json.loads(alert_calls[0][0][1])
         assert "High CPU Usage" in data["message"]
 
 @pytest.mark.asyncio

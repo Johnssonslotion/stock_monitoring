@@ -39,6 +39,9 @@ async def test_archiver_integration_with_redis(redis_client, clean_db):
     """
     
     # 1. Setup Archiver with Test DB Path
+    # Force use localhost redis for test
+    settings.data.redis_url = REDIS_URL
+    
     # Dependency Injection allows us to use a test database
     archiver = TickArchiver(batch_size=1, flush_interval=1, db_path=TEST_DB_PATH)
     # archiver._init_db() is called in __init__, so no need to call it again or set path manually
@@ -54,11 +57,11 @@ async def test_archiver_integration_with_redis(redis_client, clean_db):
     test_message = {
         "source": "upbit", 
         "symbol": "KRW-BTC", 
-        "timestamp": 1234567890, 
+        "timestamp": "2026-01-01T12:00:00", # String for TIMESTAMP type
         "price": 50000000.0, 
-        "volume": 0.1, 
+        "volume": 10,  # INT
         "side": "bid", 
-        "id": "integration_test_1"
+        "execution_no": "integration_test_1" # Mapped to execution_no
     }
     
     # Channel matching the pattern tick.*
@@ -75,7 +78,8 @@ async def test_archiver_integration_with_redis(redis_client, clean_db):
     
     # 4. Verify DuckDB
     conn = duckdb.connect(TEST_DB_PATH, read_only=True)
-    result = conn.execute("SELECT symbol, price FROM ticks WHERE id='integration_test_1'").fetchone()
+    # Check updated table name 'market_ticks' and column 'execution_no'
+    result = conn.execute("SELECT symbol, price FROM market_ticks WHERE execution_no='integration_test_1'").fetchone()
     conn.close()
     
     assert result is not None, "Data not found in DuckDB! Archiver probably didn't receive the message."

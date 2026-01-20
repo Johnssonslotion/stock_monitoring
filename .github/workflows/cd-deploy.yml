@@ -1,8 +1,7 @@
 name: CD Deploy
 
 on:
-  push:
-    branches: [ "develop" ]  # main은 배포하지 않음 (아카이브용)
+  workflow_dispatch:  # Manual Trigger Only (Process Lock)
 
 jobs:
   deploy:
