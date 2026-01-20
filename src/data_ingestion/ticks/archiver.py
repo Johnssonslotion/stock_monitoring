@@ -76,32 +76,32 @@ class TickArchiver:
             data_to_insert = []
             for d in self.buffer:
                 # Redis message format might vary, standardize it
-                # Assuming data object from Pydantic model dump
-                # Data standardization
                 symbol = d.get("symbol")
-                raw_ts = d.get("timestamp") or d.get("dt") # Handle alias
+                raw_ts = d.get("timestamp") or d.get("dt")
                 
-                # Timestamp Normalization Logic
-                timestamp = raw_ts
+                # Robust Timestamp Handling
                 if isinstance(raw_ts, (int, float)):
-                    # Check if milliseconds (usually > 10^10 for seconds since 1970 is 20th century, 
-                    # but KIS/Upbit timestamps are often ms ~ 1.6e12)
-                    # 3000-01-01 is about 3.2e10 (seconds), so anything larger is likely ms or us
-                    if raw_ts > 10000000000: # 10 billion - safe threshold for ms
-                         timestamp = datetime.fromtimestamp(raw_ts / 1000.0)
-                    else:
-                         timestamp = datetime.fromtimestamp(float(raw_ts))
-                
-                price = d.get("price")
-                volume = d.get("volume")
+                    timestamp = datetime.fromtimestamp(raw_ts)
+                elif isinstance(raw_ts, str):
+                    try:
+                        timestamp = datetime.fromisoformat(raw_ts)
+                    except:
+                        timestamp = datetime.now()
+                else:
+                    timestamp = datetime.now()
+
+                price = float(d.get("price") or 0)
+                volume = int(float(d.get("volume") or 0)) # Handle float strings
                 source = d.get("source", "REALTIME")
-                execution_no = str(d.get("execution_no", "")) # execution_id?
+                execution_no = str(d.get("execution_no", ""))
                 
-                data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
+                # [FIX] Explicit conversions for DuckDB (INTEGER -> TIMESTAMP error prevention)
+                # ISO format string is safest for DuckDB binding
+                data_to_insert.append((symbol, timestamp.isoformat(), price, volume, source, execution_no))
             
             self.conn.executemany("""
                 INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, CAST(? AS TIMESTAMP), ?, ?, ?, ?)
             """, data_to_insert)
             
             self.buffer.clear()
@@ -109,6 +109,9 @@ class TickArchiver:
             
         except Exception as e:
             logger.error(f"Failed to flush to DuckDB: {e}")
+            # [Debug] Print sample data on error
+            if data_to_insert:
+                 logger.error(f"Sample Row: {data_to_insert[0]}")
 
     def merge_recovery_files(self):
         """
@@ -161,8 +164,10 @@ class TickArchiver:
         await self.connect_redis()
         
         pubsub = self.redis_client.pubsub()
-        await pubsub.psubscribe("market:ticks", "tick.*") # Updated channel name
-        logger.info("Subscribed to market:ticks / tick.*")
+        # [ISSUE-030] Subscribe to standardized channels tick:* used by Kiwoom and ticker.kr used by KIS
+        # Also keeping market:ticks for backward compat
+        await pubsub.psubscribe("market:ticks", "tick:*", "ticker.*") 
+        logger.info("Subscribed to market:ticks / tick:* / ticker.*")
 
         try:
             while self.running:

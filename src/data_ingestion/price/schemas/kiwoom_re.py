@@ -33,7 +33,7 @@ class KiwoomTickData(BaseModel):
         """
         try:
             # 시간 파싱 (HHMMSS -> datetime)
-            time_str = data.get("STCK_CNTG_HOUR", "")  # 체결시간
+            time_str = data.get("20") or data.get("STCK_CNTG_HOUR", "")  # 20: 체결시간
             now = datetime.now()
             
             if len(time_str) == 6:
@@ -47,17 +47,22 @@ class KiwoomTickData(BaseModel):
                 dt = now
 
             # 가격정보 처리 (부호 제거)
-            curr_price = abs(float(data.get("STCK_PRPR", 0)))
+            # FID 10: 현재가, 13: 누적거래량, 11: 전일대비
+            price_raw = data.get("10") or data.get("STCK_PRPR", 0)
+            curr_price = abs(float(price_raw))
+            
+            vol_raw = data.get("13") or data.get("ACML_VOL", 0)
+            change_raw = data.get("11") or data.get("PRDY_VRSS", 0)
             
             return cls(
                 symbol=symbol,
                 price=curr_price,
-                volume=float(data.get("ACML_VOL", 0)),
-                change=float(data.get("PRDY_VRSS", 0)),
+                volume=float(vol_raw),
+                change=float(change_raw),
                 timestamp=dt,
-                open_price=abs(float(data.get("STCK_OPRC", 0))),
-                high_price=abs(float(data.get("STCK_HGPR", 0))),
-                low_price=abs(float(data.get("STCK_LWPR", 0)))
+                open_price=abs(float(data.get("16", 0))), # 16: 시가
+                high_price=abs(float(data.get("17", 0))), # 17: 고가
+                low_price=abs(float(data.get("18", 0)))   # 18: 저가
             )
         except Exception as e:
             raise ValueError(f"Kiwoom Schema Parsing Error: {e}")
@@ -74,3 +79,46 @@ class KiwoomOrderbookData(BaseModel):
     
     total_ask_volume: float
     total_bid_volume: float
+
+    @classmethod
+    def from_ws_json(cls, data: Dict[str, Any], symbol: str) -> "KiwoomOrderbookData":
+        """
+        FID Mapping for Orderbook (Type 0D)
+        Asks: 27(1)..36(10) Prices, 61(1)..70(10) Vols
+        Bids: 17(1)..26(10) Prices, 71(1)..80(10) Vols
+        Totals: 121 (Ask), 125 (Bid)
+        """
+        try:
+            now = datetime.now() # Orderbook usually doesn't have explicit time FID, use current
+            
+            # Helper to get list
+            def get_list(start_fid, count):
+                res = []
+                for i in range(count):
+                    fid = str(start_fid + i)
+                    val = data.get(fid, 0)
+                    res.append(abs(float(val)))
+                return res
+
+            # Caution: Keys are strings
+            asks_prc = get_list(27, 10)
+            asks_vol = get_list(61, 10)
+            bids_prc = get_list(17, 10)
+            bids_vol = get_list(71, 10)
+            
+            total_ask = float(data.get("121", 0))
+            total_bid = float(data.get("125", 0))
+
+            return cls(
+                symbol=symbol,
+                timestamp=now,
+                ask_prices=asks_prc,
+                ask_volumes=asks_vol,
+                bid_prices=bids_prc,
+                bid_volumes=bids_vol,
+                total_ask_volume=total_ask,
+                total_bid_volume=total_bid
+            )
+        except Exception as e:
+             # logging.error(f"Orderbook Parse Error: {e}")
+             raise ValueError(f"Orderbook Parse Error: {e}")
