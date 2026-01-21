@@ -9,7 +9,8 @@
 1.  **동작 검증**: `pytest` 통과.
 2.  **정적 분석**: `flake8`, `black` 준수.
 3.  **문서화**: 변경된 로직에 대한 Docstring 및 `README` 업데이트.
-4.  **DB 마이그레이션**: 스키마 변경 시 `migrate.sh` 검증 및 SQL 파일 커밋 필수.
+4.  **Schema Triple-Lock**: 스키마 변경 시 **API Spec + Python Model + DB Migration SQL** 3종 세트 동시 커밋 및 검증 필수. (아카이버의 `init_db`에만 의존 금지)
+5.  **DB 마이그레이션**: `migrate.sh` 검증 필수.
 
 ### 1.3 멀티 디바이스 및 원격 근무 프로토콜 (Multi-Device Protocol) [v0.02+]
 **배경**: Mac(Apple Silicon), Linux(Server), Windows 등 이기종 환경에서의 동시 작업을 지원한다.
@@ -75,6 +76,25 @@
 - **Coverage**: `pytest-cov` (Optional but recommended for PRs)
 - **Unit Tests**: `tests/unit/` (Fast, isolated)
 - **Integration Tests**: `tests/integration/` (DB/Redis required)
+
+### 2.3. 시간 처리 표준화 (Time Handling Standard)
+1.  **"No-Now" 원칙**: 비즈니스 로직(Service, Archiver) 내부에서 직접적인 `datetime.now()` 호출을 금지한다.
+2.  **Ingestion Gate Pinning**: 수집기 핸들러(진입점)에서 단 한 번 시간을 생성하고, 이를 하위 데이터 객체와 로직에 인자로 전달(Dependency Injection)한다.
+    -   *이유*: 네크워크 지연 분석 시 데이터 생성 시간과 수신 시간의 기준점을 일치시키기 위함.
+3.  **UTC First**: 모든 내부 시스템 시간은 UTC(또는 KST 고정 타임존)를 명시하여 로컬 서버 환경에 따른 지터를 방지한다.
+4.  **ISO 8601 준수**: 로그 및 데이터 전송 시에는 ISO 8601 형식을 사용한다.
+
+- **예시 (Bad)**:
+```python
+def process_data(data):
+    data.received_at = datetime.now() # 로직 중간에서 생성 (Bad)
+```
+- **예시 (Good)**:
+```python
+def on_receive(raw_data):
+    now = datetime.now() # 진입점에서 생성
+    process_data(raw_data, received_at=now) # 주입 (Good)
+```
 
 -   **Git**: Conventional Commits + **Strict Git Flow**.
     -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.

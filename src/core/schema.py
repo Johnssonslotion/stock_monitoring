@@ -27,6 +27,12 @@ class OrderbookData(BaseMessage):
     source: str = "KIS"  # Origin (KIS or KIWOOM)
     asks: list[OrderbookUnit]
     bids: list[OrderbookUnit]
+    
+    # [ISSUE-036 Alignment] Metadata Fields
+    broker: str = "KIS"
+    broker_time: Optional[datetime] = None
+    received_time: datetime = Field(default_factory=datetime.now)
+    sequence_number: Optional[int] = None
 
 class MarketData(BaseMessage):
     """실시간 체결가(Ticker) 데이터 스케마"""
@@ -36,6 +42,12 @@ class MarketData(BaseMessage):
     price: float = Field(..., gt=0)
     change: float  # 전일 대비 등락률 (%)
     volume: float = Field(..., ge=0)
+    
+    # [ISSUE-036 Alignment] Metadata Fields
+    broker: str = "KIS"
+    broker_time: Optional[datetime] = None
+    received_time: datetime = Field(default_factory=datetime.now)
+    sequence_number: Optional[int] = None
 
 class NewsAlert(BaseMessage):
     """뉴스 분석 및 알림 스키마"""
