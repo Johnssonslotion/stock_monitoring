@@ -1,6 +1,6 @@
 # ISSUE-004: Fix Market Open Failure (Kiwoom NameError & KIS Protocol Fix)
 
-**Status**: In Progress  
+**Status**: Resolved
 **Priority**: P0  
 **Type**: bug  
 **Created**: 2026-01-19  
@@ -13,10 +13,10 @@ Real-time data collection failed during the market open on 2026-01-19.
 3. **Startup Regressions**: Restarting the `real-collector` revealed `ImportError` (`get_redis_connection`) and `AttributeError` (`load_config` vs `load_symbols`) caused by worktree inconsistencies.
 
 ## Acceptance Criteria
-- [ ] `KiwoomWSCollector` starts without `NameError`.
-- [ ] KIS WebSocket subscriptions succeed with `"encrypt": "N"` header.
-- [ ] `real-collector` container starts without any Python startup errors.
-- [ ] `ticker.kr` channel on Redis receives data from both sources.
+- [x] `KiwoomWSCollector` starts without `NameError`.
+- [x] KIS WebSocket subscriptions succeed with `"encrypt": "N"` header.
+- [x] `real-collector` container starts without any Python startup errors.
+- [x] `ticker.kr` channel on Redis receives data from both sources.
 
 ## Technical Details
 - Log snippet (Kiwoom): `exception=NameError("name 'logger' is not defined")`

@@ -9,7 +9,6 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **ISSUE-001: Virtual Investment Simulation Platform** | Developer, Data Scientist | **P1** | [/] | 가상 투자 백엔드 구현 |
-| **ISSUE-004: 마켓 오픈 실패 수정** | Developer | **P0** | [/] | Kiwoom NameError, KIS Protocol 수정 |
 | **ISSUE-014: 외부 모니터링 대시보드** | Developer + Architect | **P1** | [/] | A1 상태 모니터링 독립 API & UI |
 | **수집단(Collector) 독립화** | Developer | P1 | [/] | kis-service/kiwoom-service 컨테이너 분리 완료 |
 
@@ -60,6 +59,8 @@
   - ✅ Constitution Law #10 (Time Determinism) 신설
 - [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)**
 - [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
+- [x] **ISSUE-004: Fix Market Open Failure (Kiwoom/KIS Protocol)**
+- [x] **ISSUE-021: Critical KIS Auth Failure Remediation**
 
 ### Phase 1 Week 1 (2026-01-16)
 - [x] TimestampManager 유틸리티 구현 (12 tests)
@@ -118,7 +119,7 @@
 | [ISSUE-001](docs/issues/ISSUE-001.md) | Virtual Investment Simulation Platform | P1 | In Progress | Developer |
 | [ISSUE-002](docs/issues/ISSUE-002.md) | Virtual Investment Platform - Frontend UI | P1 | Todo | Frontend Developer |
 | [ISSUE-003](docs/issues/ISSUE-003.md) | API Error Handling & Logging | P1 | Open | Developer |
-| [ISSUE-004](docs/issues/ISSUE-004.md) | Fix Market Open Failure | P0 | In Progress | Developer |
+| [ISSUE-004](docs/ARCHIVE/issues/ISSUE-004.md) | Fix Market Open Failure | P0 | Done | Developer |
 | [ISSUE-005](docs/issues/ISSUE-005.md) | 캔들 데이터 서비스 | P2 | Open | Backend |
 | [ISSUE-006](docs/issues/ISSUE-006.md) | 시장 섹터 서비스 | P2 | Open | Data Engineer |
 | [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Open | Backend |
@@ -132,7 +133,7 @@
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
-| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
+| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Done | Developer |
 | [ISSUE-022](docs/issues/ISSUE-022.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
 | [ISSUE-023](docs/issues/ISSUE-023.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
 | [ISSUE-024](docs/issues/ISSUE-024.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |

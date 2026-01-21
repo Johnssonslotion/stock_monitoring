@@ -7,6 +7,7 @@ import os
 import yaml
 import redis.asyncio as redis
 from datetime import datetime, timedelta
+from typing import Optional
 from src.core.schema import MarketData
 from src.data_ingestion.price.common import KISAuthManager
 
@@ -23,8 +24,9 @@ from src.data_ingestion.price.common.websocket_base import BaseCollector
 class KRRealCollector(BaseCollector):
     """한국 시장 실시간 데이터 수집기 (핸들러)"""
     
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None):
         super().__init__(market="KR", tr_id="H0STCNT0")
+        self.config_path = config_path or os.getenv("KR_CONFIG_FILE", "configs/kr_symbols.yaml")
     
     def get_channel(self) -> str:
         return "ticker.kr"
@@ -36,10 +38,13 @@ class KRRealCollector(BaseCollector):
         Returns:
             list: 종목 코드 리스트
         """
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
-            CONFIG_FILE
-        )
+        if self.config_path.startswith('/'):
+            config_path = self.config_path
+        else:
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
+                self.config_path
+            )
         
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
