@@ -326,6 +326,42 @@ services:
     profiles:
       - real
 
+  # Verification Worker (Automated Quality Gate) [ISSUE-036 Extension]
+  verification-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: verification-worker
+    command: python -m src.verification.worker
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    environment:
+      - DB_HOST=stock-timescale
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - REDIS_URL=redis://stock-redis:6379/1
+    volumes:
+      - ../src:/app/src
+      - ../configs:/app/configs
+      - ${BASE_PATH}/data:/app/data
+    depends_on:
+      - timescaledb
+      - redis
+    networks:
+      - default
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
+    profiles:
+      - real
+      - verification
+
 volumes:
   redis-data:
   timescale-data:

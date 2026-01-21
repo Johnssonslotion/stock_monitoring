@@ -73,7 +73,7 @@ class LossAnalyzerBatch:
                         v.volume as api_vol,
                         COALESCE(a.rec_vol, 0) as rec_vol,
                         (v.volume - COALESCE(a.rec_vol, 0)) as loss_amt
-                    FROM market_verification_raw v
+                    FROM market_minutes v
                     LEFT JOIN aggregated a ON v.time = a.minute AND v.symbol = a.symbol
                     WHERE CAST(v.time AS DATE) = $1
                       AND v.volume > COALESCE(a.rec_vol, 0)
@@ -105,7 +105,7 @@ class LossAnalyzerBatch:
                 COUNT(*) FILTER (WHERE v.volume = COALESCE(a.rec_vol, 0)) as matches,
                 COUNT(*) FILTER (WHERE v.volume > COALESCE(a.rec_vol, 0) AND COALESCE(a.rec_vol, 0) > 0) as partial,
                 COUNT(*) FILTER (WHERE COALESCE(a.rec_vol, 0) = 0) as missing
-            FROM market_verification_raw v
+            FROM market_minutes v
             LEFT JOIN aggregated a ON v.time = a.minute
             WHERE v.symbol = $1 AND CAST(v.time AS DATE) = $2
         """
