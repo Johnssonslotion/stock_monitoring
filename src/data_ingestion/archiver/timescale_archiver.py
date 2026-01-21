@@ -191,15 +191,15 @@ class TimescaleArchiver:
                      if 'disk' in data:
                          rows.append((ts, 'disk', float(data['disk']), None))
                      
-                     await conn.executemany("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", rows)
+                     await conn.executemany("INSERT INTO system_metrics (time, metric_name, value, labels) VALUES ($1, $2, $3, $4)", rows)
                 
                 else:
                     # New Generic Format
                     m_type = data.get('type')
                     val = float(data.get('value'))
-                    meta = json.dumps(data.get('meta')) if data.get('meta') else None
+                    labels = json.dumps(data.get('meta')) if data.get('meta') else None
                     
-                    await conn.execute("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", ts, m_type, val, meta)
+                    await conn.execute("INSERT INTO system_metrics (time, metric_name, value, labels) VALUES ($1, $2, $3, $4)", ts, m_type, val, labels)
 
             except Exception as e:
                 logger.error(f"System Metric Save Error: {e}")
