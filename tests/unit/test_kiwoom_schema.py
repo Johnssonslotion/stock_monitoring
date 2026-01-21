@@ -29,6 +29,12 @@ class TestKiwoomSchema:
         assert tick.timestamp.minute == 30
         assert tick.timestamp.second == 0
         
+        # Metadata 검증 (v2.15)
+        assert tick.broker == "KIWOOM"
+        assert tick.received_time is not None
+        assert isinstance(tick.received_time, datetime)
+        assert tick.broker_time == tick.timestamp
+        
     def test_invalid_price(self):
         """잘못된 데이터 처리 테스트"""
         invalid_json = {
