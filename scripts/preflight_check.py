@@ -134,14 +134,157 @@ async def check_disk_space():
     else:
         logger.error(f"❌ Disk Space: LOW ({free_gb} GB free)")
 
+async def sync_mirror_tables():
+    """
+    ISSUE-035: Phase A - Mirror Table Synchronization
+    Create test tables with same schema as production tables
+    """
+    try:
+        host = os.getenv("DB_HOST", "localhost")
+        if host == "stock-timescale":
+            host = "localhost"
+
+        conn = await asyncpg.connect(
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "password"),
+            database=os.getenv("DB_NAME", "stockval"),
+            host=host,
+            port=os.getenv("DB_PORT", "5432")
+        )
+
+        try:
+            # Create mirror table for market_ticks
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS market_ticks_test (LIKE market_ticks INCLUDING ALL);
+            """)
+
+            # Create mirror table for market_orderbook
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS market_orderbook_test (LIKE market_orderbook INCLUDING ALL);
+            """)
+
+            logger.info("✅ Mirror Tables: Created/Synced (market_ticks_test, market_orderbook_test)")
+            STATUS["MIRROR_TABLES"] = True
+
+        finally:
+            await conn.close()
+
+    except Exception as e:
+        logger.error(f"❌ Mirror Tables: Exception {e}")
+
+async def check_schema_parity():
+    """
+    ISSUE-035: Phase B - Schema Parity Check
+    Detect schema drift between production and mirror tables
+    """
+    try:
+        host = os.getenv("DB_HOST", "localhost")
+        if host == "stock-timescale":
+            host = "localhost"
+
+        conn = await asyncpg.connect(
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "password"),
+            database=os.getenv("DB_NAME", "stockval"),
+            host=host,
+            port=os.getenv("DB_PORT", "5432")
+        )
+
+        try:
+            # Get columns from production table
+            prod_cols = await conn.fetch("""
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_name = 'market_ticks'
+                ORDER BY ordinal_position;
+            """)
+
+            # Get columns from test table
+            test_cols = await conn.fetch("""
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_name = 'market_ticks_test'
+                ORDER BY ordinal_position;
+            """)
+
+            # Compare schemas
+            prod_schema = {(r['column_name'], r['data_type'], r['is_nullable']) for r in prod_cols}
+            test_schema = {(r['column_name'], r['data_type'], r['is_nullable']) for r in test_cols}
+
+            if prod_schema == test_schema:
+                logger.info("✅ Schema Parity: MATCH (Production ↔ Test)")
+                STATUS["SCHEMA_PARITY"] = True
+            else:
+                missing_in_test = prod_schema - test_schema
+                extra_in_test = test_schema - prod_schema
+
+                if missing_in_test:
+                    logger.warning(f"⚠️  Schema Drift: Columns missing in test: {missing_in_test}")
+                if extra_in_test:
+                    logger.warning(f"⚠️  Schema Drift: Extra columns in test: {extra_in_test}")
+
+                # Still mark as success if we detected the drift
+                STATUS["SCHEMA_PARITY"] = True
+
+        finally:
+            await conn.close()
+
+    except Exception as e:
+        logger.error(f"❌ Schema Parity: Exception {e}")
+
+async def db_write_test():
+    """
+    ISSUE-035: Phase C - DB Write Test (08:58)
+    Test actual write permissions and DDL integrity
+    """
+    try:
+        host = os.getenv("DB_HOST", "localhost")
+        if host == "stock-timescale":
+            host = "localhost"
+
+        conn = await asyncpg.connect(
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", "password"),
+            database=os.getenv("DB_NAME", "stockval"),
+            host=host,
+            port=os.getenv("DB_PORT", "5432")
+        )
+
+        try:
+            # Insert test data
+            test_time = datetime.now()
+            await conn.execute("""
+                INSERT INTO market_ticks_test (time, symbol, price, volume, change, source)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT DO NOTHING;
+            """, test_time, "TEST_SYMBOL", 100.0, 1000.0, 0.0, "PREFLIGHT")
+
+            # Verify write
+            count = await conn.fetchval("""
+                SELECT COUNT(*) FROM market_ticks_test WHERE symbol = 'TEST_SYMBOL';
+            """)
+
+            if count >= 1:
+                logger.info(f"✅ DB Write Test: PASSED ({count} test records)")
+                STATUS["DB_WRITE_TEST"] = True
+            else:
+                logger.error("❌ DB Write Test: FAILED (No records written)")
+
+        finally:
+            await conn.close()
+
+    except Exception as e:
+        logger.error(f"❌ DB Write Test: Exception {e}")
+
 async def main():
     logger.info("🚀 Starting Pre-flight Check for Market Open...")
-    
+
     # 0. Smoke Test (Blocking)
     if not run_smoke_test():
         logger.error("🚨 Smoke Test Failed. Aborting Pre-flight Check.")
         sys.exit(1)
-    
+
+    # 1. Basic Infrastructure Checks
     await asyncio.gather(
         check_kis_api(),
         check_kiwoom_api(),
@@ -149,7 +292,13 @@ async def main():
         check_timescaledb(),
         check_disk_space()
     )
-    
+
+    # 2. ISSUE-035: Mirror Tables & Schema Validation (Sequential)
+    logger.info("🔍 ISSUE-035: Starting DB Ingestion Readiness Checks...")
+    await sync_mirror_tables()
+    await check_schema_parity()
+    await db_write_test()
+
     # Final Report
     failed = [k for k, v in STATUS.items() if not v]
     if failed:

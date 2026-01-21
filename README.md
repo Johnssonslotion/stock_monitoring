@@ -68,10 +68,12 @@ graph TD
 ### 실행 방법
 ```bash
 # 1. 환경 변수 설정
-cp .env.example .env
+# Local (Mac): cp .env.local.example .env.local
+# Production (Oracle Cloud): cp .env.prod.example .env.prod
+cp .env.template .env
 
-# 2. 서비스 실행 (Real-time Profile)
-docker compose -f deploy/docker-compose.yml --profile real up -d --build
+# 2. 서비스 실행 (Auto-detected by Makefile)
+make up
 
 # 3. 전체 테스트 실행 (검증)
 make test
