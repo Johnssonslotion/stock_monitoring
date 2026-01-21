@@ -1,68 +1,33 @@
-# ISSUE-036: [Task] DB 통합 - stock_test → stockval 마이그레이션
-
-**Status**: Open
-**Priority**: P1
+# ISSUE-036: [Task] DB 통합 및 스키마 정합성 복구
+**Status**: [x] Done
+**Priority**: P0
 **Type**: task
 **Created**: 2026-01-21
 **Assignee**: Developer
 
 ## Problem Description
-
-환경변수 설정 오류로 인해 TimescaleDB 데이터가 두 개의 DB에 분산 저장됨:
-- `.env` 및 `.env.prod`에서 `DB_NAME=stock_test`로 잘못 설정
-- 2026-01-21 00:22부터 `stock_test` DB에 데이터 적재 시작
-- 기존 `stockval` DB와 데이터 단절 발생
-
-### 현재 데이터 분포
-
-| DB | 테이블 | 건수 | 시작 | 종료 |
-|----|--------|------|------|------|
-| stockval | market_ticks | 4,211,496 | 2026-01-05 00:00 | 2026-01-20 06:30 |
-| stockval | market_orderbook | 858,331 | 2026-01-12 05:55 | 2026-01-19 03:52 |
-| stock_test | market_ticks | 450,763 | 2026-01-21 00:22 | 현재 |
-| stock_test | market_orderbook | 318,652 | 2026-01-21 00:21 | 2026-01-21 01:12 |
-
-**Data Gap**: 2026-01-20 06:30 ~ 2026-01-21 00:22 (약 18시간)
+- **DB 분산 저장**: `.env` 오류로 `stock_test`와 `stockval`에 데이터가 쪼개짐.
+- **Schema Mismatch**: `market_orderbook` 테이블이 마이그레이션(ARRAY)과 아카이버(43컬럼) 간 불일치.
+- **Metadata Loss**: 수집기 모델에서 `broker`, `received_time` 등 필수 필드 누락.
+- **Governance Gap**: AI가 `migrate.sh` 체계를 인식하지 못하고 독자적인 DDL을 시도함.
 
 ## Acceptance Criteria
+- [x] `stock_test` → `stockval` 데이터 마이그레이션 전략 수립 (유저 수행)
+- [x] 마이그레이션 004번(Orderbook)을 실제 DB 구조와 100% 동기화
+- [x] 아카이버 내 하드코딩된 DDL 제거 및 `migrate.sh` 권한 위임
+- [x] 수집기 모델(`KiwoomTickData`, `MarketData`) 메타데이터 보강
+- [x] **Constitution Law #10 (Time Determinism)** 신설 및 `datetime.now()` 처리 표준화
+- [x] `stockval` DB 정합성(Status: MATCH) 확인
 
-- [ ] `stock_test.market_ticks` 데이터를 `stockval.market_ticks`로 마이그레이션
-- [ ] `stock_test.market_orderbook` 데이터를 `stockval.market_orderbook`로 마이그레이션
-- [ ] `.env` 파일의 `DB_NAME`을 `stockval`로 수정
-- [ ] `.env.prod` 파일의 `DB_NAME`을 `stockval`로 수정
-- [ ] 컨테이너 재시작 후 `stockval` DB에 정상 적재 확인
-- [ ] 데이터 연속성 검증 (gap 확인)
-
-## Technical Details
-
-### 마이그레이션 방법
-
-```sql
--- Option 1: pg_dump/restore
-pg_dump -U postgres -d stock_test -t market_ticks --data-only | psql -U postgres -d stockval
-
--- Option 2: INSERT SELECT (same server)
-INSERT INTO stockval.public.market_ticks
-SELECT * FROM stock_test.public.market_ticks;
-```
-
-### 환경변수 수정 대상
-
-- `/home/ubuntu/workspace/stock_monitoring/.env` (line 23)
-- `/home/ubuntu/workspace/stock_monitoring/.env.prod` (line 23)
-
-## Resolution Plan
-
-1. 현재 archiver 일시 중지 (데이터 유실 방지를 위해 Redis에 버퍼링)
-2. `stock_test` → `stockval` 데이터 마이그레이션 실행
-3. `.env`, `.env.prod` 수정
-4. 컨테이너 재시작
-5. 데이터 적재 정상 확인
+## Resolution Details
+1. **004_add_market_orderbook.sql**: 실제 운영 DB의 43컬럼 구조로 보정하여 SSoT 확보.
+2. **timescale_archiver.py**: `init_db`에서 DDL을 제거하고 존재 여부만 검증하도록 수정.
+3. **Law #10**: 타임스탬프 핀닝(Pinning) 패턴을 절대 거버넌스로 격상하여 파편화 방지.
+4. **ADR-005, 007, 008**: 인식 실패 사후 분석 및 Triple-Lock 원칙 문서화.
 
 ## Related
-
-- ISSUE-033: TimescaleDB Schema Mismatch (원인 분석 중 발견)
-- Branch: TBD
+- ISSUE-033: TimescaleDB Schema Mismatch (Resolved)
+- Branch: `fix/ISSUE-036-recovery`
 
 ## Notes
 

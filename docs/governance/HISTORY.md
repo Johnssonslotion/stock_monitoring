@@ -18,3 +18,6 @@
 | **2026-01-17** | **2.10** | **Issue-First Principle**<br>- ISSUE = 문제 + 설계 + 구현 (단일 스토리)<br>- RFC 기준 대폭 상향 (연간 0~2개)<br>- v2.8 수정: RFC 남발 방지<br>- Design 섹션 ISSUE 내 통합 | [ID-issue-first-workflow](../ARCHIVE/ideas/ID-issue-first-workflow.md) |
 | **2026-01-19** | **2.11** | **Environment Integrity**<br>- 패키지 관리 Poetry 강제<br>- `pip install` 금지 및 CI 일관성 확보<br>- Law #8 추가 (Dependency Integrity) | User Request (Prevent Drift) |
 | **2026-01-21** | **2.12** | **Living Governance Binding**<br>- 헌법 조항과 워크플로우(@/command) 직접 바인딩<br>- @/manage-docs, @/create-spec 등 실행 가이드 삽입<br>- 실시간 거버넌스 준수 체계 구축 | [ID-living-governance](../ideas/ID-living-governance-binding.md) |
+| **2026-01-21** | **2.13** | **Schema Triple-Lock Enforcement**<br>- Schema Triple-Lock 원칙 도입 (Spec+Model+SQL)<br>- 아카이버 자가치유 의존 탈피 및 Migration-First 강화<br>- 시간 일관성(Timestamp Pinning) 규칙 명문화 | [ADR-005](decisions/005_schema_triple_lock.md) |
+| **2026-01-21** | **2.14** | **Integrated Governance Workflow**<br>- `/manage-governance` 워크플로우 신설<br>- 헌법(.ai-rules.md) 내 워크플로우 인벤토리 최신화 | [manage-governance.md](../../.agent/workflows/manage-governance.md) |
+| **2026-01-21** | **2.15** | **Migration SSoT Integration**<br>- 마이그레이션 전략 문서 헌법 네비게이션 통합<br>- Schema Triple-Lock 원칙 상세 규정화<br>- 인식 사각지대 해소를 위한 상호 참조 강화 | [ADR-008](decisions/008_migration_ssot_integration.md) |
