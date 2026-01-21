@@ -129,3 +129,4 @@
 | [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
 | [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
 | [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
+| [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
