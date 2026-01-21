@@ -29,6 +29,19 @@ class TimescaleArchiver:
         self.batch = []
         self.running = True
 
+    async def _record_db_success(self, count: int):
+        """
+        ISSUE-035: Record successful DB ingestion for monitoring
+        Updates Redis key with latest success timestamp and count
+        """
+        try:
+            now = datetime.now().isoformat()
+            await self.redis.set("archiver:last_db_success", now)
+            await self.redis.set("archiver:last_flush_count", count)
+            await self.redis.set("archiver:last_flush_time", now)
+        except Exception as e:
+            logger.warning(f"Failed to record DB success metric: {e}")
+
     async def init_db(self):
         """틱 데이터용 하이퍼테이블(Hypertable) 초기화"""
         conn = await asyncpg.connect(
@@ -325,7 +338,7 @@ class TimescaleArchiver:
         """메모리 버퍼에 쌓인 틱 데이터를 DB에 벌크 인서트"""
         if not self.batch:
             return
-            
+
         async with self.db_pool.acquire() as conn:
             try:
                 # asyncpg copy_records_to_table is fast
@@ -335,6 +348,10 @@ class TimescaleArchiver:
                     columns=['time', 'symbol', 'price', 'volume', 'change', 'broker', 'broker_time', 'received_time', 'sequence_number', 'source']
                 )
                 logger.info(f"Flushed {len(self.batch)} ticks to TimescaleDB")
+
+                # ISSUE-035: Record successful DB ingestion
+                await self._record_db_success(len(self.batch))
+
                 self.batch = []
             except Exception as e:
                 logger.error(f"DB Flush Error: {e}")

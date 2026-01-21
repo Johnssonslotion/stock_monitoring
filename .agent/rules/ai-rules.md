@@ -1,4 +1,4 @@
-# AI Rules v2.11 - The Constitution (Index)
+# AI Rules v2.12 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -19,15 +19,15 @@
 ## 2. 절대 헌법 (The Immutable Laws)
 다음 9가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
 
-1.  **Deep Verification**: 데이터 작업 후 로그만 믿지 말고 **DB를 직접 조회**하여 교차 검증하라.
-2.  **Single Socket**: KIS API는 하나의 소켓 연결만 유지한다. (Dual Socket 시도 금지)
-3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다.
+1.  **Deep Verification**: 데이터 작업 후 로그만 믿지 말고 **DB를 직접 조회**하여 교차 검증하라. `@/run-gap-analysis`
+2.  **Single Socket**: KIS API는 하나의 소켓 연결만 유지한다. (Dual Socket 시도 금지) `@/council-review` (예외 시)
+3.  **Doomsday Check**: 60초간 데이터 0건이면 즉시 복구 절차를 밟는다. `@/run-data-recovery`
 4.  **Auto-Proceed**: 단위 테스트가 통과된 Safe 작업은 즉시 실행한다.
-5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다.
+5.  **Reporting**: 모든 변경사항은 3대 문서(`README`, `Roadmap`, `Registry`)에 즉시 동기화한다. `@/manage-docs`
 6.  **LLM Enforcement (Workflow First)**: AI는 모든 주요 작업을 시작하기 전 해당하는 **워크플로우**가 존재하는지 확인하고 이를 준수해야 한다.
     - **Gemini Antigravity**: `.agent/workflows/` 문서 참조 (자연어 해석)
     - **Claude Code**: `/slash-command` 실행 (`.claude/commands/` 심링크)
-7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
+7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다. `@/create-spec`
 8.  **Environment Integrity**: 모든 패키지 관리는 **Poetry**(`pyproject.toml`)를 통해서만 수행한다. 임의의 `pip install` 사용은 엄격히 금지된다.
     - AI는 스크립트 실행 전 `poetry install` 및 `poetry run`을 사용하여 의존성 정합성을 보장해야 한다.
 9.  **Worktree Isolation (ISSUE-032)**: 3개 환경(Local/Prod/Backtest)은 완전히 격리되어야 한다.
@@ -47,9 +47,9 @@
 - **Process**:
     0.  **[선행 조건]** `HISTORY.md` 최근 변경사항 검토 (변경 맥락 파악).
     1.  `docs/governance/decisions/`에 Decision Record 작성 (RFC/ADR).
-    2.  6인 페르소나 만장일치 승인.
+    2.  6인 페르소나 만장일치 승인. `@/council-review`
     3.  `HISTORY.md`에 Index 추가.
-    4.  `.ai-rules.md` 본문 수정.
+    4.  `.ai-rules.md` 본문 수정. `@/amend-constitution`
 - **AI Duty**: AI는 코드를 수정하기 전 `HISTORY.md`의 최근 변경사항(Decision Doc)을 읽어 변경의 맥락을 파악해야 한다.
 
 ## 5. Spec Verification Gate (자동 검증 체크리스트)

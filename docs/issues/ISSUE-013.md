@@ -5,7 +5,7 @@
 **Type**: Audit / Refactoring
 **Created**: 2026-01-19
 **Assignee**: Architect / Backend Engineer
-**Related Idea**: [IDEA-005 (Hyper-Realistic Virtual Trading)](../ideas/stock_backtest/ID-virtual-trading-v2.md)
+**Related Idea**: [IDEA-005 (Hyper-Realistic Virtual Trading)](../ARCHIVE/ideas/ID-virtual-trading-v2.md)
 
 ## 1. 문제 정의 (Problem Statement)
 현재 `src/broker/virtual.py`에 구현된 가상 거래 엔진은 '즉시 체결'이라는 단순화된 로직에 의존하고 있어, 실제 시장의 마찰(슬리피지, 주문 지연) 및 비동기적 특성을 반영하지 못하고 있음. 전략의 현실성을 확보하기 위해 현재 구조를 진단하고 비동기 매칭 엔진으로의 전환을 설계해야 함.
