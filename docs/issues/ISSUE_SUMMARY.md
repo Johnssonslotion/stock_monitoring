@@ -35,4 +35,6 @@
 | ISSUE-031 | [Feature] 하이브리드 데이터 복구 (로그 기반 + REST 백필) | P1 | Open | Developer | docs/issues/ISSUE-031.md |
 | ISSUE-032 | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer | docs/issues/ISSUE-032.md |
 | ISSUE-033 | [Bug] TimescaleArchiver Schema Mismatch & Missing Relation | P0 | Open | Developer | docs/issues/ISSUE-033.md |
+| ISSUE-034 | [Optimization] TimescaleDB Storage Efficiency (Compression & Retention) | P1 | Open | Developer | docs/issues/ISSUE-034.md |
+| ISSUE-035 | [Feature] 상한선 없는 장 초반 수집 보장 (Zero-Tolerance Open Guard) | P0 | Open | Developer | docs/issues/ISSUE-035.md |
 
