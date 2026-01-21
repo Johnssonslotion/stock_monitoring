@@ -69,96 +69,111 @@ class TimescaleArchiver:
             await conn.close()
 
     async def start(self):
-        # 1. Connect to Resources
-        self.redis = await redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
-        # Create DB Pool
+        # 1. Initialize DB Pool
         self.db_pool = await asyncpg.create_pool(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
-        
         await self.init_db()
-        logger.info("TimescaleArchiver started. Connected to Redis & DB.")
+        logger.info("✅ Database pool initialized.")
 
+        # 2. Redis Connection Loop
+        while self.running:
+            try:
+                self.redis = await redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+                await self.redis.ping()
+                logger.info(f"✅ Connected to Redis: {REDIS_URL}")
 
-        # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us, system.*)
-        # [ISSUE-030] Add tick:* for Kiwoom/Standardized channels
-        pubsub = self.redis.pubsub()
-        await pubsub.psubscribe("ticker.*", "tick:*", "orderbook.*", "system.*")
-        logger.info("📡 Subscribed to: ticker.*, tick:*, orderbook.*, system.*")
-        
-        # 3. Flush Task
-        asyncio.create_task(self.periodic_flush())
+                pubsub = self.redis.pubsub()
+                await pubsub.psubscribe("ticker.*", "tick:*", "orderbook.*", "system.*")
+                logger.info("📡 Subscribed to: ticker.*, tick:*, orderbook.*, system.*")
 
-        # 4. Listen Loop
-        logger.info("🔧 DEBUG: Entering listen loop...")
-        async for message in pubsub.listen():
-            msg_type = message["type"]
+                # Flush Task
+                flush_task = asyncio.create_task(self.periodic_flush())
 
-            
-            if msg_type == "pmessage":  # Pattern message
                 try:
-                    channel = message["channel"]
-                    data = json.loads(message["data"])
-                    
-                    # Handle both ticker.* (KIS) and tick:* (Kiwoom/Standard)
-                    if channel.startswith("ticker.") or channel.startswith("tick:"):
-                        # Extract market
-                        if channel.startswith("tick:"):
-                            # tick:KR:005930 -> KR
-                            try:
-                                market = channel.split(':')[1].upper()
-                            except:
-                                market = "KR"
-                        else:
-                            # ticker.kr -> KR
-                            market = channel.split('.')[-1].upper()
-                        
-                        # Ticks
-                        ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
-                        source = data.get('source', 'KIS')
-                        broker = data.get('broker')
-                        broker_time = datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None
-                        received_time = datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now()
-                        seq_no = data.get('sequence_number')
-                        
-                        row = (
-                            ts, 
-                            data['symbol'], 
-                            float(data['price']), 
-                            float(data.get('volume', 0)), 
-                            float(data.get('change', 0)),
-                            broker,
-                            broker_time,
-                            received_time,
-                            seq_no,
-                            source
-                        )
-                        self.batch.append(row)
-                        
-                        if len(self.batch) >= BATCH_SIZE:
-                            await self.flush()
-                    
-                    elif channel.startswith("orderbook."):
-                        await self.save_orderbook(data)
-                        
-                    elif channel == "system.metrics":
-                        await self.save_system_metrics(data)
-                        
+                    async for message in pubsub.listen():
+                        msg_type = message["type"]
+                        if msg_type == "pmessage":
+                            await self.handle_pmessage(message)
+                        elif msg_type == "message":
+                            await self.handle_message(message)
+                
+                except redis.ConnectionError as e:
+                    logger.error(f"Redis Connection Lost: {e}. Reconnecting...")
                 except Exception as e:
-                    logger.error(f"Parse/Queue Error (pattern): {e}")
+                    logger.error(f"Unexpected error in listen loop: {e}")
+                finally:
+                    flush_task.cancel()
+                    await self.redis.close()
+                    logger.info("Redis connection closed. Retrying in 5s...")
+                    await asyncio.sleep(5)
             
-            elif msg_type == "message":  # Direct message
-                try:
-                    channel = message["channel"]
-                    data = json.loads(message["data"])
-                    
-                    if channel == "market_orderbook":
-                        await self.save_orderbook(data)
-                    elif channel == "system.metrics": # Direct message fallback
-                        await self.save_system_metrics(data)
-                        
-                except Exception as e:
-                    logger.error(f"Parse/Queue Error (direct): {e}")
+            except Exception as e:
+                logger.error(f"Failed to connect to Redis: {e}. Retrying in 5s...")
+                await asyncio.sleep(5)
+
+    async def handle_pmessage(self, message):
+        try:
+            channel = message["channel"]
+            data = json.loads(message["data"])
+            
+            # Handle both ticker.* (KIS) and tick:* (Kiwoom/Standard)
+            if channel.startswith("ticker.") or channel.startswith("tick:"):
+                # Extract market
+                if channel.startswith("tick:"):
+                    try:
+                        market = channel.split(':')[1].upper()
+                    except:
+                        market = "KR"
+                else:
+                    market = channel.split('.')[-1].upper()
+                
+                # Ticks
+                ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
+                source = data.get('source', 'KIS')
+                broker = data.get('broker')
+                broker_time = datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None
+                received_time = datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now()
+                seq_no = data.get('sequence_number')
+                
+                row = (
+                    ts, 
+                    data['symbol'], 
+                    float(data['price']), 
+                    float(data.get('volume', 0)), 
+                    float(data.get('change', 0)),
+                    broker,
+                    broker_time,
+                    received_time,
+                    seq_no,
+                    source
+                )
+                self.batch.append(row)
+                
+                if len(self.batch) >= BATCH_SIZE:
+                    await self.flush()
+            
+            elif channel.startswith("orderbook."):
+                await self.save_orderbook(data)
+                
+            elif channel == "system.metrics":
+                await self.save_system_metrics(data)
+                
+        except Exception as e:
+            logger.error(f"Parse/Queue Error (pattern): {e}")
+
+    async def handle_message(self, message):
+        try:
+            channel = message["channel"]
+            data = json.loads(message["data"])
+            
+            if channel == "market_orderbook":
+                await self.save_orderbook(data)
+            elif channel == "system.metrics": # Direct message fallback
+                await self.save_system_metrics(data)
+                
+        except Exception as e:
+            logger.error(f"Parse/Queue Error (direct): {e}")
 
     async def save_system_metrics(self, data):
         """시스템 메트릭 저장 (Generic)"""

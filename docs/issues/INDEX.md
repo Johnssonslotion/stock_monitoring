@@ -8,7 +8,7 @@
 
 ## 2. 주요 이슈 트래킹 (Active Issues)
 - **[ISSUE-015](ISSUE-015.md)**: 데이터 누락 자동 보완 (Data Gap Recovery).
-- **[ISSUE-036](ISSUE-036.md)**: DB 통합 마이그레이션 전략.
+- **[ISSUE-036](ISSUE-036.md)**: DB 통합 및 스키마 정합성 복구 (금일 데이터 복구 포함).
 - **[ISSUE-033](ISSUE-033.md)**: TimescaleDB Schema Mismatch 분석.
 - **[ISSUE-035](ISSUE-035.md)**: 장 초반 데이터 적재 보장 전략.
 - **[ISSUE-021](ISSUE-021.md)** / **[ISSUE-018](ISSUE-018.md)** / **[ISSUE-017](ISSUE-017.md)** / **[ISSUE-013](ISSUE-013.md)**

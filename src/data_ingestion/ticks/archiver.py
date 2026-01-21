@@ -169,50 +169,55 @@ class TickArchiver:
 
     async def run(self):
         self.running = True
-        await self.connect_redis()
         
-        pubsub = self.redis_client.pubsub()
-        # [ISSUE-030] Subscribe to standardized channels tick:* used by Kiwoom and ticker.kr used by KIS
-        # Also keeping market:ticks for backward compat
-        await pubsub.psubscribe("market:ticks", "tick:*", "ticker.*") 
-        logger.info("Subscribed to market:ticks / tick:* / ticker.*")
+        while self.running:
+            try:
+                await self.connect_redis()
+                pubsub = self.redis_client.pubsub()
+                await pubsub.psubscribe("market:ticks", "tick:*", "ticker.*")
+                logger.info("✅ Subscribed to market:ticks / tick:* / ticker.*")
 
-        try:
-            while self.running:
-                # 1. Message Handling
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
-                
-                if message:
+                while self.running:
                     try:
-                        data = json.loads(message["data"])
-                        self.buffer.append(data)
-                    except: 
-                        pass
-                
-                now = datetime.now()
-                
-                # 2. Flush Check
-                time_diff = (now - self.last_flush_time).total_seconds()
-                if len(self.buffer) >= self.batch_size or time_diff >= self.flush_interval:
-                    await self.flush_buffer()
-                
-                # 3. Recovery Merge Check (Every 5 seconds)
-                merge_diff = (now - self.last_merge_check).total_seconds()
-                if merge_diff >= 5.0:
-                    # Run sync blocking IO in main loop? 
-                    # Merging is disk-heavy. Ideally thread pool, but DuckDB connection isn't thread-safe?
-                    # DuckDB connection IS thread-safe but we must be careful.
-                    # For simplicty in Python Asyncio: it will block the event loop.
-                    # Given low frequency of recovery (on-demand), blocking for 100-200ms is Acceptable.
-                    self.merge_recovery_files()
-                    self.last_merge_check = now
+                        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                        
+                        if message:
+                            try:
+                                data = json.loads(message["data"])
+                                self.buffer.append(data)
+                            except Exception as e:
+                                logger.warning(f"Failed to parse message: {e}")
+                                continue
+                        
+                        now = datetime.now()
+                        
+                        # 2. Flush Check
+                        time_diff = (now - self.last_flush_time).total_seconds()
+                        if len(self.buffer) >= self.batch_size or time_diff >= self.flush_interval:
+                            await self.flush_buffer()
+                        
+                        # 3. Recovery Merge Check (Every 5 seconds)
+                        merge_diff = (now - self.last_merge_check).total_seconds()
+                        if merge_diff >= 5.0:
+                            self.merge_recovery_files()
+                            self.last_merge_check = now
+                        
+                        await asyncio.sleep(0.01)
                     
-                await asyncio.sleep(0.01)
-                
-        except Exception as e:
-            logger.error(f"Archiver Error: {e}")
-        finally:
-            self.conn.close()
+                    except redis.ConnectionError as e:
+                        logger.error(f"Redis Connection Lost: {e}. Reconnecting...")
+                        break # Inner loop break to reconnect
+                    except Exception as e:
+                        logger.error(f"Unexpected error in archiver loop: {e}")
+                        await asyncio.sleep(1)
+            
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis connection: {e}. Retrying in 5s...")
+                await asyncio.sleep(5)
+            finally:
+                if self.redis_client:
+                    await self.redis_client.close()
+                    logger.info("Redis connection closed.")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

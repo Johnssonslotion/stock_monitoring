@@ -141,4 +141,4 @@
 | [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
 | [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
 | [ISSUE-034](docs/issues/ISSUE-034.md) | [Optimization] TimescaleDB Storage Efficiency | P1 | Open | Developer |
-| [ISSUE-035](docs/issues/ISSUE-035.md) | [Feature] 장 초반 적재 보장 (Ingestion Open Guard) | P0 | [x] | Developer |
+| [ISSUE-036](docs/issues/ISSUE-036.md) | DB 통합 및 스키마 정합성 복구 | P0 | Done | Developer |

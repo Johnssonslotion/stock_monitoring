@@ -1,5 +1,5 @@
 # ISSUE-036: [Task] DB 통합 및 스키마 정합성 복구
-**Status**: [x] Done
+**Status**: Resolved
 **Priority**: P0
 **Type**: task
 **Created**: 2026-01-21
@@ -10,6 +10,7 @@
 - **Schema Mismatch**: `market_orderbook` 테이블이 마이그레이션(ARRAY)과 아카이버(43컬럼) 간 불일치.
 - **Metadata Loss**: 수집기 모델에서 `broker`, `received_time` 등 필수 필드 누락.
 - **Governance Gap**: AI가 `migrate.sh` 체계를 인식하지 못하고 독자적인 DDL을 시도함.
+- **금일(01-21) 데이터 적재 실패**: 상기 원인들 및 Redis 연결 불안정으로 인해 금일 장 초반 데이터가 온전히 적재되지 않음.
 
 ## Acceptance Criteria
 - [x] `stock_test` → `stockval` 데이터 마이그레이션 전략 수립 (유저 수행)
@@ -17,7 +18,8 @@
 - [x] 아카이버 내 하드코딩된 DDL 제거 및 `migrate.sh` 권한 위임
 - [x] 수집기 모델(`KiwoomTickData`, `MarketData`) 메타데이터 보강
 - [x] **Constitution Law #10 (Time Determinism)** 신설 및 `datetime.now()` 처리 표준화
-- [x] `stockval` DB 정합성(Status: MATCH) 확인
+- [x] `stockval` DB 정합성(Status: MATCH) 확인 및 금일 누락 데이터 복구
+- [x] `tick-archiver` Redis 연결 안정성 강화
 
 ## Resolution Details
 1. **004_add_market_orderbook.sql**: 실제 운영 DB의 43컬럼 구조로 보정하여 SSoT 확보.

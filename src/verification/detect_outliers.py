@@ -81,9 +81,9 @@ class OutlierDetector:
                 COALESCE(l.volume, 0) as log_vol,
                 v.close as api_close,
                 COALESCE(l.close, 0) as log_close
-            FROM market_verification_raw v
+            FROM market_minutes v
             LEFT JOIN logs l ON v.time = l.minute
-            WHERE v.symbol = $1 AND CAST(v.time AS DATE) = $2 AND v.provider = 'KIWOOM'
+            WHERE v.symbol = $1 AND CAST(v.time AS DATE) = $2
         """
         rows = await conn.fetch(query, symbol, target_date)
         
@@ -129,9 +129,9 @@ class OutlierDetector:
                 COALESCE(l.volume, 0) as log_vol,
                 v.close as api_close,
                 COALESCE(l.close, 0) as log_close
-            FROM market_verification_raw v
+            FROM market_minutes v
             LEFT JOIN logs l ON v.time = l.minute AND v.symbol = l.symbol
-            WHERE CAST(v.time AS DATE) = $1 AND v.provider = 'KIWOOM'
+            WHERE CAST(v.time AS DATE) = $1
         """
         rows = await conn.fetch(query, target_date)
         
