@@ -42,9 +42,21 @@ class TimescaleArchiver:
                     symbol TEXT NOT NULL,
                     price DOUBLE PRECISION NOT NULL,
                     volume DOUBLE PRECISION NOT NULL,
-                    change DOUBLE PRECISION
+                    change DOUBLE PRECISION,
+                    broker TEXT,
+                    broker_time TIMESTAMPTZ,
+                    received_time TIMESTAMPTZ DEFAULT NOW(),
+                    sequence_number BIGINT,
+                    source TEXT DEFAULT 'KIS'
                 );
             """)
+            
+            # [ISSUE-033] Migration for existing tables
+            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS broker TEXT;")
+            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS broker_time TIMESTAMPTZ;")
+            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ DEFAULT NOW();")
+            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS sequence_number BIGINT;")
+            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'KIS';")
             
             # Convert to Hypertable (TimescaleDB unique function)
             # If already hypertable, this might warn/error in some versions, but 'IF NOT EXISTS' logic is usually handled by create_hypertable's if_not_exists arg in newer versions or catching error
@@ -95,6 +107,44 @@ class TimescaleArchiver:
                 logger.info("Hypertable 'system_metrics' ensured.")
             except Exception as e:
                 logger.warning(f"Hypertable creation msg (system_metrics): {e}")
+
+            # [ISSUE-033] Create market_orderbook table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS market_orderbook (
+                    time TIMESTAMPTZ NOT NULL,
+                    symbol TEXT NOT NULL,
+                    source TEXT,
+                    ask_price1 DOUBLE PRECISION, ask_vol1 DOUBLE PRECISION,
+                    ask_price2 DOUBLE PRECISION, ask_vol2 DOUBLE PRECISION,
+                    ask_price3 DOUBLE PRECISION, ask_vol3 DOUBLE PRECISION,
+                    ask_price4 DOUBLE PRECISION, ask_vol4 DOUBLE PRECISION,
+                    ask_price5 DOUBLE PRECISION, ask_vol5 DOUBLE PRECISION,
+                    ask_price6 DOUBLE PRECISION, ask_vol6 DOUBLE PRECISION,
+                    ask_price7 DOUBLE PRECISION, ask_vol7 DOUBLE PRECISION,
+                    ask_price8 DOUBLE PRECISION, ask_vol8 DOUBLE PRECISION,
+                    ask_price9 DOUBLE PRECISION, ask_vol9 DOUBLE PRECISION,
+                    ask_price10 DOUBLE PRECISION, ask_vol10 DOUBLE PRECISION,
+                    bid_price1 DOUBLE PRECISION, bid_vol1 DOUBLE PRECISION,
+                    bid_price2 DOUBLE PRECISION, bid_vol2 DOUBLE PRECISION,
+                    bid_price3 DOUBLE PRECISION, bid_vol3 DOUBLE PRECISION,
+                    bid_price4 DOUBLE PRECISION, bid_vol4 DOUBLE PRECISION,
+                    bid_price5 DOUBLE PRECISION, bid_vol5 DOUBLE PRECISION,
+                    bid_price6 DOUBLE PRECISION, bid_vol6 DOUBLE PRECISION,
+                    bid_price7 DOUBLE PRECISION, bid_vol7 DOUBLE PRECISION,
+                    bid_price8 DOUBLE PRECISION, bid_vol8 DOUBLE PRECISION,
+                    bid_price9 DOUBLE PRECISION, bid_vol9 DOUBLE PRECISION,
+                    bid_price10 DOUBLE PRECISION, bid_vol10 DOUBLE PRECISION
+                );
+            """)
+            try:
+                await conn.execute("SELECT create_hypertable('market_orderbook', 'time', if_not_exists => TRUE);")
+                logger.info("Hypertable 'market_orderbook' ensured.")
+            except Exception as e:
+                logger.warning(f"Hypertable creation msg (orderbook): {e}")
+
+            # Create Indexes for optimization
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_market_ticks_symbol_time ON market_ticks (symbol, time DESC);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_market_orderbook_symbol_time ON market_orderbook (symbol, time DESC);")
 
         finally:
             await conn.close()
@@ -147,7 +197,23 @@ class TimescaleArchiver:
                         # Ticks
                         ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
                         source = data.get('source', 'KIS')
-                        row = (ts, data['symbol'], source, float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
+                        broker = data.get('broker')
+                        broker_time = datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None
+                        received_time = datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now()
+                        seq_no = data.get('sequence_number')
+                        
+                        row = (
+                            ts, 
+                            data['symbol'], 
+                            float(data['price']), 
+                            float(data.get('volume', 0)), 
+                            float(data.get('change', 0)),
+                            broker,
+                            broker_time,
+                            received_time,
+                            seq_no,
+                            source
+                        )
                         self.batch.append(row)
                         
                         if len(self.batch) >= BATCH_SIZE:
@@ -266,7 +332,7 @@ class TimescaleArchiver:
                 await conn.copy_records_to_table(
                     'market_ticks',
                     records=self.batch,
-                    columns=['time', 'symbol', 'source', 'price', 'volume', 'change']
+                    columns=['time', 'symbol', 'price', 'volume', 'change', 'broker', 'broker_time', 'received_time', 'sequence_number', 'source']
                 )
                 logger.info(f"Flushed {len(self.batch)} ticks to TimescaleDB")
                 self.batch = []

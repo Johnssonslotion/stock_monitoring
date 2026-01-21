@@ -31,18 +31,25 @@
 
 ---
 
-## 2. 추가 이연 작업 (Future Placeholders)
+## 2. 데이터 관리 및 최적화
 
-### Template
-```markdown
 | 항목 | 내용 |
 | :--- | :--- |
-| **ID** | `DEF-00X-00Y` |
-| **Title** | [작업 제목] |
-| **Related RFC** | [RFC-XXX](링크) |
+| **ID** | `DEF-034-001` |
+| **Title** | 틱 데이터 공백 복구 (Log + REST Hybrid) |
+| **Related RFC** | [RFC-008](../rfc/RFC-008-tick-completeness-qa.md) |
 | **Status** | ⏳ DEFERRED |
-| **Trigger** | [구체적 조건] |
-```
+| **Trigger** | 시스템 안정화 후 일괄 복구 필요 시 |
+| **Priority** | P1 (High) |
+
+| 항목 | 내용 |
+| :--- | :--- |
+| **ID** | `DEF-034-002` |
+| **Title** | TimescaleDBPost-Market 최적화 자동화 |
+| **Related RFC** | [ISSUE-034](../issues/ISSUE-034.md) |
+| **Status** | ⏳ DEFERRED |
+| **Trigger** | 장 마감 후 자동 스케줄링 (Cron) 적용 시 |
+| **Priority** | P2 (Medium) |
 
 ---
 
