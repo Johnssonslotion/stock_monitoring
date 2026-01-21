@@ -23,6 +23,7 @@
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **ISSUE-019: Critical Bug Fixes** | Developer | - | (Placeholder) |
+| **ISSUE-033: TimescaleArchiver Schema Mismatch** | Developer | - | 데이터 적재 정지 |
 
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -130,3 +131,4 @@
 | [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
 | [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
 | [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
+| [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
