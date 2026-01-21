@@ -211,8 +211,16 @@ class TimescaleArchiver:
                 ts = datetime.fromisoformat(data['timestamp'])
                 source = data.get('source', 'KIS')
                 
-                # Base row: [time, symbol, source]
-                row = [ts, data['symbol'], source]
+                # Base row: [time, symbol, source, broker, broker_time, received_time, sequence_number]
+                row = [
+                    ts, 
+                    data['symbol'], 
+                    source,
+                    data.get('broker'),
+                    datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None,
+                    datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now(),
+                    data.get('sequence_number')
+                ]
                 
                 # Add Asks 1~10
                 asks = data.get('asks', [])
@@ -230,13 +238,13 @@ class TimescaleArchiver:
                     else:
                         row.extend([None, None])
 
-                # Total params: 3 + 20 + 20 = 43 params
-                # Generate placeholders $1..$43
+                # Total params: 7 + 20 + 20 = 47 params
+                # Generate placeholders $1..$47
                 placeholders = ",".join([f"${i+1}" for i in range(len(row))])
                 
                 query = f"""
                     INSERT INTO market_orderbook (
-                        time, symbol, source,
+                        time, symbol, source, broker, broker_time, received_time, sequence_number,
                         ask_price1, ask_vol1, ask_price2, ask_vol2, ask_price3, ask_vol3, ask_price4, ask_vol4, ask_price5, ask_vol5,
                         ask_price6, ask_vol6, ask_price7, ask_vol7, ask_price8, ask_vol8, ask_price9, ask_vol9, ask_price10, ask_vol10,
                         bid_price1, bid_vol1, bid_price2, bid_vol2, bid_price3, bid_vol3, bid_price4, bid_vol4, bid_price5, bid_vol5,

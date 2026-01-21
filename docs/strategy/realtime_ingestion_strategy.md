@@ -28,12 +28,20 @@
 > [!IMPORTANT]
 > **US TR_ID 혼선 주의**: KIS 문서에 `HHDFS00000300`과 `HDFSCNT0`가 혼재되어 있으나, **`HDFSCNT0`**가 해외주식 실시간 체결가용으로 검증됨.
 
-### 1.2 한국 시장 (KR Market) [Unverified]
-현재 설정은 되어 있으나, 엄격한 검증(Verification)이 수행되지 않은 상태임.
+### 1.2 한국 시장 (KR Market) [Verified]
+금일(2026-01-22) 핫픽스 및 실운영 테스트를 통해 검증된 구성이다.
 
-- **Endpoint URL**: `ws://ops.koreainvestment.com:21000/H0STCNT0` (추정)
-- **TR_ID**: `H0STCNT0`
-- **Status**: **검증 필요 (Pending Verification)**
+- **Market Mode**: Realtime Ticks (실시간 체결가)
+- **Environment**: Production
+- **Protocol**: WebSocket
+- **Parameters**:
+
+| 항목 | 설정값 (Value) | 비고 |
+| :--- | :--- | :--- |
+| **Endpoint URL** | `ws://ops.koreainvestment.com:21000/H0STCNT0` | Verified |
+| **TR_ID** | **`H0STCNT0`** | 실시간 체결가 전용 |
+| **TR_KEY Format** | `005930` | 6자리 종목코드 |
+| **Result** | `SUBSCRIBE SUCCESS` | 정상 수신 및 DB 적재 완료 |
 
 ---
 
