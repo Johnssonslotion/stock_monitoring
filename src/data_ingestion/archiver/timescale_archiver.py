@@ -43,122 +43,28 @@ class TimescaleArchiver:
             logger.warning(f"Failed to record DB success metric: {e}")
 
     async def init_db(self):
-        """틱 데이터용 하이퍼테이블(Hypertable) 초기화"""
+        """
+        [ISSUE-036 Revision] 
+        기존 하드코딩된 DDL을 제거하고 마이그레이션 도구(migrate.sh)를 통해 관리하도록 위임합니다.
+        여기서는 필수 테이블 존재 여부만 검증합니다.
+        """
         conn = await asyncpg.connect(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
         try:
-            # Create Table (Normal)
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_ticks (
-                    time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    price DOUBLE PRECISION NOT NULL,
-                    volume DOUBLE PRECISION NOT NULL,
-                    change DOUBLE PRECISION,
-                    broker TEXT,
-                    broker_time TIMESTAMPTZ,
-                    received_time TIMESTAMPTZ DEFAULT NOW(),
-                    sequence_number BIGINT,
-                    source TEXT DEFAULT 'KIS'
-                );
-            """)
+            # 필수 테이블 존재 여부 확인 (SSoT: migrations/)
+            required_tables = ['market_ticks', 'market_orderbook', 'system_metrics']
+            for table in required_tables:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
+                    table
+                )
+                if not exists:
+                    logger.error(f"CRITICAL: Table '{table}' not found. Please run 'make migrate-up' first.")
+                    # 운영 환경에서는 즉시 중단하여 정합성 훼손 방지
+                    raise RuntimeError(f"Database schema incomplete: table '{table}' missing.")
             
-            # [ISSUE-033] Migration for existing tables
-            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS broker TEXT;")
-            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS broker_time TIMESTAMPTZ;")
-            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS received_time TIMESTAMPTZ DEFAULT NOW();")
-            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS sequence_number BIGINT;")
-            await conn.execute("ALTER TABLE market_ticks ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'KIS';")
-            
-            # Convert to Hypertable (TimescaleDB unique function)
-            # If already hypertable, this might warn/error in some versions, but 'IF NOT EXISTS' logic is usually handled by create_hypertable's if_not_exists arg in newer versions or catching error
-            try:
-                await conn.execute("SELECT create_hypertable('market_ticks', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'market_ticks' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg: {e}")
-                
-            # Create system_metrics table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS system_metrics (
-                    time TIMESTAMPTZ NOT NULL,
-                    type TEXT NOT NULL,
-                    value DOUBLE PRECISION NOT NULL,
-                    meta JSONB
-                );
-            """)
-            try:
-                await conn.execute("SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'system_metrics' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg (system_metrics): {e}")
-
-            # Create market_ticks_validation table (ISSUE-029)
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_ticks_validation (
-                    bucket_time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    tick_count_collected INTEGER,
-                    volume_sum DOUBLE PRECISION,
-                    price_open DOUBLE PRECISION,
-                    price_high DOUBLE PRECISION,
-                    price_low DOUBLE PRECISION,
-                    price_close DOUBLE PRECISION,
-                    updated_at TIMESTAMPTZ DEFAULT NOW(),
-                    validation_status TEXT,
-                    UNIQUE (bucket_time, symbol)
-                );
-            """)
-            try:
-                await conn.execute("SELECT create_hypertable('market_ticks_validation', 'bucket_time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'market_ticks_validation' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg (validation): {e}")
-            try:
-                await conn.execute("SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'system_metrics' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg (system_metrics): {e}")
-
-            # [ISSUE-033] Create market_orderbook table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_orderbook (
-                    time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    source TEXT,
-                    ask_price1 DOUBLE PRECISION, ask_vol1 DOUBLE PRECISION,
-                    ask_price2 DOUBLE PRECISION, ask_vol2 DOUBLE PRECISION,
-                    ask_price3 DOUBLE PRECISION, ask_vol3 DOUBLE PRECISION,
-                    ask_price4 DOUBLE PRECISION, ask_vol4 DOUBLE PRECISION,
-                    ask_price5 DOUBLE PRECISION, ask_vol5 DOUBLE PRECISION,
-                    ask_price6 DOUBLE PRECISION, ask_vol6 DOUBLE PRECISION,
-                    ask_price7 DOUBLE PRECISION, ask_vol7 DOUBLE PRECISION,
-                    ask_price8 DOUBLE PRECISION, ask_vol8 DOUBLE PRECISION,
-                    ask_price9 DOUBLE PRECISION, ask_vol9 DOUBLE PRECISION,
-                    ask_price10 DOUBLE PRECISION, ask_vol10 DOUBLE PRECISION,
-                    bid_price1 DOUBLE PRECISION, bid_vol1 DOUBLE PRECISION,
-                    bid_price2 DOUBLE PRECISION, bid_vol2 DOUBLE PRECISION,
-                    bid_price3 DOUBLE PRECISION, bid_vol3 DOUBLE PRECISION,
-                    bid_price4 DOUBLE PRECISION, bid_vol4 DOUBLE PRECISION,
-                    bid_price5 DOUBLE PRECISION, bid_vol5 DOUBLE PRECISION,
-                    bid_price6 DOUBLE PRECISION, bid_vol6 DOUBLE PRECISION,
-                    bid_price7 DOUBLE PRECISION, bid_vol7 DOUBLE PRECISION,
-                    bid_price8 DOUBLE PRECISION, bid_vol8 DOUBLE PRECISION,
-                    bid_price9 DOUBLE PRECISION, bid_vol9 DOUBLE PRECISION,
-                    bid_price10 DOUBLE PRECISION, bid_vol10 DOUBLE PRECISION
-                );
-            """)
-            try:
-                await conn.execute("SELECT create_hypertable('market_orderbook', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'market_orderbook' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg (orderbook): {e}")
-
-            # Create Indexes for optimization
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_market_ticks_symbol_time ON market_ticks (symbol, time DESC);")
-            await conn.execute("CREATE INDEX IF NOT EXISTS idx_market_orderbook_symbol_time ON market_orderbook (symbol, time DESC);")
-
+            logger.info("Database schema verification completed (SSoT: Migrations).")
         finally:
             await conn.close()
 

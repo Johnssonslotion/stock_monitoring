@@ -6,58 +6,52 @@
 ## 2. 실시간 데이터 (Real-time Data)
 
 ### 2.1 틱 데이터 (TickData)
--   **용도**: 체결 내역의 최소 단위.
--   **Redis Channel**: `tick.{exchange}.{symbol}` (예: `tick.upbit.KRW-BTC`)
+-   **용도**: 체결 내역의 최소 단위 및 TimescaleDB 적재.
+-   **Metadata (Common)**:
+    - `broker`: 데이터 소스 거래소 (예: "KIS", "KIWOOM")
+    - `broker_time`: 거래소가 제공한 원본 시간 (TIMESTAMPTZ)
+    - `received_time`: 우리 시스템 수신 시간 (TIMESTAMPTZ / Pinning Target)
+    - `sequence_number`: 데이터 고유 순번 (Deduplication Key)
+    - `source`: 상위 시스템 구분 (KIS/KIWOOM)
 -   **JSON Structure**:
     ```json
     {
-      "source": "upbit",            // 거래소명 (소문자)
-      "symbol": "KRW-BTC",          // 통일된 심볼명
-      "timestamp": 1704351600000,   // Unix Timestamp (Milliseconds)
-      "price": 50000000.0,          // 체결가 (Float)
-      "volume": 0.015,              // 체결량 (Float)
-      "side": "ask",                // "ask"(매도) or "bid"(매수)
-      "id": "TraceID-12345"         // (Optional) 추적용 Unique ID
+      "symbol": "005930",
+      "price": 72000.0,
+      "volume": 150.0,
+      "change": 0.5,
+      "timestamp": "2026-01-21T15:00:00+09:00",
+      "broker": "KIWOOM",
+      "broker_time": "2026-01-21T14:59:59+09:00",
+      "received_time": "2026-01-21T15:00:00.123456+09:00",
+      "sequence_number": 1234567,
+      "source": "KIWOOM"
     }
     ```
 
 ### 2.2 오더북 (OrderBook)
--   **용도**: 호가창 스냅샷.
--   **Redis Channel**: `book.{exchange}.{symbol}`
--   **JSON Structure**:
-    ```json
-    {
-      "source": "upbit",
-      "symbol": "KRW-BTC",
-      "timestamp": 1704351600100,
-      "bids": [
-        {"price": 49999000, "qty": 0.5},
-        {"price": 49998000, "qty": 1.2}
-      ],
-      "asks": [
-        {"price": 50000000, "qty": 0.1},
-        {"price": 50001000, "qty": 0.8}
-      ]
-    }
-    ```
+-   **용도**: 실시간 호가 잔량 정보.
+-   **Schema (Flat 43-Column Structure)**:
+    - `time`, `symbol`, `source`, `broker`, `broker_time`, `received_time`, `sequence_number`
+    - `ask_price1` ~ `ask_price10` (매도 호가 1~10단)
+    - `ask_vol1` ~ `ask_vol10` (매도 잔량 1~10단)
+    - `bid_price1` ~ `bid_price10` (매수 호가 1~10단)
+    - `bid_vol1` ~ `bid_vol10` (매수 잔량 1~10단)
 
-## 3. 분석 데이터 (Analytical Data)
+## 3. 저장소 및 분석 데이터 (Storage & Analytics)
 
-### 3.1 캔들 (Candle/OHLCV)
+### 3.1 TimescaleDB (Main Storage)
+- **Table**: `market_ticks`, `market_orderbook`
+- **SSoT**: `migrations/*.sql` 파일을 따름.
+
+### 3.2 캔들 (Candle/OHLCV)
 -   **용도**: 기술적 분석용 집계 데이터.
--   **Storage**: DuckDB `candles` Table.
+-   **Storage**: TimescaleDB `market_candles` Table.
 -   **Schema**:
     | Field | Type | Description |
     | :--- | :--- | :--- |
-    | ts | TIMESTAMP | 캔들 시작 시간 |
-    | symbol | VARCHAR | 심볼 |
-    | open | DOUBLE | 시가 |
-    | high | DOUBLE | 고가 |
-    | low | DOUBLE | 저가 |
-    | close | DOUBLE | 종가 |
+    | time | TIMESTAMPTZ | 캔들 시작 시간 |
+    | symbol | TEXT | 심볼 |
+    | interval | TEXT | '1m', '5m', '1h' |
+    | open/high/low/close | DOUBLE | 시가/고가/저가/종가 |
     | volume | DOUBLE | 거래량 |
-    | interval | VARCHAR | '1m', '5m', '1h' |
-
-## 4. 저장소 규칙 (Storage Convention)
--   **DuckDB 파일**: `data/market_data.duckdb`
--   **Parquet 파티셔닝**: `data/archives/ticks/year=2024/month=01/day=04/ticks.parquet`

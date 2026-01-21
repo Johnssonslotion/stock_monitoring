@@ -22,6 +22,7 @@ This workflow conducts a formal deliberation among the 6 personas for major deci
 2. **Prepare Context**
    - Summarize the issue/proposal
    - Gather relevant specs, RFCs, or code
+   - **Schema Check**: If DB/API changes, confirm "Schema Triple-Lock" (Spec + Model + Migration) consistency.
 
 3. **Conduct Deliberation (Strict Order)**
    - **순서**: PM → Architect → Data Scientist → Infra → Developer → QA → Doc Specialist
