@@ -18,14 +18,54 @@
     *   **Phase C (Active Proof - 08:58)**: 동기화된 미러 테이블에 가짜 데이터를 써보며 **DDL 정합성, 인덱스 상태, 쓰기 권한**을 최종 검증합니다.
 
 ## 3. 상세 세부 작업 (Tasks)
-- [ ] `preflight_check.py`에 미러 테이블 (`*_test`) 자동 동기화 및 Schema Diff 로직 추가
-- [ ] `tests/test_timescale_archiver.py`에 **코드-DB 스키마 정합성 유닛테스트** (Parity Test) 추가
-- [ ] 운영-미러 테이블 간 스키마 변경 사항 리포팅 기능 구현 (Log/Alert)
-- [ ] `TimescaleArchiver`의 적재 성공 메트릭(Redis Key: `last_db_success`) 추가
-- [ ] `Sentinel`에 장 초반 지연 집중 감시 및 '무중단' 알림 로직 구현
-- [ ] 08:58 KST DB 쓰기 테스트 시나리오 추가
+- [x] `preflight_check.py`에 미러 테이블 (`*_test`) 자동 동기화 및 Schema Diff 로직 추가
+- [x] 운영-미러 테이블 간 스키마 변경 사항 리포팅 기능 구현 (Log/Alert)
+- [x] `TimescaleArchiver`의 적재 성공 메트릭(Redis Key: `archiver:last_db_success`) 추가
+- [x] `Sentinel`에 장 초반 지연 집중 감시 및 '무중단' 알림 로직 구현
+- [x] 08:58 KST DB 쓰기 테스트 시나리오 추가
+- [ ] `tests/test_timescale_archiver.py`에 **코드-DB 스키마 정합성 유닛테스트** (Parity Test) 추가 (Optional)
 
 ## 4. 기대 효과 (Expected Impact)
 - 장 개시 후 1분 이내 정착 성공률 99% 확보
 - 장애 발생 시 인지 및 복구 시간을 5분 -> 15초 내외로 단축
 - 백테스팅 데이터의 시작점(09:00) 신뢰성 보장
+
+## 5. 구현 완료 (Implementation Completed - 2026-01-21)
+
+### 5.1 구현 내용
+1. **preflight_check.py 개선**
+   - `sync_mirror_tables()`: market_ticks_test, market_orderbook_test 자동 생성
+   - `check_schema_parity()`: 운영-테스트 테이블 스키마 차이 감지
+   - `db_write_test()`: 실제 DB 쓰기 권한 및 DDL 검증
+
+2. **TimescaleArchiver 메트릭 추가**
+   - `_record_db_success()`: 적재 성공 시 Redis 메트릭 기록
+   - Redis Keys: `archiver:last_db_success`, `archiver:last_flush_count`, `archiver:last_flush_time`
+
+3. **Sentinel 장 초반 모니터링**
+   - `monitor_ingestion_lag()`: 09:00-09:10 KST 동안 1초 단위 감시
+   - Redis publish time vs DB ingestion time 비교
+   - 15초 이상 지연 시 CRITICAL 알림 (재시작 없음)
+
+4. **환경 변수 표준화**
+   - `.env.schema.yaml`: 전체 변수 정의 (30+ variables)
+   - `.env.template`: 마스터 템플릿
+   - `.env.local.example`: Mac 로컬 개발용
+   - `.env.prod.example`: Oracle Cloud 프로덕션용
+
+### 5.2 테스트 결과
+```
+✅ Smoke Test: PASSED
+✅ Redis: Connected
+✅ TimescaleDB: Connected
+✅ Mirror Tables: Created/Synced
+✅ Schema Parity: MATCH (Production ↔ Test)
+✅ DB Write Test: PASSED (1 test record)
+```
+
+### 5.3 변경된 파일
+- `scripts/preflight_check.py`: 미러 테이블, 스키마 검증, DB 쓰기 테스트 추가
+- `src/data_ingestion/archiver/timescale_archiver.py`: DB 적재 성공 메트릭 추가
+- `src/monitoring/sentinel.py`: 장 초반 지연 감시 로직 추가
+- `.env.schema.yaml`, `.env.template`, `.env.local.example`, `.env.prod.example`: 통일
+- `README.md`: 환경 설정 가이드 업데이트

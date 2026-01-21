@@ -146,6 +146,56 @@ class Sentinel:
             except Exception as e:
                 logger.error(f"Failed to publish metrics: {e}")
 
+    async def monitor_ingestion_lag(self):
+        """
+        ISSUE-035: Monitor DB Ingestion Lag during market open (09:00-09:10 KST)
+        Compare Redis publish time vs DB ingestion success time
+        """
+        logger.info("🔍 ISSUE-035: Ingestion Lag Monitor Started...")
+        TZ_KST = pytz.timezone('Asia/Seoul')
+
+        while self.is_running:
+            await asyncio.sleep(1)  # Check every second during critical period
+
+            now_kst = datetime.now(TZ_KST)
+            current_time = now_kst.time()
+
+            # Only monitor during market open critical period (09:00-09:10)
+            market_open = time(9, 0)
+            critical_end = time(9, 10)
+
+            if not (market_open <= current_time <= critical_end):
+                # Outside critical period, sleep longer
+                await asyncio.sleep(30)
+                continue
+
+            try:
+                # Check last Redis publish time (from ticker data)
+                last_redis_time = None
+                for market in ['KR', 'US']:
+                    if market in self.last_arrival:
+                        last_redis_time = self.last_arrival[market]
+                        break
+
+                # Check last DB ingestion success time
+                last_db_success = await self.redis.get("archiver:last_db_success")
+
+                if last_redis_time and last_db_success:
+                    db_time = datetime.fromisoformat(last_db_success)
+                    lag_seconds = (last_redis_time - db_time).total_seconds()
+
+                    if lag_seconds > 15:  # 15 seconds threshold
+                        await self.alert(
+                            f"🚨 CRITICAL: DB Ingestion Lag Detected! Redis: {last_redis_time}, DB: {db_time}, Lag: {lag_seconds:.1f}s",
+                            "CRITICAL"
+                        )
+                        logger.error(f"⚠️  INGESTION LAG: {lag_seconds:.1f}s behind")
+                    else:
+                        logger.debug(f"✅ Ingestion lag OK: {lag_seconds:.1f}s")
+
+            except Exception as e:
+                logger.error(f"Ingestion lag monitor error: {e}")
+
     async def monitor_redis(self):
         """Monitor Redis (Memory, Clients, Performance)"""
         logger.info("📡 Redis Health Monitor Started...")
@@ -372,15 +422,18 @@ class Sentinel:
         
         # Start heartbeat monitor
         asyncio.create_task(self.monitor_heartbeat())
-        
+
         # Start resource monitor
         asyncio.create_task(self.monitor_resources())
-        
+
         # Start governance monitor (Every 5 minutes)
         asyncio.create_task(self.monitor_governance())
-        
+
         # Start redis health monitor
         asyncio.create_task(self.monitor_redis())
+
+        # ISSUE-035: Start ingestion lag monitor (Critical for market open)
+        asyncio.create_task(self.monitor_ingestion_lag())
         
         async for message in pubsub.listen():
             msg_type = message['type']
