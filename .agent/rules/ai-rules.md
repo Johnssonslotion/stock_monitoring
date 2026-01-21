@@ -17,7 +17,7 @@
 | **이연 작업** | [Deferred Work Registry](./docs/governance/deferred_work.md) | 승인되었으나 미뤄진 작업 추적 및 관리 |
 
 ## 2. 절대 헌법 (The Immutable Laws)
-다음 7가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
+다음 9가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
 
 1.  **Deep Verification**: 데이터 작업 후 로그만 믿지 말고 **DB를 직접 조회**하여 교차 검증하라.
 2.  **Single Socket**: KIS API는 하나의 소켓 연결만 유지한다. (Dual Socket 시도 금지)
@@ -30,6 +30,13 @@
 7.  **Schema Strictness**: 모든 Public API와 DB Table은 **Swagger/OpenAPI** 또는 **SQL DDL** 수준의 정밀한 명세가 선행되어야 한다. 모호한 자연어 명세는 인정하지 않는다.
 8.  **Environment Integrity**: 모든 패키지 관리는 **Poetry**(`pyproject.toml`)를 통해서만 수행한다. 임의의 `pip install` 사용은 엄격히 금지된다.
     - AI는 스크립트 실행 전 `poetry install` 및 `poetry run`을 사용하여 의존성 정합성을 보장해야 한다.
+9.  **Worktree Isolation (ISSUE-032)**: 3개 환경(Local/Prod/Backtest)은 완전히 격리되어야 한다.
+    - **자동 감지**: `make identify`로 현재 환경 확인
+    - **절대 금지**: 하드코딩된 경로 (`/home/ubuntu/...`) 사용
+    - **동적 경로**: `${BASE_PATH}`, `${COMPOSE_PROJECT_NAME}` 환경변수 사용
+    - **포트 격리**: Local(8000/6379/5173), Prod(8001/6380/5174), Backtest(8002/6381/5175)
+    - **UI 표시**: 웹 대시보드에 환경 배지(🟢 LOCAL/🔴 PROD/🟡 BACKTEST) 필수
+    - **가이드**: [docs/worktree_guide.md](./docs/worktree_guide.md) 참조
 
 ## 3. 언어 원칙
 -   **Artifacts**: 모든 산출물(Task, Implementation Plan, Walkthrough)은 **반드시 한국어**로 작성한다. (영어 혼용 금지)
