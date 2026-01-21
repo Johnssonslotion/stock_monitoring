@@ -17,7 +17,7 @@
 | :--- | :--- |
 | **ID** | `DEF-003-001` |
 | **Title** | 전략 파라미터 Config 분리 (RFC-003 Compliance) |
-| **Related RFC** | [RFC-003](./decisions/RFC-003_config_management_standard.md) |
+| **Related RFC** | [RFC-003](decisions/RFC-003_config_management_standard.md) |
 | **Status** | ⏳ DEFERRED |
 | **Assigned** | Developer + Architect |
 | **Priority** | P1 (High) |
@@ -25,7 +25,7 @@
 | **Dependencies** | - |
 | **Scope** | - `configs/strategy_config.yaml` 표준 포맷 정의<br>- `src/core/config.py`에 `StrategyConfig` Pydantic 모델 추가<br>- `SampleMomentumStrategy` 등 전략 클래스 리팩토링 |
 | **Implementation Plan** | [Link](/home/ubuntu/.gemini/antigravity/brain/d20082fe-6e04-4ba8-8324-cc86e25a09db/implementation_plan.md) |
-| **Roadmap** | [Pillar 5: System Refactoring](../strategies/master_roadmap.md#pillar-5) |
+| **Roadmap** | [Pillar 5: System Refactoring](../strategy/master_roadmap.md#pillar-5) |
 | **Created** | 2026-01-17 |
 | **Last Review** | 2026-01-17 |
 
@@ -37,7 +37,7 @@
 | :--- | :--- |
 | **ID** | `DEF-034-001` |
 | **Title** | 틱 데이터 공백 복구 (Log + REST Hybrid) |
-| **Related RFC** | [RFC-008](../rfc/RFC-008-tick-completeness-qa.md) |
+| **Related RFC** | [RFC-008](rfc/RFC-008-tick-completeness-qa.md) |
 | **Status** | ⏳ DEFERRED |
 | **Trigger** | 시스템 안정화 후 일괄 복구 필요 시 |
 | **Priority** | P1 (High) |

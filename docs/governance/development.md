@@ -81,7 +81,7 @@
     -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
     -   **Workflow**: `git checkout -b feat/new-feature` → Work → `git push` → Pull Request → `develop` 머지.
     -   **배포**: `develop` 머지 시 운영 서버(`oracle-a1:/workspace/stock_monitoring`)에 **자동 배포**됨.
-    -   **상세**: [배포 전략 문서](./deployment_strategy.md) 참조.
+    -   **상세**: [배포 전략 문서](deployment_strategy.md) 참조.
 
 ## 3. 디버깅 및 검증 전략 (Debugging & Validation Strategy)
 
@@ -147,11 +147,11 @@ if received_count == 0 and running_time > 300:  # 5분
 ## 4. 단일 진실 공급원 및 보고 의무 (SSoT & Reporting) [STRICT]
 **규칙**: 모든 주요 변경(Feature 완성, 버그 수정)은 다음 **"품질 보고서(Quality Report)"**를 포함하여 3대 문서에 동시 반영한다.
 
-1.  **[README.md](file:///home/ubuntu/workspace/stock_monitoring/README.md)**: 전체 시스템 가속도(Velocity) 및 Pillar 상태 업데이트.
-2.  **[master_roadmap.md](file:///home/ubuntu/workspace/stock_monitoring/docs/strategies/master_roadmap.md)**: DoD 달성 여부 및 다음 단계 연결.
-3.  **[test_registry.md](file:///home/ubuntu/workspace/stock_monitoring/docs/testing/test_registry.md)**: 품질 게이트(Tier 1~3) 통과 증명.
-4.  **[Experiment Registry](file:///home/ubuntu/workspace/stock_monitoring/experiments/README.md)**: 모든 개별 실험 및 시뮬레이션 결과 영구 기록.
-5.  **[Knowledge Base (INDEX)](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/knowledge_base.md)**: 세션 persistence 보장을 위한 기술 분석 및 의사결정 이력 허브.
+1.  **[README.md](../README.md)**: 전체 시스템 가속도(Velocity) 및 Pillar 상태 업데이트.
+2.  **[master_roadmap.md](../strategy/master_roadmap.md)**: DoD 달성 여부 및 다음 단계 연결.
+3.  **[test_registry.md](../operations/testing/test_registry.md)**: 품질 게이트(Tier 1~3) 통과 증명.
+4.  **[Experiment Registry](../README.md)**: 모든 개별 실험 및 시뮬레이션 결과 영구 기록.
+5.  **[Knowledge Base (INDEX)](knowledge_base.md)**: 세션 persistence 보장을 위한 기술 분석 및 의사결정 이력 허브.
 
 **문서 동조화 프로토콜 (Sync Protocol)**:
 - AI는 사용자가 `@.ai-rules.md`를 언급하거나 '문서 동기화'를 요청할 경우, 위 3대 문서를 **전수 Read**하여 상호 참조 링크와 태스크 상태가 일치하는지 Audit 수행 필수.

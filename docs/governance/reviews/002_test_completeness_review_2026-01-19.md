@@ -345,7 +345,7 @@
 
 본 리포트 발행 후, 데이터 전이 지점별 테스트 케이스 누락에 대한 심화 재평가가 수행되었습니다. 상세 내용은 다음 문서를 참조하십시오.
 
-- **아이디어 문서**: [ID-data-transition-test-gap.md](file:///home/ubuntu/workspace/stock_monitoring/docs/ideas/stock_monitoring/ID-data-transition-test-gap.md)
+- **아이디어 문서**: [ID-data-transition-test-gap.md](../../ideas/ID-data-transition-test-gap.md)
 - **주요 업데이트**: 5대 전이 지점 식별 및 P0급 Chaos/Edge Case 시나리오 구체화.
 
 ---

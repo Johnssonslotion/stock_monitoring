@@ -23,7 +23,7 @@
 1. `docs/governance/decisions/004_compliance_obligation.md` 생성 (본 문서).
 2. `.ai-rules.md` **Step 4**에 아래와 같이 링크 추가:
    ```markdown
-   - **Step 4 – Rule Change Protocol** (준수 의무 포함) → [Decision‑004](./decisions/004_compliance_obligation.md)
+   - **Step 4 – Rule Change Protocol** (준수 의무 포함) → [Decision‑004](004_compliance_obligation.md)
    ```
 3. `docs/governance/HISTORY.md`에 새로운 인덱스 항목 추가 (버전 2.4).
 
