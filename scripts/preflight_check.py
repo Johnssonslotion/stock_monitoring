@@ -30,7 +30,10 @@ STATUS = {
     "KIWOOM_API": False,
     "REDIS": False,
     "TIMESCALE": False,
-    "DISK": False
+    "DISK": False,
+    "MIRROR_TABLES": False,  # ISSUE-035
+    "SCHEMA_PARITY": False,   # ISSUE-035
+    "DB_WRITE_TEST": False    # ISSUE-035
 }
 
 def run_smoke_test():

@@ -8,7 +8,7 @@
 
 현재 `.ai-rules.md`의 Governance Navigation 테이블에서 내부 문서 링크가 **절대 경로**로 되어 있습니다:
 ```markdown
-file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md
+file:///Users/bbagsang-u/workspace/stock_monitoring/docs/governance/personas.md
 ```
 
 **문제점**:
@@ -37,12 +37,12 @@ file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md
 
 ### Before
 ```markdown
-[Personas & Council](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/personas.md)
+[Personas & Council](../personas.md)
 ```
 
 ### After
 ```markdown
-[Personas & Council](./docs/governance/personas.md)
+[Personas & Council](../personas.md)
 ```
 **Note**: `./` 접두사로 프로젝트 루트 기준임을 명시
 

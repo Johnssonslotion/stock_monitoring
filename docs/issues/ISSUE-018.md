@@ -24,4 +24,4 @@ To ensure 100% data completeness, we need a mechanism to recover missing tick da
 3. Validate "Merge" logic in `DuckDBArchiver` or separate script.
 
 ## Related
-- RFC: [RFC-008](../rfc/RFC-008-tick-completeness-qa.md)
+- RFC: [RFC-008](../governance/rfc/RFC-008-tick-completeness-qa.md)
