@@ -5,6 +5,7 @@ Dual WebSocket Manager Module
 """
 import asyncio
 import logging
+import os
 import json
 import websockets
 import redis.asyncio as redis
@@ -54,6 +55,13 @@ class DualWebSocketManager:
         """Set callback for auto key refresh"""
         self.key_refresh_callback = callback
         
+    async def update_key(self, new_key: str):
+        """Update approval key dynamically across all loops"""
+        async with self.lock_tick:
+            async with self.lock_orderbook:
+                self.approval_key = new_key
+                logger.info("🔐 Approval Key updated dynamically (Dual).")
+
     async def trigger_refresh(self):
         """Trigger key refresh with cooldown"""
         import time
@@ -172,11 +180,12 @@ class DualWebSocketManager:
             if not target_ws or not self.approval_key:
                 return
             
+            cust_type = os.getenv("KIS_CUST_TYPE", "P")
             req = {
                 # KIS WebSocket Header (Add encrypt: N)
                 "header": {
                     "approval_key": self.approval_key,
-                    "custtype": "P",
+                    "custtype": cust_type,
                     "tr_type": tr_type,
                     "content-type": "utf-8",
                     "encrypt": "N"  # Required for KIS
