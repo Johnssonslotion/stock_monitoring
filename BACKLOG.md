@@ -54,11 +54,12 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-21)
+- [x] **ISSUE-036: DB 스키마 정합성 복구 및 거버넌스(Law #10) 통합**
+  - ✅ 004/005 마이그레이션과 실제 DB 동기화 (MATCH)
+  - ✅ 수집기 모델 메타데이터 보강 및 Timestamp Pinning 적용
+  - ✅ Constitution Law #10 (Time Determinism) 신설
+- [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)**
 - [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
-  - ✅ Preflight check: Mirror table sync & schema parity
-  - ✅ TimescaleArchiver: DB ingestion success metrics
-  - ✅ Sentinel: Early market lag monitoring (09:00-09:10 KST)
-  - ✅ Environment standardization: Unified .env templates
 
 ### Phase 1 Week 1 (2026-01-16)
 - [x] TimestampManager 유틸리티 구현 (12 tests)
