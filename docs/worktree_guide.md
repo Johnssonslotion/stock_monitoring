@@ -1,23 +1,43 @@
-# 백테스팅 워크트리 운영 가이드 (Backtest Worktree Operations Guide)
+# 3-환경 워크트리 운영 가이드 (Multi-Environment Worktree Operations Guide)
 
-**Version**: 1.0  
-**Date**: 2026-01-14  
+**Version**: 2.0
+**Date**: 2026-01-21
 **Owner**: PM & Researcher
+**Related**: ISSUE-032
 
 ---
 
 ## 개요
 
-이 문서는 백테스팅 전용 워크트리(`/home/ubuntu/workspace/stock_backtest`)의 운영 방법을 정의합니다.
+이 문서는 **3개 격리 환경**(Local/Prod/Backtest)의 운영 방법을 정의합니다.
 
-### 워크트리 구조
+### 3-환경 구조 (ISSUE-032)
+
 ```
+로컬 Mac:
+/Users/{username}/workspace/
+└── stock_monitoring/     ← 🟢 LOCAL 환경 (개발)
+    └── .git/            ← Git 디렉토리
+
+서버 Linux:
 /home/ubuntu/workspace/
-├── stock_monitoring/     ← 원본 저장소 (개발 & 운영)
+├── stock_monitoring/     ← 🔴 PROD 환경 (운영/개발)
 │   └── .git/            ← Git 원본 디렉토리
-└── stock_backtest/       ← 백테스팅 워크트리 (실험)
-    └── .git             ← 심볼릭 링크
+└── stock_backtest/       ← 🟡 BACKTEST 환경 (실험)
+    └── .git             ← 워크트리 심볼릭 링크
 ```
+
+### 환경 자동 감지 (make identify)
+
+각 환경은 **폴더명 + OS**로 자동 감지됩니다:
+```bash
+make identify
+```
+
+감지 로직:
+- Mac (Darwin) → **LOCAL**
+- Linux + `stock_monitoring` → **PROD**
+- Linux + `stock_backtest` → **BACKTEST**
 
 ---
 
@@ -174,20 +194,31 @@ graph TD
 
 ---
 
-## 격리 환경 관리
+## 격리 환경 관리 (ISSUE-032 완전 격리)
 
-### 독립적인 Docker 인프라
+### 3-환경 완전 격리
 
-백테스팅 워크트리는 원본 개발 환경과 **완전히 분리된 인프라**를 사용합니다.
+각 환경은 **컨테이너명, 포트, DB, 볼륨**까지 완전히 분리됩니다.
 
-| 항목 | 원본 (stock_monitoring) | 백테스트 (stock_backtest) |
-|------|-------------------------|---------------------------|
-| Redis | `stock-redis:6379` | `backtest-redis:6380` |
-| TimescaleDB | `stock-timescale:5432` | `backtest-timescale:5433` |
-| API Server | `api-server:8000` | `backtest-api:8001` |
-| Dashboard | `dashboard-ui:5173` | `backtest-dashboard:5174` |
-| DB Name | `stockval` | `backtest_db` |
-| Volume | `timescale-data` | `backtest-timescale-data` |
+| 항목 | 🟢 LOCAL (Mac) | 🔴 PROD (서버) | 🟡 BACKTEST (서버) |
+|------|----------------|----------------|-------------------|
+| **프로젝트명** | `stock_local` | `stock_prod` | `stock_backtest` |
+| **Redis** | `stock_local-redis:6379` | `stock_prod-redis:6380` | `stock_backtest-redis:6381` |
+| **TimescaleDB** | `stock_local-timescale:5432` | `stock_prod-timescale:5432` | `stock_backtest-timescale:5432` |
+| **API Server** | `stock_local-api:8000` | `stock_prod-api:8001` | `stock_backtest-api:8002` |
+| **Dashboard** | `stock_local-ui:5173` | `stock_prod-ui:5174` | `stock_backtest-ui:5175` |
+| **DB Name** | `stockval_local` | `stockval` | `stockval_backtest` |
+| **Env File** | `.env.local` | `.env.prod` | `.env.backtest` |
+| **UI Badge** | 🟢 LOCAL | 🔴 PROD | 🟡 BACKTEST |
+
+### UI 환경 배지
+
+웹 대시보드 헤더에 현재 연결된 환경이 자동으로 표시됩니다:
+- **LOCAL**: 초록색 배지 `🟢 LOCAL`
+- **PROD**: 빨간색 배지 `🔴 PROD`
+- **BACKTEST**: 노란색 배지 `🟡 BACKTEST`
+
+이를 통해 **실수로 운영 환경에서 작업하는 것을 방지**할 수 있습니다.
 
 ### 환경 실행 명령
 
