@@ -1,25 +1,83 @@
 .PHONY: help up down restart logs verify clean
 
-# Smart OS Detection
+# ============================================
+# 3-Environment Auto-Detection (ISSUE-032)
+# ============================================
+
+# 1. Detect OS
 OS_NAME := $(shell uname -s)
 
-# Default Settings (Server/Linux)
-COMPOSE_BASE := -f deploy/docker-compose.yml
-PROFILE := real
-ENV_FILE := .env.dev
-COMPOSE_ARGS := $(COMPOSE_BASE) --env-file $(ENV_FILE)
+# 2. Detect Directory Name
+DIR_NAME := $(shell basename $(PWD))
 
-# Mac (Darwin) Override
+# 3. Detect Current Path
+BASE_PATH := $(PWD)
+
+# 4. Environment Type Detection
 ifeq ($(OS_NAME),Darwin)
+	# Mac → LOCAL
+	ENV_TYPE := local
+	PROJECT_NAME := stock_local
 	PROFILE := local
 	ENV_FILE := .env.local
-	COMPOSE_ARGS := $(COMPOSE_BASE) -f deploy/docker-compose.local.yml
+	API_PORT := 8000
+	REDIS_PORT := 6379
+	WEB_PORT := 5173
+	COMPOSE_BASE := -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml
+else ifeq ($(DIR_NAME),stock_backtest)
+	# Linux + stock_backtest → BACKTEST
+	ENV_TYPE := backtest
+	PROJECT_NAME := stock_backtest
+	PROFILE := real
+	ENV_FILE := .env.backtest
+	API_PORT := 8002
+	REDIS_PORT := 6381
+	WEB_PORT := 5175
+	COMPOSE_BASE := -f deploy/docker-compose.yml -f deploy/docker-compose.backtest.yml
+else
+	# Linux + stock_monitoring → PROD
+	ENV_TYPE := prod
+	PROJECT_NAME := stock_prod
+	PROFILE := real
+	ENV_FILE := .env.prod
+	API_PORT := 8001
+	REDIS_PORT := 6380
+	WEB_PORT := 5174
+	COMPOSE_BASE := -f deploy/docker-compose.yml
 endif
+
+# 5. Export for docker-compose
+export COMPOSE_PROJECT_NAME := $(PROJECT_NAME)
+export BASE_PATH
+export API_PORT
+export REDIS_PORT
+export WEB_PORT
+export ENV_TYPE
+
+COMPOSE_ARGS := $(COMPOSE_BASE) --env-file $(ENV_FILE)
 
 .PHONY: help up up-dev up-prod down logs ps clean test lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+identify: ## Show current environment configuration
+	@echo "======================================"
+	@echo "🔍 Environment Detection (ISSUE-032)"
+	@echo "======================================"
+	@echo "OS:              $(OS_NAME)"
+	@echo "Directory:       $(DIR_NAME)"
+	@echo "Base Path:       $(BASE_PATH)"
+	@echo ""
+	@echo "Environment:     $(ENV_TYPE)"
+	@echo "Project Name:    $(PROJECT_NAME)"
+	@echo "Profile:         $(PROFILE)"
+	@echo "Env File:        $(ENV_FILE)"
+	@echo ""
+	@echo "API Port:        $(API_PORT)"
+	@echo "Redis Port:      $(REDIS_PORT)"
+	@echo "Web Port:        $(WEB_PORT)"
+	@echo "======================================"
 
 up: ## Start environment (Smart Detect: Mac=Local, Linux=Real)
 	@echo "🍎/🐧 Detected OS: $(OS_NAME)"
