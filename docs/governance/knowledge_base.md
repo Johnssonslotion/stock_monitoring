@@ -4,7 +4,7 @@
 
 ## 설계 및 의사결정 이력
 - **[Back-end Architecture](./architecture.md)**: 가변적 워커(Configurable Worker) 구조 및 인터페이스 설계.
-- **[Broker Infrastructure](./infrastructure.md)**: 한투/키움/미래 소켓 제약사항 및 Failure Modes 통합 가이드. (v2.2)
+- **[Broker Infrastructure](infrastructure.md)**: 한투/키움/미래 소켓 제약사항 및 Failure Modes 통합 가이드. (v2.2)
 - **[Strategy Anchoring](../strategies/anchoring_strategy.md)**: 상법개정(2024-02-26) 기반 데이터 분석 앵커링 원칙.
 
 ---

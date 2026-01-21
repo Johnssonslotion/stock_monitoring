@@ -19,32 +19,33 @@ description: Amend the Constitution (.ai-rules.md) with strict governance tracki
 - **Validation**: 해당 문서가 'Approved' 상태이거나 사용자가 명시적으로 승인했는지 확인.
 
 ### 2. Update History Ledger
-**Action**: `docs/governance/HISTORY.md`에 변경 이력 기록
+**Action**: `docs/governance/HISTORY.md`에 변경 이력 기록 (**Table 포맷 엄수**)
 - **Format**:
-  ```markdown
-  ## [YYYY-MM-DD] Amendment v[Version]
-  - **Subject**: [Title of Amendment]
-  - **Reason**: [Why this change is needed]
-  - **Reference**: [Link to RFC/Idea Doc]
-  - **Author**: [Persona/User]
-  ```
+  | Date | Ver | Title (Change Summary) | Rationale & Details |
+  | :--- | :--- | :--- | :--- |
+  | **[YYYY-MM-DD]** | **[vX.X]** | **[Subject]**<br>- [Detail 1]<br>- [Detail 2] | [Link to RFC/Idea Doc] |
 
 ### 3. Amend Constitution
 **Action**: `.ai-rules.md` 파일 수정
-- **Version Bump**: 헤더의 버전 업데이트 (e.g., v2.5 -> v2.6)
+- **Version Bump**: 최상단 헤더의 버전 업데이트 (e.g., v2.11 -> v2.12)
 - **Content Update**: 실제 규칙 조항 추가/수정/삭제.
 
-### 4. Commit & Notify
+### 4. Sync Documentation Hub
+**Action**: `docs/README.md` (Hub) 및 관련 문서 최신화
+- 변경된 거버넌스 내용이 거버넌스 허브 섹션에 반영되었는지 확인.
+
+### 5. Commit & Notify
 **Action**: 변경사항 커밋 및 사용자 통지
 - **Commit Message**: `chore(governance): amend constitution v[Version] - [Subject]`
 - **Notification**:
   ```
-  🏛️ Constitution Amended (v2.6)
+  🏛️ Constitution Amended (v[Version])
   
-  Subject: 문서 작업 전 동기화 강제
+  Subject: [Subject]
   Changes:
-  1. Updated .ai-rules.md (Added 'Pre-condition' to Section 5)
-  2. Logged in HISTORY.md
+  1. Updated .ai-rules.md (Details...)
+  2. Logged in HISTORY.md (Table Format)
+  3. Synced Documentation Hub
   
   The new rule is now in effect.
   ```

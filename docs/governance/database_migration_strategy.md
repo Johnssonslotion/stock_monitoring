@@ -230,9 +230,9 @@ docker-compose up -d timescaledb
 
 ## 6. 참고 문서
 
-- [Infrastructure Rules](./infrastructure.md#L51) - 검증된 DB 구조
-- [Data Schema](../data_schema.md) - 논리적 스키마 정의
-- [Development Guide](./development.md) - Git Flow 및 배포 프로세스
+- [Infrastructure Rules](infrastructure.md#L51) - 검증된 DB 구조
+- [Data Schema](../specs/data_schema.md) - 논리적 스키마 정의
+- [Development Guide](development.md) - Git Flow 및 배포 프로세스
 
 ---
 

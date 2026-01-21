@@ -53,6 +53,13 @@
 
 ## 3. 완료 (Done)
 
+### Latest (2026-01-21)
+- [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
+  - ✅ Preflight check: Mirror table sync & schema parity
+  - ✅ TimescaleArchiver: DB ingestion success metrics
+  - ✅ Sentinel: Early market lag monitoring (09:00-09:10 KST)
+  - ✅ Environment standardization: Unified .env templates
+
 ### Phase 1 Week 1 (2026-01-16)
 - [x] TimestampManager 유틸리티 구현 (12 tests)
 - [x] Collection Strategy YAML 설정 (3-Tier 분류)
@@ -125,12 +132,12 @@
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
 | [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
-| [ISSUE-022](docs/issues/ISSUE-022_to_025.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
-| [ISSUE-023](docs/issues/ISSUE-022_to_025.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
-| [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
-| [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
+| [ISSUE-022](docs/issues/ISSUE-022.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
+| [ISSUE-023](docs/issues/ISSUE-023.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
+| [ISSUE-024](docs/issues/ISSUE-024.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
+| [ISSUE-025](docs/issues/ISSUE-025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
 | [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
 | [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
 | [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
 | [ISSUE-034](docs/issues/ISSUE-034.md) | [Optimization] TimescaleDB Storage Efficiency | P1 | Open | Developer |
-| [ISSUE-035](docs/issues/ISSUE-035.md) | [Feature] 장 초반 적재 보장 (Ingestion Open Guard) | P0 | Open | Developer |
+| [ISSUE-035](docs/issues/ISSUE-035.md) | [Feature] 장 초반 적재 보장 (Ingestion Open Guard) | P0 | [x] | Developer |

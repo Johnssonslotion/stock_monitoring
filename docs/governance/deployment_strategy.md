@@ -291,6 +291,6 @@ git push origin feat/my-feature
 ---
 
 ## 📚 참고 문서
-- [Infrastructure Rules](./infrastructure.md)
-- [Development Standards](./development.md)
-- [Master Roadmap](../strategies/master_roadmap.md)
+- [Infrastructure Rules](infrastructure.md)
+- [Development Standards](development.md)
+- [Master Roadmap](../strategy/master_roadmap.md)
