@@ -33,4 +33,5 @@
 | ISSUE-029 | [Debt] Container Configuration Sync (Volume Mounts) | P2 | Done | Developer | docs/issues/ISSUE-022_to_030.md |
 | ISSUE-030 | [Bug] Pipeline Channel Name Inconsistency | P1 | Done | Developer | docs/issues/ISSUE-022_to_030.md |
 | ISSUE-031 | [Feature] 하이브리드 데이터 복구 (로그 기반 + REST 백필) | P1 | Open | Developer | docs/issues/ISSUE-031.md |
+| ISSUE-032 | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer | docs/issues/ISSUE-032.md |
 
