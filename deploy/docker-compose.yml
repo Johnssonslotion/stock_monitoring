@@ -12,6 +12,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      default:
+        aliases:
+          - redis
+          - redis
 
   tick-archiver:
     build: ..
@@ -86,7 +91,10 @@ services:
       - timescale-data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
-      - default
+      default:
+        aliases:
+          - timescaledb
+          - timescaledb
 
   # Archiver: TimescaleDB
   timescale-archiver:
@@ -96,9 +104,9 @@ services:
     container_name: timescale-archiver
     command: python -m src.data_ingestion.archiver.timescale_archiver
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -126,7 +134,7 @@ services:
       - ../${ENV_FILE:-.env}
     environment:
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -150,9 +158,9 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-api
     command: python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
     environment:
-      - REDIS_URL=redis://${COMPOSE_PROJECT_NAME}-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=${COMPOSE_PROJECT_NAME}-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -179,7 +187,7 @@ services:
     container_name: news-collector
     command: python -m src.data_ingestion.news.collector
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     depends_on:
@@ -197,7 +205,7 @@ services:
     container_name: news-archiver
     command: python -m src.data_ingestion.news.archiver
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     volumes:
@@ -218,9 +226,9 @@ services:
     env_file:
       - ../${ENV_FILE:-.env.prod}
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -244,7 +252,7 @@ services:
     container_name: sentinel-agent
     command: python -m src.monitoring.sentinel
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     depends_on:
@@ -306,12 +314,12 @@ services:
       - ../src:/app/src
       - ../scripts:/app/scripts
     environment:
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_NAME=${DB_NAME:-stockval}
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - timescaledb
     networks:
@@ -336,12 +344,12 @@ services:
     env_file:
       - ../${ENV_FILE:-.env.prod}
     environment:
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_NAME=${DB_NAME:-stockval}
-      - REDIS_URL=redis://stock-redis:6379/1
+      - REDIS_URL=redis://redis:6379/1
     volumes:
       - ../src:/app/src
       - ../configs:/app/configs

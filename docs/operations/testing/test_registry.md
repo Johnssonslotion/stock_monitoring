@@ -49,6 +49,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | TS-SAVE-01 | `test_save_tick_to_timescale` | `tests/test_timescale_archiver.py` | `market_ticks` 테이블 적재 및 롤백 확인 | ✅ Pass |
 | TS-SAVE-02 | `test_save_orderbook_to_timescale` | `tests/test_timescale_archiver.py` | `market_orderbook` 22개 컬럼 매핑 저장 확인 | ✅ Pass |
+| TS-TYPE-01 | `test_system_metrics_type_validation` | `tests/test_system_metrics_schema.py` | Sentinel 발행 메트릭 데이터 타입이 Archiver 스키마와 일치하는지 검증 (FMEA 3.4) | ✅ Pass |
 | TS-CON-01 | `test_concurrent_save` | (신규 예정) | KR/US 동시 인입 시 DB 커넥션 풀 경합 및 저장 성공 여부 | ⏳ 예정 |
 
 ---
@@ -101,7 +102,18 @@
 
 ---
 
-## 🌪️ 6. 카오스 및 복원력 테스트 (Chaos & Resilience)
+## 🏗️ 6. 인프라 및 환경 (Infrastructure & Environment) [NEW]
+
+| ID | 테스트명 | 파일명 | 검증 상황 | 상태 |
+| :--- | :--- | :--- | :--- | :--- |
+| INF-DNS-01 | `test_container_dns_resolution` | `tests/test_infrastructure.py` | 모든 컨테이너가 timescaledb, redis 호스트를 정상 resolve하는지 검증 (FMEA 3.5) | ✅ Pass |
+| INF-NET-01 | `test_network_alias_validation` | `tests/test_infrastructure.py` | docker-compose.yml의 network alias가 실제 네트워크에 적용되었는지 검증 (FMEA 3.5) | ✅ Pass |
+| INF-HEALTH-01 | `test_service_startup_health` | `tests/test_infrastructure.py` | 모든 서비스가 시작 후 30초 내 정상 상태(healthy/running)에 도달하는지 검증 (FMEA 3.5) | ✅ Pass |
+| INF-ENV-01 | `test_environment_variables` | `tests/test_infrastructure.py` | 필수 환경변수(DB_HOST, REDIS_URL 등)가 모든 컨테이너에 올바르게 설정되었는지 검증 | ✅ Pass (Fixed) |
+
+---
+
+## 🌪️ 7. 카오스 및 복원력 테스트 (Chaos & Resilience)
 | ID | 테스트명 | 시나리오 | 검증 목표 | 상태 |
 | :--- | :--- | :--- | :--- | :--- |
 | CH-RES-01 | `test_db_disconnect` | 적재 중 DB 강제 종료 | DB 재연결 시 누락 데이터 자동 백필 | ⏳ 예정 |
@@ -113,7 +125,7 @@
 
 ---
 
-## 📄 8. 문서 및 규정 준수 (Documentation & Compliance) [STRICT]
+## 📄 9. 문서 및 규정 준수 (Documentation & Compliance) [STRICT]
 
 | ID | 테스트명 | 검증 항목 | 목표 지표 | 상태 |
 | :--- | :--- | :--- | :--- | :--- |

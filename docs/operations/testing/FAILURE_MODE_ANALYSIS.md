@@ -24,6 +24,9 @@
 | **Logic** | Real-time Gap | 네트워크 일시 순단으로 인한 데이터 누락 | Mid | Gap Detector | Real-time Gap Recovery (Rest API Fallback) |
 | **Process** | Log Reliance Bias | "Success" 로그만 믿고 장애를 방치함 | Critical | Manual Inspection | Deep Verification Gate 및 Automated Smoke Test |
 | **Process** | Environment Drift | 개발용 Config가 운영에 적용되어 의도치 않은 서비스 중단 | High | Startup Banner | 실행 시 환경 인디케이터 로그 출력 강제 |
+| **Archiving** | System Metrics Type Mismatch | Sentinel이 발행한 메트릭 데이터 타입이 Archiver 스키마와 불일치 | Mid | Archiver Error Logs | 스키마 검증 테스트 및 Sentinel 발행 데이터 타입 검증 (TS-TYPE-01) |
+| **Infrastructure** | Container DNS Resolution Failure | docker-compose.yml 호스트 이름 변경 후 DNS 해결 실패 | Critical | Startup Connection Errors | DNS resolution 테스트 및 network alias 검증 (INF-DNS-01) |
+| **Infrastructure** | Partial Restart Network Inconsistency | 일부 컨테이너만 재시작 시 네트워크 alias 미적용 | High | Service Health Checks | Full stack restart policy 및 health check automation (INF-HEALTH-01) |
 
 ## 3. 상세 대응 전략
 
@@ -41,6 +44,25 @@
     1. **Raw Log (JSONL) Recovery**: 로컬에 저장된 로그 파일로부터 DB 재적재.
     2. **Broker REST API Recovery**: KIS/Kiwoom REST API를 통한 과거 데이터 보충.
     3. **Daily Triangulation**: 매일 장 종료 후 벤더 간 데이터 교차 검증 및 보정.
+
+### 3.4 System Metrics Type Safety (Level 2)
+- **문제**: Sentinel이 `system.metrics` 채널에 발행하는 데이터 구조가 Archiver의 예상 타입과 불일치
+- **원인**: `meta` 필드를 dict로 발행하지만, Archiver가 일부 케이스에서 str로 기대
+- **대응**:
+    1. **Schema Validation Test (TS-TYPE-01)**: Sentinel 발행 데이터와 DB 스키마 타입 일치 검증
+    2. **Pre-publish Validation**: Sentinel이 메트릭 발행 전 데이터 타입 검증
+    3. **Archiver Error Handling**: 타입 불일치 시 에러 로깅 및 알림, 서비스 중단 방지
+
+### 3.5 Infrastructure Network Resilience (Level 1)
+- **문제**: docker-compose.yml 변경 후 컨테이너가 서비스 호스트를 찾지 못함
+- **원인**:
+    1. 호스트 이름 변경 시 DNS alias 미적용
+    2. 부분 재시작으로 인한 네트워크 구성 불일치
+- **대응**:
+    1. **DNS Resolution Test (INF-DNS-01)**: 모든 컨테이너가 필수 호스트(timescaledb, redis)를 resolve할 수 있는지 검증
+    2. **Network Alias Validation (INF-NET-01)**: docker-compose.yml의 alias 설정과 실제 네트워크 구성 일치 확인
+    3. **Full Stack Restart Policy**: 인프라 변경 시 `make down && make up`을 통한 전체 재시작 강제
+    4. **Startup Health Check (INF-HEALTH-01)**: 모든 서비스가 30초 내 정상 상태 도달 검증
 
 ## 4. 관련 문서
 - [Runbook: Data Collection Recovery](../runbooks/data_collection_recovery.md)

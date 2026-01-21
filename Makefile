@@ -210,10 +210,10 @@ electron-build: ## Build Electron client for production
 .PHONY: migrate-status migrate-up migrate-down migrate-baseline
 
 migrate-status: ## Show database migration status
-	@./scripts/db/migrate.sh status
+	@DB_CONTAINER=$(PROJECT_NAME)-timescale ./scripts/db/migrate.sh status
 
 migrate-up: ## Apply pending database migrations
-	@./scripts/db/migrate.sh up
+	@DB_CONTAINER=$(PROJECT_NAME)-timescale ./scripts/db/migrate.sh up
 
 migrate-down: ## Rollback last database migration
 	@./scripts/db/migrate.sh down

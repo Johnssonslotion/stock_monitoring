@@ -28,32 +28,19 @@ class HistoryCollector:
         self.symbols = [] # List of {'symbol': '...', 'market': 'KR'|'US'}
 
     async def init_db(self):
-        """1분봉용 테이블 생성"""
+        """[ISSUE-036] 필수 테이블 존재 여부 검증 (DDL은 migrations/에서 관리)"""
         conn = await asyncpg.connect(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
         try:
-            # Create Table (OHLCV)
-            # Create Unique Index explicitly for UPSERT
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_minutes (
-                    time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    open DOUBLE PRECISION,
-                    high DOUBLE PRECISION,
-                    low DOUBLE PRECISION,
-                    close DOUBLE PRECISION,
-                    volume DOUBLE PRECISION,
-                    UNIQUE (time, symbol)
-                );
-            """)
+            exists = await conn.fetchval(
+                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'market_minutes')"
+            )
+            if not exists:
+                logger.error("CRITICAL: Table 'market_minutes' not found. Please run 'make migrate-up' first.")
+                raise RuntimeError("Database schema incomplete: table 'market_minutes' missing.")
             
-            try:
-                await conn.execute("SELECT create_hypertable('market_minutes', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'market_minutes' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg: {e}")
-                
+            logger.info("Database schema verification completed (SSoT: market_minutes).")
         finally:
             await conn.close()
 
