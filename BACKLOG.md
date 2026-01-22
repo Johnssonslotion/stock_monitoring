@@ -57,6 +57,9 @@
   - ✅ 004/005 마이그레이션과 실제 DB 동기화 (MATCH)
   - ✅ 수집기 모델 메타데이터 보강 및 Timestamp Pinning 적용
   - ✅ Constitution Law #10 (Time Determinism) 신설
+- [x] **ISSUE-028: Chart UI Controls Overlap (Stabilization)**
+  - ✅ Timeframe/Zoom 컨트롤 그룹화 및 오버랩 방지
+  - ✅ 환경 인디케이터(Local/Prod) 및 로딩 인디케이터 개선
 - [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)**
 - [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
 - [x] **ISSUE-004: Fix Market Open Failure (Kiwoom/KIS Protocol)**
@@ -91,7 +94,7 @@
 - [x] **ISSUE-024: Dockerfile Dependency Update (httpx)**
 - [x] **ISSUE-025: Recovery Script Implementation**
 - [x] **ISSUE-026: Kiwoom Orderbook Publishing Standardization**
-- [x] **ISSUE-028: Kiwoom Tick Publishing Standardization**
+- [x] **ISSUE-027: Kiwoom Tick Publishing Standardization**
 - [x] **ISSUE-029: Docker Volume Path Standardization**
 - [x] **ISSUE-030: Channel Naming Standardization**
 
@@ -138,6 +141,7 @@
 | [ISSUE-023](docs/issues/ISSUE-023.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
 | [ISSUE-024](docs/issues/ISSUE-024.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
 | [ISSUE-025](docs/issues/ISSUE-025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
+| [ISSUE-028](docs/issues/ISSUE-028.md) | Chart UI Controls Overlap | P1 | Done | Frontend |
 | [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
 | [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
 | [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
