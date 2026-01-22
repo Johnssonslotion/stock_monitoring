@@ -17,9 +17,10 @@ interface CandleChartProps {
     data: CandleData[];
     symbol: string;
     interval?: string;
+    onChartReady?: () => void;
 }
 
-export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval = '1d' }) => {
+export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval = '1d', onChartReady }) => {
     const [container, setContainer] = useState<HTMLElement | null>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const mainSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -155,6 +156,9 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
 
         chartRef.current = chart;
 
+        // Store chart instance on container for external access
+        (container as any).__chartInstance = chart;
+
         // Resize
         const resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
@@ -177,7 +181,11 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
 
     // Handle Logic
     useEffect(() => {
-        if (!chartRef.current || !data || data.length === 0) return;
+        if (!chartRef.current || !data || data.length === 0) {
+            // Even if no data, if we mounted, we are 'ready' to show "No Data"
+            if ((!data || data.length === 0) && onChartReady) onChartReady();
+            return;
+        }
 
         updateData(data);
 
@@ -187,6 +195,13 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
             handleViewportReset();
             prevSymbol.current = symbol;
             prevInterval.current = interval;
+        }
+
+        // Notify parent that chart rendering is done
+        if (onChartReady) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => onChartReady());
+            });
         }
 
     }, [data, symbol, interval]);
@@ -269,15 +284,8 @@ export const CandleChart: React.FC<CandleChartProps> = ({ data, symbol, interval
     }
 
     return (
-        <div className="w-full h-full min-h-[300px] relative group flex-1 flex flex-col">
+        <div className="w-full h-full min-h-[300px] relative group flex-1 flex flex-col candlechart-container">
             <div ref={chartContainerRef} className="absolute inset-0 z-0" />
-
-            {/* Controls */}
-            <div className="absolute top-3 right-20 z-10 flex gap-1 opacity-100">
-                <button onClick={() => handleZoom('in')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Plus size={16} /></button>
-                <button onClick={() => handleZoom('out')} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><Minus size={16} /></button>
-                <button onClick={() => chartRef.current?.timeScale().fitContent()} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg"><RefreshCcw size={16} /></button>
-            </div>
         </div>
     );
 };
