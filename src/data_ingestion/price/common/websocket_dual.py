@@ -38,7 +38,7 @@ class DualWebSocketManager:
         self.active_markets = set()
         
         # Raw Logger (Shared)
-        self.raw_logger = RawWebSocketLogger(retention_hours=120)  # 5일 보존
+        self.raw_logger = RawWebSocketLogger(log_dir="data/raw/kis", retention_hours=120)  # 5일 보존
         
         # Current URLs (Separate endpoints for KIS)
         self.ws_url_tick: Optional[str] = None

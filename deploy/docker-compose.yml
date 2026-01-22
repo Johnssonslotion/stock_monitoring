@@ -42,6 +42,7 @@ services:
     volumes:
       - ../src:/app/src
       - ${BASE_PATH}/configs:/app/configs
+      - ${BASE_PATH}/data/raw/kis:/app/data/raw/kis
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
