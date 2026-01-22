@@ -1,9 +1,27 @@
-# ClaudeCode + OpenCode Integration Policy
+# [DRAFT] ClaudeCode + OpenCode Integration Policy
 
-**Version**: 1.0
-**Status**: Active
+**Version**: 0.1 (Draft)
+**Status**: ⚠️ DRAFT - PoC 미완료, 승인 전
 **Created**: 2026-01-22
 **Category**: Development Workflow
+
+---
+
+## ⚠️ 경고
+
+이 정책은 **검증되지 않은 초안**입니다.
+실제 PoC 테스트 및 검증 후 정식 승인 필요합니다.
+
+**승인 조건**:
+- [ ] OpenCode 설치 및 실행 성공
+- [ ] 간단한 작업 (1-2개 파일) 품질 검증
+- [ ] 토큰 절감 효과 실측
+- [ ] 보안 검토 (민감 정보 처리)
+- [ ] Council Review 통과
+
+**승인 후 이동 경로**: `docs/governance/claude_opencode_integration.md`
+
+---
 
 ---
 
