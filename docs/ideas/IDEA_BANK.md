@@ -15,6 +15,7 @@
 - **ID-hybrid-storage-tiering**: [DuckDB(Cold)와 TimescaleDB(Hot)의 하이브리드 저장 최적화](ID-hybrid-storage-tiering.md).
 - **ID-hybrid-db-architecture**: [하이브리드 DB 아키텍처 상세 설계](ID-hybrid-db-architecture.md).
 - **ID-timescale-validation**: [TimescaleDB 데이터 무결성 검증 전략](ID-timescale-validation.md).
+- **ID-sentinel-tagging**: [Sentinel 운영 이벤트 태깅 및 컨텍스트 주입 시스템](stock_monitoring/ID-sentinel-tagging.md).
 
 ### 📊 데이터 품질 및 정합성 (Data)
 - **ID-dual-provider-validation**: [KIS와 Kiwoom 데이터 교차 검증을 통한 무결성 확보](ID-hybrid-multi-vendor-validation.md).
