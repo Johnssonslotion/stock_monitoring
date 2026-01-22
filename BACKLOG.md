@@ -9,7 +9,6 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | **ISSUE-001: Virtual Investment Simulation Platform** | Developer, Data Scientist | **P1** | [/] | 가상 투자 백엔드 구현 |
-| **ISSUE-004: 마켓 오픈 실패 수정** | Developer | **P0** | [/] | Kiwoom NameError, KIS Protocol 수정 |
 | **ISSUE-014: 외부 모니터링 대시보드** | Developer + Architect | **P1** | [/] | A1 상태 모니터링 독립 API & UI |
 | **수집단(Collector) 독립화** | Developer | P1 | [/] | kis-service/kiwoom-service 컨테이너 분리 완료 |
 
@@ -23,6 +22,7 @@
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **ISSUE-019: Critical Bug Fixes** | Developer | - | (Placeholder) |
+| **ISSUE-033: TimescaleArchiver Schema Mismatch** | Developer | - | 데이터 적재 정지 |
 
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -52,6 +52,16 @@
 
 ## 3. 완료 (Done)
 
+### Latest (2026-01-21)
+- [x] **ISSUE-036: DB 스키마 정합성 복구 및 거버넌스(Law #10) 통합**
+  - ✅ 004/005 마이그레이션과 실제 DB 동기화 (MATCH)
+  - ✅ 수집기 모델 메타데이터 보강 및 Timestamp Pinning 적용
+  - ✅ Constitution Law #10 (Time Determinism) 신설
+- [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)**
+- [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
+- [x] **ISSUE-004: Fix Market Open Failure (Kiwoom/KIS Protocol)**
+- [x] **ISSUE-021: Critical KIS Auth Failure Remediation**
+
 ### Phase 1 Week 1 (2026-01-16)
 - [x] TimestampManager 유틸리티 구현 (12 tests)
 - [x] Collection Strategy YAML 설정 (3-Tier 분류)
@@ -68,6 +78,22 @@
 - [x] **ISSUE-017: Implement DuckDBArchiver (Hybrid Architecture)** (2026-01-19)
 - [x] **ISSUE-019: API E2E Test Environment Fix** (2026-01-19)
 - [x] **ISSUE-020: Dual Data Collection (70 Symbols)** (2026-01-19)
+- [x] **RFC-003 Enhancement: Environment Variable Standardization** (2026-01-20)
+  - ✅ `.env.schema.yaml`: Define required/optional variables
+  - ✅ `scripts/validate_env.py`: Automated validation
+  - ✅ `.env.template`: Base template for all environments
+  - ✅ Makefile integration: Auto-validation on `up-dev`/`up-prod`
+  - ✅ Security: Remove `.env.test` from Git tracking
+
+### Hotfix Batch (2026-01-20)
+- [x] **ISSUE-022: DuckDB Timestamp Format Fix**
+- [x] **ISSUE-023: TimescaleArchiver Channel Standardization**
+- [x] **ISSUE-024: Dockerfile Dependency Update (httpx)**
+- [x] **ISSUE-025: Recovery Script Implementation**
+- [x] **ISSUE-026: Kiwoom Orderbook Publishing Standardization**
+- [x] **ISSUE-028: Kiwoom Tick Publishing Standardization**
+- [x] **ISSUE-029: Docker Volume Path Standardization**
+- [x] **ISSUE-030: Channel Naming Standardization**
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
@@ -93,7 +119,7 @@
 | [ISSUE-001](docs/issues/ISSUE-001.md) | Virtual Investment Simulation Platform | P1 | In Progress | Developer |
 | [ISSUE-002](docs/issues/ISSUE-002.md) | Virtual Investment Platform - Frontend UI | P1 | Todo | Frontend Developer |
 | [ISSUE-003](docs/issues/ISSUE-003.md) | API Error Handling & Logging | P1 | Open | Developer |
-| [ISSUE-004](docs/issues/ISSUE-004.md) | Fix Market Open Failure | P0 | In Progress | Developer |
+| [ISSUE-004](docs/ARCHIVE/issues/ISSUE-004.md) | Fix Market Open Failure | P0 | Done | Developer |
 | [ISSUE-005](docs/issues/ISSUE-005.md) | 캔들 데이터 서비스 | P2 | Open | Backend |
 | [ISSUE-006](docs/issues/ISSUE-006.md) | 시장 섹터 서비스 | P2 | Open | Data Engineer |
 | [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Open | Backend |
@@ -107,8 +133,13 @@
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
 | [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
-| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Open | Developer |
-| [ISSUE-022](docs/issues/ISSUE-022_to_025.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
-| [ISSUE-023](docs/issues/ISSUE-022_to_025.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
-| [ISSUE-024](docs/issues/ISSUE-022_to_025.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
-| [ISSUE-025](docs/issues/ISSUE-022_to_025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
+| [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Done | Developer |
+| [ISSUE-022](docs/issues/ISSUE-022.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
+| [ISSUE-023](docs/issues/ISSUE-023.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
+| [ISSUE-024](docs/issues/ISSUE-024.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
+| [ISSUE-025](docs/issues/ISSUE-025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
+| [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
+| [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
+| [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
+| [ISSUE-034](docs/issues/ISSUE-034.md) | [Optimization] TimescaleDB Storage Efficiency | P1 | Open | Developer |
+| [ISSUE-036](docs/issues/ISSUE-036.md) | DB 통합 및 스키마 정합성 복구 | P0 | Done | Developer |

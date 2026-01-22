@@ -39,8 +39,9 @@ This workflow creates a comprehensive specification document following the "No S
      - **Dependencies**: External libs, services
      - **Constraints**: Performance, resource limits
 
-5. **Validate Completeness**
+5. **Validate Completeness (Triple-Lock)**
    - Check: Schema defined? (Swagger/OpenAPI/DDL)
+   - Check: **Migration SQL defined?** (for DB changes)
    - Check: Edge cases documented?
    - Check: Dependencies listed?
 

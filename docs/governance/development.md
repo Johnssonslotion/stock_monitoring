@@ -9,7 +9,8 @@
 1.  **동작 검증**: `pytest` 통과.
 2.  **정적 분석**: `flake8`, `black` 준수.
 3.  **문서화**: 변경된 로직에 대한 Docstring 및 `README` 업데이트.
-4.  **DB 마이그레이션**: 스키마 변경 시 `migrate.sh` 검증 및 SQL 파일 커밋 필수.
+4.  **Schema Triple-Lock**: 스키마 변경 시 **API Spec + Python Model + DB Migration SQL** 3종 세트 동시 커밋 및 검증 필수. (아카이버의 `init_db`에만 의존 금지)
+5.  **DB 마이그레이션**: `migrate.sh` 검증 필수.
 
 ### 1.3 멀티 디바이스 및 원격 근무 프로토콜 (Multi-Device Protocol) [v0.02+]
 **배경**: Mac(Apple Silicon), Linux(Server), Windows 등 이기종 환경에서의 동시 작업을 지원한다.
@@ -76,12 +77,31 @@
 - **Unit Tests**: `tests/unit/` (Fast, isolated)
 - **Integration Tests**: `tests/integration/` (DB/Redis required)
 
+### 2.3. 시간 처리 표준화 (Time Handling Standard)
+1.  **"No-Now" 원칙**: 비즈니스 로직(Service, Archiver) 내부에서 직접적인 `datetime.now()` 호출을 금지한다.
+2.  **Ingestion Gate Pinning**: 수집기 핸들러(진입점)에서 단 한 번 시간을 생성하고, 이를 하위 데이터 객체와 로직에 인자로 전달(Dependency Injection)한다.
+    -   *이유*: 네크워크 지연 분석 시 데이터 생성 시간과 수신 시간의 기준점을 일치시키기 위함.
+3.  **UTC First**: 모든 내부 시스템 시간은 UTC(또는 KST 고정 타임존)를 명시하여 로컬 서버 환경에 따른 지터를 방지한다.
+4.  **ISO 8601 준수**: 로그 및 데이터 전송 시에는 ISO 8601 형식을 사용한다.
+
+- **예시 (Bad)**:
+```python
+def process_data(data):
+    data.received_at = datetime.now() # 로직 중간에서 생성 (Bad)
+```
+- **예시 (Good)**:
+```python
+def on_receive(raw_data):
+    now = datetime.now() # 진입점에서 생성
+    process_data(raw_data, received_at=now) # 주입 (Good)
+```
+
 -   **Git**: Conventional Commits + **Strict Git Flow**.
     -   **Rule**: 모든 작업은 `develop`에서 파생된 독립적인 **Feature Branch**(`feat/...`, `fix/...`)에서 수행해야 한다.
     -   **Prohibited**: `develop` 브랜치에 직접 커밋하거나, 여러 피쳐를 하나의 브랜치에 섞는 행위(Mega-Commit)는 엄격히 금지된다.
     -   **Workflow**: `git checkout -b feat/new-feature` → Work → `git push` → Pull Request → `develop` 머지.
     -   **배포**: `develop` 머지 시 운영 서버(`oracle-a1:/workspace/stock_monitoring`)에 **자동 배포**됨.
-    -   **상세**: [배포 전략 문서](./deployment_strategy.md) 참조.
+    -   **상세**: [배포 전략 문서](deployment_strategy.md) 참조.
 
 ## 3. 디버깅 및 검증 전략 (Debugging & Validation Strategy)
 
@@ -147,11 +167,11 @@ if received_count == 0 and running_time > 300:  # 5분
 ## 4. 단일 진실 공급원 및 보고 의무 (SSoT & Reporting) [STRICT]
 **규칙**: 모든 주요 변경(Feature 완성, 버그 수정)은 다음 **"품질 보고서(Quality Report)"**를 포함하여 3대 문서에 동시 반영한다.
 
-1.  **[README.md](file:///home/ubuntu/workspace/stock_monitoring/README.md)**: 전체 시스템 가속도(Velocity) 및 Pillar 상태 업데이트.
-2.  **[master_roadmap.md](file:///home/ubuntu/workspace/stock_monitoring/docs/strategies/master_roadmap.md)**: DoD 달성 여부 및 다음 단계 연결.
-3.  **[test_registry.md](file:///home/ubuntu/workspace/stock_monitoring/docs/testing/test_registry.md)**: 품질 게이트(Tier 1~3) 통과 증명.
-4.  **[Experiment Registry](file:///home/ubuntu/workspace/stock_monitoring/experiments/README.md)**: 모든 개별 실험 및 시뮬레이션 결과 영구 기록.
-5.  **[Knowledge Base (INDEX)](file:///home/ubuntu/workspace/stock_monitoring/docs/governance/knowledge_base.md)**: 세션 persistence 보장을 위한 기술 분석 및 의사결정 이력 허브.
+1.  **[README.md](../README.md)**: 전체 시스템 가속도(Velocity) 및 Pillar 상태 업데이트.
+2.  **[master_roadmap.md](../strategy/master_roadmap.md)**: DoD 달성 여부 및 다음 단계 연결.
+3.  **[test_registry.md](../operations/testing/test_registry.md)**: 품질 게이트(Tier 1~3) 통과 증명.
+4.  **[Experiment Registry](../README.md)**: 모든 개별 실험 및 시뮬레이션 결과 영구 기록.
+5.  **[Knowledge Base (INDEX)](knowledge_base.md)**: 세션 persistence 보장을 위한 기술 분석 및 의사결정 이력 허브.
 
 **문서 동조화 프로토콜 (Sync Protocol)**:
 - AI는 사용자가 `@.ai-rules.md`를 언급하거나 '문서 동기화'를 요청할 경우, 위 3대 문서를 **전수 Read**하여 상호 참조 링크와 태스크 상태가 일치하는지 Audit 수행 필수.

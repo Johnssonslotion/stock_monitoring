@@ -1,9 +1,9 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: stock-redis
+    container_name: ${COMPOSE_PROJECT_NAME}-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -12,6 +12,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      default:
+        aliases:
+          - redis
+          - redis
 
   tick-archiver:
     build: ..
@@ -25,7 +30,7 @@ services:
     command: python -m src.data_ingestion.ticks.archiver
     restart: unless-stopped
     volumes:
-      - ../data:/app/data
+      - ${BASE_PATH}/data:/app/data
 
   # [RFC-007] KIS Service (Unified)
   kis-service:
@@ -36,6 +41,7 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
+      - ${BASE_PATH}/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -58,7 +64,8 @@ services:
     profiles: [ "collection", "real" ]
     volumes:
       - ../src:/app/src
-      - ../data/raw/kiwoom:/app/data/raw/kiwoom
+      - ${BASE_PATH}/data/raw/kiwoom:/app/data/raw/kiwoom
+      - ${BASE_PATH}/configs:/app/configs
     env_file:
       - ../${ENV_FILE:-.env.prod}
     depends_on:
@@ -73,7 +80,7 @@ services:
 
   timescaledb:
     image: timescale/timescaledb:latest-pg16
-    container_name: stock-timescale
+    container_name: ${COMPOSE_PROJECT_NAME}-timescale
     environment:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=postgres
@@ -84,7 +91,10 @@ services:
       - timescale-data:/var/lib/postgresql/data
     restart: unless-stopped
     networks:
-      - default
+      default:
+        aliases:
+          - timescaledb
+          - timescaledb
 
   # Archiver: TimescaleDB
   timescale-archiver:
@@ -94,9 +104,9 @@ services:
     container_name: timescale-archiver
     command: python -m src.data_ingestion.archiver.timescale_archiver
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -124,7 +134,7 @@ services:
       - ../${ENV_FILE:-.env}
     environment:
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -145,20 +155,21 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: api-server
+    container_name: ${COMPOSE_PROJECT_NAME}-api
     command: python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_NAME=${DB_NAME:-stockval}
       - API_AUTH_SECRET=${API_AUTH_SECRET:-super-secret-key}
       - PYTHONUNBUFFERED=1
+      - ENV_TYPE=${ENV_TYPE}
     ports:
-      - "8000:8000" # X-API-Key 인증으로 보안 유지
+      - "${API_PORT:-8000}:8000" # X-API-Key 인증으로 보안 유지
     depends_on:
       redis:
         condition: service_healthy
@@ -176,7 +187,7 @@ services:
     container_name: news-collector
     command: python -m src.data_ingestion.news.collector
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     depends_on:
@@ -194,7 +205,7 @@ services:
     container_name: news-archiver
     command: python -m src.data_ingestion.news.archiver
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     volumes:
@@ -215,9 +226,9 @@ services:
     env_file:
       - ../${ENV_FILE:-.env.prod}
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
@@ -241,7 +252,7 @@ services:
     container_name: sentinel-agent
     command: python -m src.monitoring.sentinel
     environment:
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - APP_ENV=${APP_ENV}
       - PYTHONUNBUFFERED=1
     depends_on:
@@ -269,18 +280,19 @@ services:
   # Dashboard UI (React + Vite) - NEW
   dashboard-ui:
     image: node:20-slim
-    container_name: dashboard-ui
+    container_name: ${COMPOSE_PROJECT_NAME}-ui
     working_dir: /app/src/web
     volumes:
       - ..:/app
     # dev 서버 실행 (host 0.0.0.0으로 외부 접근 허용)
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
-      - "5173:5173"
+      - "${WEB_PORT:-5173}:5173"
     depends_on:
       - api-server
     environment:
-      - VITE_API_PORT=${VITE_API_PORT:-8000}
+      - VITE_API_PORT=${API_PORT:-8000}
+      - VITE_ENV_TYPE=${ENV_TYPE}
     networks:
       - default
     profiles:
@@ -293,16 +305,21 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: recovery-worker
-    command: python scripts/recovery/validate_and_recover.py
+    command: sleep infinity
     env_file:
       - ../${ENV_FILE:-.env.prod}
+    volumes:
+      - ${BASE_PATH}/data:/app/data
+      - ${BASE_PATH}/configs:/app/configs
+      - ../src:/app/src
+      - ../scripts:/app/scripts
     environment:
-      - DB_HOST=stock-timescale
+      - DB_HOST=timescaledb
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=password
       - DB_NAME=${DB_NAME:-stockval}
-      - REDIS_URL=redis://stock-redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - timescaledb
     networks:
@@ -316,6 +333,42 @@ services:
           memory: 1G
     profiles:
       - real
+
+  # Verification Worker (Automated Quality Gate) [ISSUE-036 Extension]
+  verification-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: verification-worker
+    command: python -m src.verification.worker
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    environment:
+      - DB_HOST=timescaledb
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=${DB_NAME:-stockval}
+      - REDIS_URL=redis://redis:6379/1
+    volumes:
+      - ../src:/app/src
+      - ../configs:/app/configs
+      - ${BASE_PATH}/data:/app/data
+    depends_on:
+      - timescaledb
+      - redis
+    networks:
+      - default
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 1G
+    profiles:
+      - real
+      - verification
 
 volumes:
   redis-data:

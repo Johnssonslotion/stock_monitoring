@@ -1,0 +1,52 @@
+name: Post-Market Auto Merge
+
+on:
+  schedule:
+    # KST 15:40 = UTC 06:40 (Mon-Fri)
+    - cron: '40 6 * * 1-5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  merge-hotfix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge Hotfix Branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔍 Searching for PRs with label 'merge:post-market'..."
+          
+          # Find Open PRs with label 'merge:post-market'
+          prs=$(gh pr list --base develop --label "merge:post-market" --json number,headRefName --jq '.[]')
+          
+          if [ -z "$prs" ]; then
+            echo "✅ No scheduled PRs found. Exiting."
+            exit 0
+          fi
+          
+          echo "$prs" | while read pr; do
+            pr_number=$(echo "$pr" | jq -r .number)
+            branch_name=$(echo "$pr" | jq -r .headRefName)
+            
+            echo "🚀 Merging PR #$pr_number ($branch_name)..."
+            
+            # Merge Strategy: Squash or Merge (Defaulting to Merge for history)
+            gh pr merge "$pr_number" --merge --auto --delete-branch
+            
+            echo "✅ PR #$pr_number merged successfully."
+          done

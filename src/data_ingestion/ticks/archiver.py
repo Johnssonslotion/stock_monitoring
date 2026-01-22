@@ -76,22 +76,40 @@ class TickArchiver:
             data_to_insert = []
             for d in self.buffer:
                 # Redis message format might vary, standardize it
-                # Assuming data object from Pydantic model dump
                 symbol = d.get("symbol")
-                timestamp = d.get("timestamp") or d.get("dt") # Handle alias
-                price = d.get("price")
-                volume = d.get("volume")
+                raw_ts = d.get("timestamp") or d.get("dt")
+                
+                # Timestamp Normalization Logic
+                ts_obj = datetime.now()
+                if isinstance(raw_ts, (int, float)):
+                    # Check if milliseconds (usually > 10^10 for seconds since 1970 is 20th century, 
+                    # but KIS/Upbit timestamps are often ms ~ 1.6e12)
+                    # 3000-01-01 is about 3.2e10 (seconds), so anything larger is likely ms or us
+                    if raw_ts > 10000000000: # 10 billion - safe threshold for ms
+                         ts_obj = datetime.fromtimestamp(raw_ts / 1000.0)
+                    else:
+                         ts_obj = datetime.fromtimestamp(float(raw_ts))
+                elif isinstance(raw_ts, str):
+                    try:
+                        ts_obj = datetime.fromisoformat(raw_ts)
+                    except:
+                        ts_obj = datetime.now()
+                
+                # Use ISO string for DuckDB TIMESTAMP compatibility
+                timestamp = ts_obj.strftime('%Y-%m-%d %H:%M:%S.%f')
+                
+                price = float(d.get("price") or 0)
+                volume = int(float(d.get("volume") or 0))
                 source = d.get("source", "REALTIME")
-                execution_no = str(d.get("execution_no", "")) # execution_id?
+                execution_no = str(d.get("execution_no", ""))
                 
-                # Timestamp conversion if string
-                # DuckDB handles ISO strings well usually
-                
+                # [FIX] Explicit conversions for DuckDB (INTEGER -> TIMESTAMP error prevention)
+                # ISO format string is safest for DuckDB binding
                 data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
             
             self.conn.executemany("""
                 INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, CAST(? AS TIMESTAMP), ?, ?, ?, ?)
             """, data_to_insert)
             
             self.buffer.clear()
@@ -99,6 +117,9 @@ class TickArchiver:
             
         except Exception as e:
             logger.error(f"Failed to flush to DuckDB: {e}")
+            if data_to_insert:
+                logger.error(f"Sample Row: {data_to_insert[0]}")
+                logger.error(f"Types: {[type(x) for x in data_to_insert[0]]}")
 
     def merge_recovery_files(self):
         """
@@ -148,48 +169,55 @@ class TickArchiver:
 
     async def run(self):
         self.running = True
-        await self.connect_redis()
         
-        pubsub = self.redis_client.pubsub()
-        await pubsub.psubscribe("market:ticks", "tick.*") # Updated channel name
-        logger.info("Subscribed to market:ticks / tick.*")
+        while self.running:
+            try:
+                await self.connect_redis()
+                pubsub = self.redis_client.pubsub()
+                await pubsub.psubscribe("market:ticks", "tick:*", "ticker.*")
+                logger.info("✅ Subscribed to market:ticks / tick:* / ticker.*")
 
-        try:
-            while self.running:
-                # 1. Message Handling
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
-                
-                if message:
+                while self.running:
                     try:
-                        data = json.loads(message["data"])
-                        self.buffer.append(data)
-                    except: 
-                        pass
-                
-                now = datetime.now()
-                
-                # 2. Flush Check
-                time_diff = (now - self.last_flush_time).total_seconds()
-                if len(self.buffer) >= self.batch_size or time_diff >= self.flush_interval:
-                    await self.flush_buffer()
-                
-                # 3. Recovery Merge Check (Every 5 seconds)
-                merge_diff = (now - self.last_merge_check).total_seconds()
-                if merge_diff >= 5.0:
-                    # Run sync blocking IO in main loop? 
-                    # Merging is disk-heavy. Ideally thread pool, but DuckDB connection isn't thread-safe?
-                    # DuckDB connection IS thread-safe but we must be careful.
-                    # For simplicty in Python Asyncio: it will block the event loop.
-                    # Given low frequency of recovery (on-demand), blocking for 100-200ms is Acceptable.
-                    self.merge_recovery_files()
-                    self.last_merge_check = now
+                        message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                        
+                        if message:
+                            try:
+                                data = json.loads(message["data"])
+                                self.buffer.append(data)
+                            except Exception as e:
+                                logger.warning(f"Failed to parse message: {e}")
+                                continue
+                        
+                        now = datetime.now()
+                        
+                        # 2. Flush Check
+                        time_diff = (now - self.last_flush_time).total_seconds()
+                        if len(self.buffer) >= self.batch_size or time_diff >= self.flush_interval:
+                            await self.flush_buffer()
+                        
+                        # 3. Recovery Merge Check (Every 5 seconds)
+                        merge_diff = (now - self.last_merge_check).total_seconds()
+                        if merge_diff >= 5.0:
+                            self.merge_recovery_files()
+                            self.last_merge_check = now
+                        
+                        await asyncio.sleep(0.01)
                     
-                await asyncio.sleep(0.01)
-                
-        except Exception as e:
-            logger.error(f"Archiver Error: {e}")
-        finally:
-            self.conn.close()
+                    except redis.ConnectionError as e:
+                        logger.error(f"Redis Connection Lost: {e}. Reconnecting...")
+                        break # Inner loop break to reconnect
+                    except Exception as e:
+                        logger.error(f"Unexpected error in archiver loop: {e}")
+                        await asyncio.sleep(1)
+            
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis connection: {e}. Retrying in 5s...")
+                await asyncio.sleep(5)
+            finally:
+                if self.redis_client:
+                    await self.redis_client.close()
+                    logger.info("Redis connection closed.")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

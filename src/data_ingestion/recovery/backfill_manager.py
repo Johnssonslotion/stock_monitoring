@@ -78,6 +78,72 @@ class BackfillManager:
             logger.error(f"Failed to load symbols: {e}")
             return []
 
+    def detect_gaps(self, main_db_path: str = "data/ticks.duckdb", 
+                   target_date: str = None, 
+                   start_hour: int = 9, 
+                   end_hour: int = 15) -> List[Dict]:
+        """
+        [ISSUE-031] Detect missing tick data gaps by querying main DuckDB.
+        Returns list of missing minute ranges per symbol.
+        
+        Args:
+            main_db_path: Path to main DuckDB file
+            target_date: Date in YYYYMMDD format (default: today)
+            start_hour: Market start hour (default: 9)
+            end_hour: Market end hour (default: 15)
+        
+        Returns:
+            List[Dict]: [{"symbol": "005930", "missing_minutes": ["09:00", "09:01", ...]}, ...]
+        """
+        if not target_date:
+            target_date = datetime.now().strftime("%Y-%m-%d")
+        else:
+            # Convert YYYYMMDD to YYYY-MM-DD
+            target_date = f"{target_date[:4]}-{target_date[4:6]}-{target_date[6:8]}"
+        
+        try:
+            conn = duckdb.connect(main_db_path, read_only=True)
+            
+            gaps = []
+            for symbol in self.symbols:
+                # Query existing minutes for this symbol on target date
+                query = f"""
+                    SELECT DISTINCT 
+                        strftime(timestamp, '%H:%M') as minute
+                    FROM market_ticks
+                    WHERE symbol = '{symbol}'
+                    AND DATE(timestamp) = '{target_date}'
+                    ORDER BY minute
+                """
+                result = conn.execute(query).fetchall()
+                existing_minutes = set([row[0] for row in result])
+                
+                # Generate expected minutes (market hours)
+                expected_minutes = []
+                for hour in range(start_hour, end_hour + 1):
+                    for minute in range(60):
+                        if hour == 15 and minute > 30:  # Market closes at 15:30
+                            break
+                        expected_minutes.append(f"{hour:02d}:{minute:02d}")
+                
+                missing = [m for m in expected_minutes if m not in existing_minutes]
+                
+                if missing:
+                    gaps.append({
+                        "symbol": symbol,
+                        "date": target_date,
+                        "missing_minutes": missing,
+                        "total_missing": len(missing)
+                    })
+            
+            conn.close()
+            logger.info(f"🔍 Gap Detection: {len(gaps)} symbols have missing data")
+            return gaps
+            
+        except Exception as e:
+            logger.error(f"❌ Gap detection failed: {e}")
+            return []
+
     async def fetch_real_ticks(self, session: aiohttp.ClientSession, symbol: str, token: str):
         """
         Fetch TICK Data using 'inquire-time-itemconclusion' (TR: FHKST01010300)

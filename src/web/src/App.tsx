@@ -33,6 +33,9 @@ interface CandleData {
 }
 
 function App() {
+  // Environment Detection (ISSUE-032)
+  const envType = import.meta.env.VITE_ENV_TYPE || 'local';
+
   // Global State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analysis' | 'system' | 'virtual'>('dashboard');
   const [selectedSymbol, setSelectedSymbol] = useState('005930'); // Default: Samsung Electronics
@@ -295,6 +298,18 @@ function App() {
             {activeTab === 'analysis' && 'Professional analysis'}
             {activeTab === 'system' && 'System Health'}
             {activeTab === 'virtual' && 'Virtual Simulation'}
+
+            {/* Environment Badge (ISSUE-032) */}
+            <span className={clsx(
+              "ml-3 px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider",
+              envType === 'local' && "bg-green-500/20 text-green-400 border border-green-500/30",
+              envType === 'prod' && "bg-red-500/20 text-red-400 border border-red-500/30",
+              envType === 'backtest' && "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+            )}>
+              {envType === 'local' && '🟢 LOCAL'}
+              {envType === 'prod' && '🔴 PROD'}
+              {envType === 'backtest' && '🟡 BACKTEST'}
+            </span>
           </h1>
 
           {/* Controls */}

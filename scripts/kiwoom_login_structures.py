@@ -13,7 +13,7 @@ import aiohttp
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("Kiwoom")
 
-load_dotenv(".env.backtest")
+load_dotenv(".env.prod")
 
 KIWOOM_APP_KEY = os.getenv("KIWOOM_APP_KEY")
 KIWOOM_APP_SECRET = os.getenv("KIWOOM_APP_SECRET")
@@ -26,7 +26,7 @@ async def get_token():
             "appkey": KIWOOM_APP_KEY,
             "secretkey": KIWOOM_APP_SECRET
         }
-        headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        headers = {"Content-Type": "application/json; charset=UTF-8", "User-Agent": "Mozilla/5.0"}
         
         async with session.post(url, json=payload, headers=headers, ssl=False) as resp:
             data = await resp.json()

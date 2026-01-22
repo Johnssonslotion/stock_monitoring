@@ -142,8 +142,9 @@ async def main():
     approval_key = await auth_manager.get_approval_key()
     
     # 2. Collectors (Tick Only for Stability)
-    kr_tick = KRRealCollector()
-    us_tick = USRealCollector()
+    # Explicitly set config paths to avoid env var override conflicts
+    kr_tick = KRRealCollector(config_path="configs/kr_symbols.yaml")
+    us_tick = USRealCollector(config_path="configs/us_symbols.yaml")
     # kr_hoga = KRASPCollector()  # Disabled for single-socket stability
     # us_hoga = USASPCollector()
     
@@ -169,9 +170,17 @@ async def main():
     asyncio.create_task(schedule_key_refresh(manager))
     
     # 6. Run
-    # Default URLs (will be corrected by scheduler)
-    tick_url = f"{KIS_WS_URL}/HDFSCNT0"
-    orderbook_url = f"{KIS_WS_URL}/HDFSASP0"
+    # Determine initial market based on current time
+    now_kst = datetime.now(TZ_KST).time()
+    kr_start, kr_end = time(8, 30), time(16, 0)
+    
+    if check_time_cross_midnight(now_kst, kr_start, kr_end):
+        tick_url = f"{KIS_WS_URL}/H0STCNT0"
+        orderbook_url = f"{KIS_WS_URL}/H0STASP0"
+    else:
+        tick_url = f"{KIS_WS_URL}/HDFSCNT0"
+        orderbook_url = f"{KIS_WS_URL}/HDFSASP0"
+        
     await manager.run(tick_url, orderbook_url, approval_key)
 
 if __name__ == "__main__":

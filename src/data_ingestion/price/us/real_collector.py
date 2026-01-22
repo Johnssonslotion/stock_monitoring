@@ -7,6 +7,7 @@ import os
 import yaml
 import redis.asyncio as redis
 from datetime import datetime, timedelta
+from typing import Optional
 from src.core.schema import MarketData
 from src.data_ingestion.price.common import KISAuthManager
 
@@ -25,8 +26,9 @@ class USRealCollector(BaseCollector):
     TR_ID = "HDFSCNT0" # 실시간 미국주식 체결가 (Verified: HDFSCNT0 works with DNASAAPL)
     # Note: 200(Details), 100(Hoga). 300 is correct for Ticks.
     
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None):
         super().__init__(market="US", tr_id=self.TR_ID)
+        self.config_path = config_path or os.getenv("US_CONFIG_FILE", "configs/us_symbols.yaml")
     
     def get_channel(self) -> str:
         return "ticker.us"
@@ -38,10 +40,13 @@ class USRealCollector(BaseCollector):
         Returns:
             list: 종목 코드 리스트 (prefix 포함: NASAAPL, NYSSPY 등)
         """
-        config_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
-            CONFIG_FILE
-        )
+        if self.config_path.startswith('/'):
+            config_path = self.config_path
+        else:
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
+                self.config_path
+            )
         
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
