@@ -1,4 +1,4 @@
-# AI Rules v2.16 - The Constitution (Index)
+# AI Rules v2.17 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -53,7 +53,8 @@
 ## 5. Spec Verification Gate (자동 검증 체크리스트)
 AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야 하며, 가급적 **`/run-gap-analysis`** 워크플로우를 활용한다.
 
-0.  **Sync First (v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
+0.  **Governance Sync (No Review, No Work)**: 매 작업 시작 전 `development.md`, `ground_truth_policy.md`를 포함한 핵심 거버넌스 문서를 전수 Read했는가? 응답 상단에 검증된 문서 목록을 명시하라.
+0.5. **Sync First (v2.7)**: 문서(Issue/Backlog) 작업 전 반드시 `git pull` (또는 fetch)하여 최신 ID/규칙 상태를 확인했는가?
 1.  **Spec Existence**: 해당 기능/API에 대한 Spec 문서(`docs/specs/`)가 존재하는가?
 1.5.  **Issue-First Principle (v2.10)**: 
     - **모든 작업은 ISSUE로 시작**한다 (문제 정의).

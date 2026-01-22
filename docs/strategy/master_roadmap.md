@@ -15,8 +15,8 @@
 ## 🏛️ 4대 핵심 필러 (Strategic Pillars)
 
 ### Pillar 0: 거버넌스 및 스펙 표준화 (Governance & Spec) (Status: ✅ **COMPLETED** - 2026-01-17)
-- [x] **Pillar 0: Governance & Standards 강화** (Status: ✅ **COMPLETED** - 2026-01-17)
-    - [x] `.ai-rules.md`- [Core Constitution (v2.5)](../../.ai-rules.md)
+- [x] **Pillar 0: Governance & Standards 강화** (Status: ✅ **COMPLETED** - 2026-01-22)
+    - [x] `.ai-rules.md`- [Core Constitution (v2.17)](../../.ai-rules.md)
 - [Governance History](../governance/HISTORY.md)
 - [Observability Roadmap (New)](observability_roadmap.md)
     - [x] 10대 핵심 워크플로우 자동화 (`.agent/workflows/`)
@@ -34,6 +34,9 @@
   - **Mandatory Secret Management (IDEA-002)**: 모든 비밀 정보의 하드코딩 금지 및 환경 변수 강제화 (🆕 2026-01-19).
 - **Phase 3 (Audit)**: 주기적인 문서-코드 정합성 감사 (Gap Analysis). (✅ DONE)
   - **RFC Enforcement**: Single Socket 강제(RFC-001) 및 Strategy Spec 의무화(RFC-002) 적용. (✅ DONE)
+- **Phase 4 (Enforcement)**: 🆕 **2026-01-22** (v2.17)
+  - **No Review, No Work**: 작업 시작 전 `development.md` 등 핵심 거버넌스 필독 강제화 (ADR-010).
+  - **Ground Truth Binding**: 모든 데이터 관련 모듈에 REST API 참값 정책 적용 (RFC-009).
 
 ### Pillar 1: 인프라 안정성 (Dev/Prod 격리) [DONE]
 - **Phase 1**: `.env.dev` / `.env.prod` 설정을 통한 키 및 DB 경로 분리. (✅ DONE)

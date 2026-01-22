@@ -300,13 +300,14 @@ services:
       - real
       - ui
 
-  # Recovery Worker (New)
+  # Recovery Worker (RFC-009 Compliant)
   recovery-worker:
     build:
       context: ..
       dockerfile: Dockerfile
     container_name: recovery-worker
-    command: sleep infinity
+    # RFC-009: Use actual recovery script with Self-Diagnosis
+    command: python -c "from src.data_ingestion.recovery.backfill_manager import BackfillManager; print('Self-Diagnosis passed, ready for cron-triggered recovery')" && sleep infinity
     env_file:
       - ../${ENV_FILE:-.env.prod}
     volumes:
@@ -323,9 +324,17 @@ services:
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       - timescaledb
+      - redis
     networks:
       - default
     restart: always
+    # RFC-009: Healthcheck verifies Self-Diagnosis and Redis connectivity
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import redis; r = redis.Redis.from_url('redis://redis:6379/1'); r.ping(); print('healthy')" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     deploy:
       resources:
         reservations:

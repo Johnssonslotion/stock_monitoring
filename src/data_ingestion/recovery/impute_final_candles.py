@@ -13,6 +13,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("CandleImputer")
 
 class CandleImputer:
+    """
+    [RFC-009] Candle Imputation with Ground Truth Priority
+    
+    Priority Hierarchy:
+    1. REST_API_KIS / REST_API_KIWOOM (Ground Truth)
+    2. TICK_AGGREGATION_VERIFIED (Volume Check 통과)
+    3. TICK_AGGREGATION_UNVERIFIED (미검증)
+    """
     def __init__(self):
         self.db_url = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/stockval")
 
@@ -83,28 +91,36 @@ class CandleImputer:
                     final_c = log_c
                     source = "LOG_AGG"
                 else:
-                    # Case C: Both exist -> Compare Volume
+                    # Case C: Both exist -> RFC-009 Ground Truth Priority
+                    # Kiwoom REST API = Ground Truth (1순위)
+                    # Log Aggregation = Needs verification (2/3순위)
+                    
                     log_vol = log_c['volume']
                     kw_vol = kw_c['volume']
                     
+                    # Volume Check for verification
                     if kw_vol > 0:
                         diff_pct = abs(log_vol - kw_vol) / kw_vol
                     else:
                         diff_pct = 0 if log_vol == 0 else 1.0
-                        
-                    if diff_pct > 0.1: 
-                        # >10% Diff -> Trust Kiwoom (Assume Log Partial Loss)
-                        # UNLESS Kiwoom is much larger? 
-                        # Actually if Log > Kiwoom significantly, maybe Kiwoom is late? 
-                        # But typically Log is lossy. Let's trust Kiwoom for stability.
-                        final_c = kw_c
-                        source = "KIWOOM_IMPUTE"
-                    else:
-                        # Match -> Use Log (Tick Aggregation is strictly more precise for O/H/L timings)
-                        final_c = log_c
-                        source = "LOG_AGG"
+                    
+                    # RFC-009: REST API (Kiwoom) is ALWAYS Ground Truth
+                    # Use Kiwoom as final value, but mark Log as verified if within tolerance
+                    final_c = kw_c
+                    source = "REST_API_KIWOOM"  # Ground Truth
+                    
+                    # Log verification status for analytics (future use)
+                    if diff_pct <= 0.001:  # 0.1% tolerance
+                        logger.debug(f"[{symbol}] Tick aggregation VERIFIED (diff={diff_pct:.4f})")
                 
                 if final_c:
+                    # RFC-009: Map legacy source names to standard source_type
+                    source_type_map = {
+                        'REST_API_KIWOOM': 'REST_API_KIWOOM',
+                        'KIWOOM_IMPUTE': 'REST_API_KIWOOM',
+                        'LOG_AGG': 'TICK_AGGREGATION_UNVERIFIED'
+                    }
+                    
                     merged_candles.append({
                         'time': final_c['minute'],
                         'symbol': final_c['symbol'],
@@ -113,7 +129,8 @@ class CandleImputer:
                         'high': float(final_c['high']),
                         'low': float(final_c['low']),
                         'close': float(final_c['close']),
-                        'volume': float(final_c['volume'])
+                        'volume': float(final_c['volume']),
+                        'source_type': source_type_map.get(source, 'TICK_AGGREGATION_UNVERIFIED')
                     })
                     stats[source] += 1
                     stats['TOTAL'] += 1
@@ -122,21 +139,22 @@ class CandleImputer:
             logger.info(f"   💾 Upserting {len(merged_candles)} candles to 'market_candles'...")
             
             upsert_query = """
-                INSERT INTO market_candles (time, symbol, interval, open, high, low, close, volume)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                INSERT INTO market_candles (time, symbol, interval, open, high, low, close, volume, source_type)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 ON CONFLICT (time, symbol, interval) DO UPDATE SET
                     open = EXCLUDED.open,
                     high = EXCLUDED.high,
                     low = EXCLUDED.low,
                     close = EXCLUDED.close,
-                    volume = EXCLUDED.volume;
+                    volume = EXCLUDED.volume,
+                    source_type = EXCLUDED.source_type;
             """
             
             # Batch insert
             batch_size = 5000
             for i in range(0, len(merged_candles), batch_size):
                 batch = merged_candles[i:i+batch_size]
-                data = [(c['time'], c['symbol'], '1m', c['open'], c['high'], c['low'], c['close'], c['volume']) for c in batch]
+                data = [(c['time'], c['symbol'], '1m', c['open'], c['high'], c['low'], c['close'], c['volume'], c['source_type']) for c in batch]
                 await conn.executemany(upsert_query, data)
                 logger.info(f"      - Processed {i + len(batch)}/{len(merged_candles)}")
 

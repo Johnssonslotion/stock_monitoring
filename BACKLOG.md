@@ -52,13 +52,20 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-22)
+- [x] **RFC-009: Ground Truth & API Control Policy Implementation**
+  - ✅ `BackfillManager`: gatekeeper 통합 및 Self-Diagnosis 로직 추가
+  - ✅ `impute_final_candles.py`: Ground Truth 우선순위 로직 적용
+  - ✅ `docker-compose.yml`: recovery-worker Healthcheck 추가
+  - ✅ `smoke_test.sh`: CI Negative Test (Chaos-Env) 시나리오 추가
+  - ✅ DB Migration: `006_add_source_type_to_candles.sql` 작성
+  - ✅ 거버넌스: Constitution v2.17 (No Review, No Work) 신설
 - [x] **수집단(Collector) 독립화 [RFC-007]**
   - ✅ kis-service: KIS API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kis_main)
   - ✅ kiwoom-service: Kiwoom API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kiwoom_sub)
   - ✅ Profile 기반 격리 (collection/real) 및 리소스 제한 (512M~2G)
   - ✅ 환경별 자동 감지 (Mac=local, Linux=real) Makefile 통합
 
-### (2026-01-21)
+### Previous (2026-01-21)
 - [x] **ISSUE-036: DB 스키마 정합성 복구 및 거버넌스(Law #10) 통합**
   - ✅ 004/005 마이그레이션과 실제 DB 동기화 (MATCH)
   - ✅ 수집기 모델 메타데이터 보강 및 Timestamp Pinning 적용
