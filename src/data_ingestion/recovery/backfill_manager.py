@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.data_ingestion.price.common import KISAuthManager
+from src.api_gateway.rate_limiter import gatekeeper
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +38,22 @@ class BackfillManager:
         self.db_path = os.path.join(OUTPUT_DIR, self.db_filename)
         
         os.makedirs(OUTPUT_DIR, exist_ok=True)
+        self._self_diagnosis()  # RFC-009: Fail-Fast on missing config
         self._init_db()
+
+    def _self_diagnosis(self):
+        """
+        [RFC-009] Self-Diagnosis Entry: 필수 환경변수 검증.
+        실패 시 즉시 종료하여 좀비 프로세스 방지.
+        """
+        required_vars = ["KIS_APP_KEY", "KIS_APP_SECRET", "KIS_BASE_URL"]
+        missing = [var for var in required_vars if not os.getenv(var)]
+        if missing:
+            logger.critical(f"❌ SELF-DIAGNOSIS FAILED: Missing env vars: {missing}")
+            logger.critical("Exiting immediately to prevent zombie process.")
+            import sys
+            sys.exit(1)
+        logger.info("✅ Self-Diagnosis passed: All required env vars present.")
 
     def _init_db(self):
         conn = duckdb.connect(self.db_path)
@@ -180,6 +196,11 @@ class BackfillManager:
             }
             
             try:
+                # RFC-009: Use gatekeeper for centralized rate limiting
+                if not await gatekeeper.wait_acquire("KIS", timeout=10.0):
+                    logger.warning(f"[{symbol}] Rate limit timeout at {t_time}, skipping")
+                    continue
+                
                 async with session.get(url, headers=headers, params=params) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -195,13 +216,13 @@ class BackfillManager:
                                     'timestamp': timestamp,
                                     'price': float(item['stck_prpr']),
                                     'volume': int(item['cntg_vol']),
-                                    'source': 'KIS_REST_RECOVERY',
+                                    'source': 'REST_API_KIS',  # RFC-009: Ground Truth source_type
                                     'execution_no': f"{timestamp}_{item['cntg_vol']}" # Synthetic ID
                                 }
                                 all_ticks.append(tick)
                         
-                        # Rate Limit Prevention (KIS: ~20 TPS per key)
-                        await asyncio.sleep(0.06) 
+                        # RFC-009: Use centralized gatekeeper instead of local sleep
+                        # await asyncio.sleep(0.06)  # DEPRECATED
                         
                     else:
                         logger.warning(f"[{symbol}] Failed {t_time}: HTTP {resp.status}")

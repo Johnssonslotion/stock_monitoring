@@ -16,10 +16,13 @@ logger = logging.getLogger("RecoveryOrchestrator")
 class RecoveryOrchestrator:
     """
     [ISSUE-031] Hybrid Recovery Orchestrator
+    [RFC-009] Ground Truth & API Control 준수
     
     Coordinates the two-phase recovery process:
     1. Log Recovery: Parse JSONL logs and insert into DuckDB
     2. Gap Analysis & REST Backfill: Detect remaining gaps and backfill via KIS API
+    
+    Note: REST API 호출은 BackfillManager를 통해 gatekeeper 경유 (RFC-009 준수)
     """
     
     def __init__(self, 
@@ -32,6 +35,7 @@ class RecoveryOrchestrator:
         
         # Managers
         self.log_manager = LogRecoveryManager(db_path=main_db_path, log_dir=log_dir)
+        # RFC-009: BackfillManager now includes Self-Diagnosis and gatekeeper integration
         self.backfill_manager = BackfillManager(target_symbols=symbols)
         
     async def run_hybrid_recovery(self, target_date: str):
