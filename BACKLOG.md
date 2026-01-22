@@ -59,6 +59,7 @@
   - ✅ `smoke_test.sh`: CI Negative Test (Chaos-Env) 시나리오 추가
   - ✅ DB Migration: `006_add_source_type_to_candles.sql` 작성
   - ✅ 거버넌스: Constitution v2.17 (No Review, No Work) 신설
+  - ✅ **Redis 물리적 분리**: `redis-gatekeeper` 전용 컨테이너 (Council 2차 결정)
 - [x] **수집단(Collector) 독립화 [RFC-007]**
   - ✅ kis-service: KIS API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kis_main)
   - ✅ kiwoom-service: Kiwoom API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kiwoom_sub)
