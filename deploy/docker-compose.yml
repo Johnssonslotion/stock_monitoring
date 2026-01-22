@@ -307,7 +307,7 @@ services:
       dockerfile: Dockerfile
     container_name: recovery-worker
     # RFC-009: Use actual recovery script with Self-Diagnosis
-    command: python -c "from src.data_ingestion.recovery.backfill_manager import BackfillManager; print('Self-Diagnosis passed, ready for cron-triggered recovery')" && sleep infinity
+    command: bash -c "python -c 'from src.data_ingestion.recovery.backfill_manager import BackfillManager; print(\"Self-Diagnosis passed, ready for cron-triggered recovery\")' && sleep infinity"
     env_file:
       - ../${ENV_FILE:-.env.prod}
     volumes:
