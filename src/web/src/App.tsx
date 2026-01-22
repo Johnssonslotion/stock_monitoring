@@ -43,7 +43,7 @@ function App() {
   // Dashboard Data State
   const [candles, setCandles] = useState<CandleData[]>([]);
   const [selectedInterval, setSelectedInterval] = useState<Timeframe>('1d');
-  const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [isLoading, setIsLoading] = useState(true); // Loading state (Default true for smooth transition)
   const [dataSource, setDataSource] = useState<'real' | 'mock' | 'partial'>('mock'); // Track data source
   const [dataGaps, setDataGaps] = useState<{ count: number, maxGapHours: number }>({ count: 0, maxGapHours: 0 }); // Track time gaps
   const [marketOpen, setMarketOpen] = useState<boolean>(true); // Track if market is currently open
@@ -197,8 +197,6 @@ function App() {
           const fallbackData = generateMockCandles(200, mockPrice, intervalSeconds);
 
           setCandles(fallbackData);
-        } finally {
-          setIsLoading(false);
         }
       };
 
@@ -383,41 +381,89 @@ function App() {
                         <span className="px-2 py-0.5 bg-blue-600/80 text-[10px] font-bold rounded-sm uppercase tracking-tighter shadow-lg shadow-blue-500/20 backdrop-blur-md">
                           {selectedName} ({selectedSymbol})
                         </span>
-                        <div className="flex gap-1 bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
-                          <span className="text-[10px] text-gray-400 font-medium uppercase">ANALYSIS</span>
-                          <div className="w-px h-3 bg-white/10 mx-0.5" />
-                          <span className="text-[10px] text-green-400 font-bold">LIVE</span>
+                        <div className="flex gap-2">
+                          <div className="flex gap-1 bg-black/40 px-2 py-0.5 rounded-sm backdrop-blur-sm border border-white/5">
+                            <span className="text-[10px] text-gray-400 font-medium uppercase">ANALYSIS</span>
+                            <div className="w-px h-3 bg-white/10 mx-0.5" />
+                            <span className="text-[10px] text-green-400 font-bold">LIVE</span>
+                          </div>
+                          <div className={clsx(
+                            "flex items-center gap-1 px-2 py-0.5 rounded-sm backdrop-blur-sm border",
+                            import.meta.env.DEV
+                              ? "bg-purple-500/20 border-purple-500/30 text-purple-300"
+                              : "bg-blue-500/20 border-blue-500/30 text-blue-300"
+                          )}>
+                            <span className="text-[10px] font-bold">
+                              {import.meta.env.DEV ? 'LOCAL API' : 'SERVER API'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Timeframe Selector */}
-                      <div className="absolute top-3 right-24 z-10">
+                      {/* Chart Controls Group (Timeframe + Zoom) */}
+                      <div className="absolute top-3 right-16 z-10 flex items-center gap-2">
                         <TimeframeSelector selected={selectedInterval} onChange={setSelectedInterval} />
+                        <div className="flex gap-1">
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) {
+                              const timeScale = chart.timeScale();
+                              const currentRange = timeScale.getVisibleLogicalRange();
+                              if (currentRange) {
+                                const range = currentRange.to - currentRange.from;
+                                const delta = range * 0.2;
+                                timeScale.setVisibleLogicalRange({ from: currentRange.from + delta, to: currentRange.to });
+                              }
+                            }
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Zoom In">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) {
+                              const timeScale = chart.timeScale();
+                              const currentRange = timeScale.getVisibleLogicalRange();
+                              if (currentRange) {
+                                const range = currentRange.to - currentRange.from;
+                                const delta = range * 0.2;
+                                timeScale.setVisibleLogicalRange({ from: currentRange.from - delta, to: currentRange.to });
+                              }
+                            }
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Zoom Out">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
+                          <button onClick={() => {
+                            const chart = (document.querySelector('.candlechart-container') as any)?.__chartInstance;
+                            if (chart) chart.timeScale().fitContent();
+                          }} className="p-1.5 bg-gray-800/80 hover:bg-gray-700 text-white rounded border border-white/10 shadow-lg" title="Reset Zoom">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Loading Indicator Overlay */}
-                      <AnimatePresence>
-                        {isLoading && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20"
-                          >
-                            <div className="flex flex-col items-center gap-3">
-                              <div className="relative w-12 h-12 text-blue-500">
-                                <Activity size={48} className="animate-pulse" />
-                              </div>
-                              <span className="text-xs text-gray-300 font-medium tracking-wide">
-                                Syncing {selectedInterval.toUpperCase()} Market Data...
-                              </span>
+                      {/* Loading Indicator Overlay - Simplified for Robustness */}
+                      {isLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm z-50">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="relative w-12 h-12 text-blue-500 animate-spin">
+                              <Activity size={48} />
                             </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                            <span className="text-sm text-gray-200 font-bold tracking-wide animate-pulse">
+                              LOADING MARKET DATA...
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
-                      <CandleChart data={candles} symbol={selectedSymbol} interval={selectedInterval} />
+                      <CandleChart
+                        data={candles}
+                        symbol={selectedSymbol}
+                        interval={selectedInterval}
+                        onChartReady={() => {
+                          console.log("✅ Chart Rendered - Hiding Loading Indicator");
+                          setIsLoading(false);
+                        }}
+                      />
                     </div>
                   </div>
 
