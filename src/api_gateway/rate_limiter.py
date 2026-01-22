@@ -9,12 +9,15 @@ class RedisRateLimiter:
     """
     Distributed Rate Limiter using Redis (Token Bucket Algorithm)
     Targeted for KIS/Kiwoom API Gateway.
+    
+    [Council 2차 결정] 물리적으로 분리된 redis-gatekeeper 컨테이너 사용
     """
-    def __init__(self, redis_url=None, db=1):
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/1")
-        # Ensure we use DB 1 as planned for isolation
-        if "/0" in self.redis_url:
-            self.redis_url = self.redis_url.replace("/0", f"/{db}")
+    def __init__(self, redis_url=None):
+        # Council 2차 결정: 물리적 분리를 위해 전용 REDIS_URL_GATEKEEPER 사용
+        self.redis_url = redis_url or os.getenv(
+            "REDIS_URL_GATEKEEPER", 
+            os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        )
         
         self.redis = None
         # {API_NAME: (Rate, Capacity)}

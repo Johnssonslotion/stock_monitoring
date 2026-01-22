@@ -16,7 +16,29 @@ services:
       default:
         aliases:
           - redis
-          - redis
+
+  # [Council 2차 결정] Redis Gatekeeper - Rate Limiter 전용 (물리적 분리)
+  redis-gatekeeper:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-redis-gatekeeper
+    ports:
+      - "${REDIS_GATEKEEPER_PORT:-6381}:6379"
+    volumes:
+      - redis-gatekeeper-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      default:
+        aliases:
+          - redis-gatekeeper
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   tick-archiver:
     build: ..
@@ -382,4 +404,7 @@ services:
 
 volumes:
   redis-data:
+  redis-gatekeeper-data:
   timescale-data:
+
+
