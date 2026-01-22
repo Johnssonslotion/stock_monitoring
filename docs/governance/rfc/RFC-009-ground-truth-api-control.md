@@ -244,7 +244,7 @@ if not acquired:
 - [x] Database Migration: `source_type` 컬럼 추가 (`006_add_source_type_to_candles.sql`) ✅ 2026-01-22
 
 ### Phase 3: 인프라 배포 (Week 2)
-- [ ] Redis 물리적 분리 (별도 컨테이너)
+- [x] Redis 물리적 분리 (별도 컨테이너 `redis-gatekeeper`) ✅ 2026-01-22
 - [ ] `GatewayWorker` 실제 구현 및 배포 (선택적)
 
 ### Phase 4: 검증 (Week 3)
