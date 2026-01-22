@@ -16,10 +16,11 @@
 - **ID-hybrid-db-architecture**: [하이브리드 DB 아키텍처 상세 설계](ID-hybrid-db-architecture.md).
 - **ID-timescale-validation**: [TimescaleDB 데이터 무결성 검증 전략](ID-timescale-validation.md).
 - **ID-sentinel-tagging**: [Sentinel 운영 이벤트 태깅 및 컨텍스트 주입 시스템](stock_monitoring/ID-sentinel-tagging.md).
-- **ID-ollama-slm-backend-assistant**: [OpenCode + Ollama 백엔드 자동화 어시스턴트](stock_monitoring/ID-ollama-slm-backend-assistant.md). 🌿 Sprouting
-  - ClaudeCode 보완 도구 (복잡한 작업 vs 반복 작업 역할 분담)
+- **ID-ollama-slm-backend-assistant**: [OpenCode + Ollama 백엔드 자동화 어시스턴트](claude/ID-ollama-slm-backend-assistant.md). 🌿 Sprouting
+  - ClaudeCode → OpenCode 오케스트레이션 패턴
   - 문서 자동 동기화, 컨테이너 모니터링, 코드 품질 개선
   - Tech: OpenCode CLI + Ollama qwen2.5-coder
+  - 관련 문서: [Orchestration](claude/ORCHESTRATION_EXAMPLES.md), [Protocol](claude/COMMUNICATION_PROTOCOL.md), [Async Pattern](claude/ASYNC_EXECUTION_PATTERN.md)
 
 ### 📊 데이터 품질 및 정합성 (Data)
 - **ID-dual-provider-validation**: [KIS와 Kiwoom 데이터 교차 검증을 통한 무결성 확보](ID-hybrid-multi-vendor-validation.md).
