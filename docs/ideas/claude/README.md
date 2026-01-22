@@ -4,6 +4,11 @@
 
 ---
 
+## ⚠️ 현재 상태: 아이디어 단계 (PoC 미완료)
+
+이 디렉토리의 모든 내용은 **검증되지 않은 아이디어**입니다.
+실제 구현 및 PoC 테스트 전까지 참고 자료로만 활용하세요.
+
 ## 📁 구조
 
 ```
@@ -13,7 +18,11 @@ docs/ideas/claude/
 ├── ORCHESTRATION_EXAMPLES.md (실전 예시)
 ├── COMMUNICATION_PROTOCOL.md (통신 프로토콜)
 ├── ASYNC_EXECUTION_PATTERN.md (비동기 패턴)
-└── HOOK_LIMITATIONS.md (Hook 제약사항)
+├── HOOK_LIMITATIONS.md (Hook 제약사항)
+├── WORKFLOW_DRAFT.md (Workflow 초안 - 구현 전)
+├── GOVERNANCE_DRAFT.md (거버넌스 정책 초안 - 승인 전)
+└── scripts/
+    └── opencode_watcher.sh (참고용 스크립트)
 ```
 
 ---
@@ -68,17 +77,12 @@ ClaudeCode Hook 제약 및 대안:
 
 ---
 
-## 🔗 관련 파일
+## 🔗 관련 파일 (모두 아이디어 단계)
 
-### 거버넌스
-- `docs/governance/claude_opencode_integration.md` - 공식 정책
-
-### Workflow (Skill)
-- `.agent/workflows/opencode-assist.md` - `/opencode-assist` 명령
-- `.claude/commands/opencode-assist.md` - Symlink
-
-### 스크립트
-- `scripts/opencode_watcher.sh` - 백그라운드 감시자
+### 초안 문서 (미구현)
+- `WORKFLOW_DRAFT.md` - Workflow 초안 (PoC 후 .agent/workflows/로 이동 예정)
+- `GOVERNANCE_DRAFT.md` - 거버넌스 정책 초안 (검증 후 승인 예정)
+- `scripts/opencode_watcher.sh` - 참고용 스크립트 (테스트 필요)
 
 ---
 
@@ -124,19 +128,28 @@ ClaudeCode: "100개 파일 완료. 검토하시겠습니까?"
 
 ## 🎯 다음 단계
 
-### Phase 1 (완료)
+### Phase 1 (완료) - 아이디어 단계
 - ✅ 아이디어 문서화
-- ✅ 통신 프로토콜 정의
-- ✅ 비동기 패턴 설계
-- ✅ Watcher 스크립트
-- ✅ Workflow (Skill) 추가
+- ✅ 통신 프로토콜 정의 (이론)
+- ✅ 비동기 패턴 설계 (이론)
+- ✅ Watcher 스크립트 작성 (미테스트)
+- ✅ Workflow 초안 작성 (미구현)
 
-### Phase 2 (예정)
-- [ ] Mac 로컬 PoC 테스트
-- [ ] 실제 프로젝트 파일로 검증
-- [ ] 성능 벤치마크 수집
+### Phase 2 (다음 단계) - PoC 필수
+- [ ] **권한 문제 해결** (~/.local/state/opencode)
+- [ ] **OpenCode 첫 실행 테스트**
+- [ ] **간단한 작업으로 검증** (1개 파일 docstring 추가)
+- [ ] **품질 평가** (생성 코드 검토)
+- [ ] **성능 측정** (실행 시간, 리소스 사용량)
+- [ ] **토큰 절감 확인** (실제 비용 비교)
 
-### Phase 3 (미래)
+### Phase 3 (PoC 성공 시) - 구현
+- [ ] Workflow를 .agent/workflows/로 이동
+- [ ] Skill 등록 (.claude/commands/)
+- [ ] 거버넌스 정책 승인
+- [ ] Watcher 스크립트 scripts/로 이동
+
+### Phase 4 (미래) - 확장
 - [ ] 서버 백엔드 OpenCode daemon
 - [ ] Redis Pub/Sub 통합
 - [ ] 대시보드 모니터링

@@ -1,8 +1,11 @@
 ---
+status: DRAFT (PoC 미완료)
 description: Delegate repetitive tasks to OpenCode (local LLM executor)
 ---
 
-# Workflow: OpenCode Assist
+# [DRAFT] Workflow: OpenCode Assist
+
+⚠️ **경고**: 이 워크플로우는 아직 구현되지 않았습니다. PoC 테스트 및 검증 후 `.agent/workflows/`로 이동 예정입니다.
 
 이 워크플로우는 ClaudeCode가 **OpenCode**(Ollama 기반 로컬 LLM)에 반복적인 작업을 위임하여 토큰 효율을 극대화하는 프로세스입니다.
 
