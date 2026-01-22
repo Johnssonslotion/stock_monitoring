@@ -21,7 +21,7 @@ fi
 if [ "$TARGET_ENV" == "production" ]; then
     # 0. Time Lock: MarketAwareGuard
     echo -e "⏳ Checking Market Status..."
-    if ! python -m src.utils.market_guard; then
+    if ! python3 -m src.utils.market_guard; then
         echo -e "${RED}❌ BLOCKING: Market is OPEN. Deployment is unsafe.${NC}"
         exit 1
     fi

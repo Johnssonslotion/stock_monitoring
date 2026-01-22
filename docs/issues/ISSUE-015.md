@@ -28,5 +28,5 @@
    - Sentinel 서비스와 연동하여 필요 시 즉시 복구(Hotfix) 또는 배치 복구 트리거.
 
 ## Related
-- Idea: [ID-data-recovery-auto-completion](../ideas/stock_backtest/ID-data-recovery-auto-completion.md)
+- Idea: [ID-data-recovery-auto-completion](../ARCHIVE/ideas/ID-data-recovery-auto-completion.md)
 - Backlog: `Failure Mode Auto Recovery` (P2)

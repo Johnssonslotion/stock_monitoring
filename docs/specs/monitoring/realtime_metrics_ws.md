@@ -100,5 +100,5 @@ WS /api/system/ws
 ---
 
 ## 7. 관련 RFC/Specs
-- [Observability Roadmap](../../strategies/observability_roadmap.md)
+- [Observability Roadmap](../../strategy/observability_roadmap.md)
 - [Backend Specification](../backend_specification.md)

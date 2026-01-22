@@ -4,6 +4,7 @@
 -   **DB**:
     -   **General**: 상시 구동되는 RDBMS 사용 지양 (SQLite/DuckDB 권장).
     -   **Time-Series**: **TimescaleDB (PostgreSQL)** 허용. (틱 데이터의 효율적 압축 및 SQL 질의 지원을 위함).
+    -   **Retention**: 상세 정책은 `docs/data_management_strategy.md` 참조.
 -   **Queue**: Kafka 금지 (Redis Pub/Sub 사용).
 -   **Log**: 파일 로깅은 최소화, 중요 에러만 기록.
 -   **Docker Resource** (Single Server Strategy):

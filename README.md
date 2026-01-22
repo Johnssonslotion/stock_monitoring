@@ -13,6 +13,7 @@
 - **Smart Storage**: TimescaleDB의 압축 및 Continuous Aggregation을 활용하여 저장 공간을 최적화합니다.
 - **High Performance**: 비동기(Async) 처리와 뱌치 인서트(Batch Insert)로 틱 단위 데이터를 유실 없이 처리합니다.
 - **Observability**: **Sentinel** 감시자가 24시간 데이터의 정합성과 시스템 상태를 체크합니다.
+- **Living Governance**: 모든 거버넌스 원칙은 실행 가능한 워크플로우(`@/command`)와 직접 바인딩되어 있습니다.
 
 ## 🏗️ 아키텍처 (Architecture)
 
@@ -51,7 +52,7 @@ graph TD
 - **Monitoring**: **Sentinel**이 24시간 자원 및 데이터 흐름 감시 (Dead Man's Switch + Real-time Alerts).
 - **Dashboard**: React 기반 웹 대시보드 (`port: 5173`) 및 FastAPI 백엔드 가동 중.
 - **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
-- **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](docs/BACKLOG.md) 참조)
+- **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](BACKLOG.md) 참조)
 
 ## 🧪 TDD 기반 무결성 보장
 
@@ -67,10 +68,12 @@ graph TD
 ### 실행 방법
 ```bash
 # 1. 환경 변수 설정
-cp .env.example .env
+# Local (Mac): cp .env.local.example .env.local
+# Production (Oracle Cloud): cp .env.prod.example .env.prod
+cp .env.template .env
 
-# 2. 서비스 실행 (Real-time Profile)
-docker compose -f deploy/docker-compose.yml --profile real up -d --build
+# 2. 서비스 실행 (Auto-detected by Makefile)
+make up
 
 # 3. 전체 테스트 실행 (검증)
 make test
@@ -175,7 +178,7 @@ make test
 ### 📖 빠른 참조 (Quick Reference)
 
 | 상황 | 문서 |
-|------|------|
+|------|------
 | 🔴 프로덕션 장애 | [Data Collection Runbook](docs/runbooks/data_collection_recovery.md) |
 | 🚀 코드 배포 | [Deployment Checklist](docs/deployment/CHECKLIST.md) |
 | 📊 모니터링 구현 | [Monitoring Requirements](docs/infrastructure/monitoring_requirements.md) |
@@ -183,12 +186,10 @@ make test
 | 🏛️ 아키텍처 이해 | [UI Design Master](docs/ui_design_master.md) |
 | 👥 의사결정 방식 | [Personas & Council](docs/governance/personas.md) |
 
-## 📡 현재 시스템 상태 (As of 2026-01-15)
-- **Phase 1: Infrastructure** ✅ [Completed]
-- **Phase 2: Data Pipeline** ✅ [Completed] (Tick/News/Orderbook)
-- **Phase 3: Monitoring** ✅ [Completed] (Sentinel Deadman's Switch)
-- **Phase 4: Optimization** ✅ [Completed] (TimescaleDB Hypertable)
-- **Phase 5: Safety** ✅ [Completed] (Environment Separation)
+## 📡 현재 시스템 상태 (As of 2026-01-21)
+- **Phase 1-5: Infrastructure, Pipeline, Monitoring, Optimization, Safety** ✅ [Completed]
 - **Phase 6: Verification** ✅ [Completed] (E2E Test & Data Rescue)
 - **Phase 7: Strategy & Experimentation** ✅ [Completed] (Isolated Backtest Infrastructure)
-- **Phase 8: Intelligence** 🚧 [Planned] (SLM Log Analysis)
+- **Phase 8: Intelligence** 🚧 [In Progress] (SDLC Automation & Gap Analysis Enhancements)
+- **🆕 Kiwoom Integration**: WebSocket + REST 하이브리드 수집 환경 구축 완료.
+- **🆕 Zero-Tolerance Guard**: 장 초반 데이터 유실 방지 로직 구현 중 (`ISSUE-035`).

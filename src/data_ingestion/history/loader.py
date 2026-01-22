@@ -114,26 +114,19 @@ class HistoryLoader:
                     raise Exception("KIS Token Init Failed")
 
     async def init_db(self):
+        """[ISSUE-036] 필수 테이블 존재 여부 검증 (DDL은 migrations/에서 관리)"""
         self.db_pool = await asyncpg.create_pool(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
         async with self.db_pool.acquire() as conn:
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_candles (
-                    time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    interval TEXT NOT NULL,
-                    open DOUBLE PRECISION,
-                    high DOUBLE PRECISION,
-                    low DOUBLE PRECISION,
-                    close DOUBLE PRECISION,
-                    volume DOUBLE PRECISION
-                );
-            """)
-            try:
-                await conn.execute("SELECT create_hypertable('market_candles', 'time', if_not_exists => TRUE);")
-            except Exception:
-                pass
+            exists = await conn.fetchval(
+                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'market_candles')"
+            )
+            if not exists:
+                logger.error("CRITICAL: Table 'market_candles' not found. Please run 'make migrate-up' first.")
+                raise RuntimeError("Database schema incomplete: table 'market_candles' missing.")
+            
+            logger.info("Database schema verification completed (SSoT: market_candles).")
 
     def load_targets(self):
         targets = []

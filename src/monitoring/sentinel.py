@@ -146,6 +146,90 @@ class Sentinel:
             except Exception as e:
                 logger.error(f"Failed to publish metrics: {e}")
 
+    async def monitor_ingestion_lag(self):
+        """
+        ISSUE-035: Monitor DB Ingestion Lag during market open (09:00-09:10 KST)
+        Compare Redis publish time vs DB ingestion success time
+        """
+        logger.info("🔍 ISSUE-035: Ingestion Lag Monitor Started...")
+        TZ_KST = pytz.timezone('Asia/Seoul')
+
+        while self.is_running:
+            await asyncio.sleep(1)  # Check every second during critical period
+
+            now_kst = datetime.now(TZ_KST)
+            current_time = now_kst.time()
+
+            # Only monitor during market open critical period (09:00-09:10)
+            market_open = time(9, 0)
+            critical_end = time(9, 10)
+
+            if not (market_open <= current_time <= critical_end):
+                # Outside critical period, sleep longer
+                await asyncio.sleep(30)
+                continue
+
+            try:
+                # Check last Redis publish time (from ticker data)
+                last_redis_time = None
+                for market in ['KR', 'US']:
+                    if market in self.last_arrival:
+                        last_redis_time = self.last_arrival[market]
+                        break
+
+                # Check last DB ingestion success time
+                last_db_success = await self.redis.get("archiver:last_db_success")
+
+                if last_redis_time and last_db_success:
+                    db_time = datetime.fromisoformat(last_db_success)
+                    lag_seconds = (last_redis_time - db_time).total_seconds()
+
+                    if lag_seconds > 15:  # 15 seconds threshold
+                        await self.alert(
+                            f"🚨 CRITICAL: DB Ingestion Lag Detected! Redis: {last_redis_time}, DB: {db_time}, Lag: {lag_seconds:.1f}s",
+                            "CRITICAL"
+                        )
+                        logger.error(f"⚠️  INGESTION LAG: {lag_seconds:.1f}s behind")
+                    else:
+                        logger.debug(f"✅ Ingestion lag OK: {lag_seconds:.1f}s")
+
+            except Exception as e:
+                logger.error(f"Ingestion lag monitor error: {e}")
+
+    async def monitor_redis(self):
+        """Monitor Redis (Memory, Clients, Performance)"""
+        logger.info("📡 Redis Health Monitor Started...")
+        while self.is_running:
+            if self.redis:
+                try:
+                    # Get REDIS INFO
+                    info = await self.redis.info()
+                    ts = datetime.now().isoformat()
+                    
+                    # Essential metrics for Rate Limiting stability
+                    metrics = [
+                        ("redis_used_memory", float(info.get('used_memory', 0))),
+                        ("redis_connected_clients", float(info.get('connected_clients', 0))),
+                        ("redis_ops_per_sec", float(info.get('instantaneous_ops_per_sec', 0))),
+                        # Calculate hit rate safely
+                        ("redis_hit_rate", float(info.get('keyspace_hits', 0)) / (max(1, float(info.get('keyspace_hits', 0)) + float(info.get('keyspace_misses', 0)))))
+                    ]
+                    
+                    for m_type, val in metrics:
+                        payload = {
+                            "timestamp": ts,
+                            "type": m_type,
+                            "value": val,
+                            "meta": {"status": "ok"}
+                        }
+                        await self.redis.publish("system.metrics", json.dumps(payload))
+                    
+                    logger.info(f"📊 Redis Health: MEM {info.get('used_memory_human')} | CLIENTS {info.get('connected_clients')} | OPS {info.get('instantaneous_ops_per_sec')}/s")
+                except Exception as e:
+                    logger.error(f"Redis Health Poll Error: {e}")
+            
+            await asyncio.sleep(60) # Every 1 minute for detailed health
+
     async def monitor_governance(self):
         """Monitor Governance Compliance (Based on Registry & Audit docs)"""
         logger.info("⚖️ Governance Monitor Started...")
@@ -242,8 +326,8 @@ class Sentinel:
                     
                     # Restart Logic (Only if gap > 300 to avoid flapping on short glitches)
                     if gap > 300:
-                        now_ts = datetime.now().timestamp()
-                        if not self.last_restart_time or (now_ts - self.last_restart_time > 1800):
+                        now = datetime.now()
+                        if not self.last_restart_time or (now - self.last_restart_time).total_seconds() > 1800:
                             logger.critical(f"RESTARTING CONTAINER due to silence...")
                             # In real production, call Docker API or Supervisor
                             # subprocess.run(["docker", "restart", "deploy-kis-service-1"]) 
@@ -323,6 +407,8 @@ class Sentinel:
         symbol = data.get('symbol', 'UNKNOWN')
         market = "US" if any(p in symbol for p in ["NYS", "NAS", "AMS"]) else "KR"
         self.last_arrival[f"{market}_ORDERBOOK"] = datetime.now()
+        # Also count as market heartbeat to avoid pre-market silence alerts
+        self.last_arrival[market] = datetime.now()
 
     async def run(self):
         self.redis = await redis.from_url(REDIS_URL, decode_responses=True)
@@ -336,12 +422,18 @@ class Sentinel:
         
         # Start heartbeat monitor
         asyncio.create_task(self.monitor_heartbeat())
-        
+
         # Start resource monitor
         asyncio.create_task(self.monitor_resources())
-        
+
         # Start governance monitor (Every 5 minutes)
         asyncio.create_task(self.monitor_governance())
+
+        # Start redis health monitor
+        asyncio.create_task(self.monitor_redis())
+
+        # ISSUE-035: Start ingestion lag monitor (Critical for market open)
+        asyncio.create_task(self.monitor_ingestion_lag())
         
         async for message in pubsub.listen():
             msg_type = message['type']

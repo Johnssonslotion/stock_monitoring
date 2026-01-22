@@ -7,7 +7,7 @@
 **Assignee**: Developer
 
 ## Problem Description
-To achieve the **Hybrid DB Architecture** defined in [RFC-008](../rfc/RFC-008-tick-completeness-qa.md), we need to implement `DuckDBArchiver`. This component will consume tick data from Redis and save it to a local DuckDB file in real-time batches, ensuring data persistence even if the main timeseries database fails.
+To achieve the **Hybrid DB Architecture** defined in [RFC-008](../governance/rfc/RFC-008-tick-completeness-qa.md), we need to implement `DuckDBArchiver`. This component will consume tick data from Redis and save it to a local DuckDB file in real-time batches, ensuring data persistence even if the main timeseries database fails.
 
 ## Acceptance Criteria
 - [ ] **Real-time Consumption**: Subscribe to `market:ticks` Redis channel.
@@ -26,4 +26,4 @@ To achieve the **Hybrid DB Architecture** defined in [RFC-008](../rfc/RFC-008-ti
 3. Register service in `docker-compose.yml` (or run as standalone process in `hybrid-service`).
 
 ## Related
-- RFC: [RFC-008](../rfc/RFC-008-tick-completeness-qa.md)
+- RFC: [RFC-008](../governance/rfc/RFC-008-tick-completeness-qa.md)

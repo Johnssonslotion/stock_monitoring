@@ -26,9 +26,10 @@ This workflow scans the codebase to identify gaps between implementation and doc
    - Flag missing specs
 
 3. **Verify Consistency**
-   - Compare spec interfaces with actual code signatures
-   - Check if DB schema matches migration files
-   - Validate API spec against actual endpoints
+   - **DB Schema vs Migration SQL (Critical)**: `migrations/` 폴더의 SSoT SQL 파일과 실제 DB 스키마(컬럼명, 타입, 제약조건)를 비교한다.
+     - 특히 `market_orderbook`과 같이 43컬럼 이상의 복잡한 테이블의 필드 누락 여부를 전수 체크한다.
+   - **Python Model vs Migration SQL**: Pydantic 모델 필드 구성과 SQL DDL의 일치 여부를 검토한다.
+   - **API Spec vs Migration SQL**: Swagger/OpenAPI 명세와 실제 DB 컬럼의 명칭 일치 여부를 검증한다.
    - **Check Strategy Alignment**:
      - Verify `docs/data_acquisition_strategy.md` reflects current API capabilities
      - Flag if new APIs (e.g., Recovery/Validation) are missing from Strategy

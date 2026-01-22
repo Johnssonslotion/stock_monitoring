@@ -29,114 +29,151 @@ class TimescaleArchiver:
         self.batch = []
         self.running = True
 
+    async def _record_db_success(self, count: int):
+        """
+        ISSUE-035: Record successful DB ingestion for monitoring
+        Updates Redis key with latest success timestamp and count
+        """
+        try:
+            now = datetime.now().isoformat()
+            await self.redis.set("archiver:last_db_success", now)
+            await self.redis.set("archiver:last_flush_count", count)
+            await self.redis.set("archiver:last_flush_time", now)
+        except Exception as e:
+            logger.warning(f"Failed to record DB success metric: {e}")
+
     async def init_db(self):
-        """틱 데이터용 하이퍼테이블(Hypertable) 초기화"""
+        """
+        [ISSUE-036 Revision] 
+        기존 하드코딩된 DDL을 제거하고 마이그레이션 도구(migrate.sh)를 통해 관리하도록 위임합니다.
+        여기서는 필수 테이블 존재 여부만 검증합니다.
+        """
         conn = await asyncpg.connect(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
         try:
-            # Create Table (Normal)
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS market_ticks (
-                    time TIMESTAMPTZ NOT NULL,
-                    symbol TEXT NOT NULL,
-                    price DOUBLE PRECISION NOT NULL,
-                    volume DOUBLE PRECISION NOT NULL,
-                    change DOUBLE PRECISION
-                );
-            """)
+            # 필수 테이블 존재 여부 확인 (SSoT: migrations/)
+            required_tables = ['market_ticks', 'market_orderbook', 'system_metrics']
+            for table in required_tables:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
+                    table
+                )
+                if not exists:
+                    logger.error(f"CRITICAL: Table '{table}' not found. Please run 'make migrate-up' first.")
+                    # 운영 환경에서는 즉시 중단하여 정합성 훼손 방지
+                    raise RuntimeError(f"Database schema incomplete: table '{table}' missing.")
             
-            # Convert to Hypertable (TimescaleDB unique function)
-            # If already hypertable, this might warn/error in some versions, but 'IF NOT EXISTS' logic is usually handled by create_hypertable's if_not_exists arg in newer versions or catching error
-            try:
-                await conn.execute("SELECT create_hypertable('market_ticks', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'market_ticks' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg: {e}")
-                
-            # Create system_metrics table
-            await conn.execute("""
-                CREATE TABLE IF NOT EXISTS system_metrics (
-                    time TIMESTAMPTZ NOT NULL,
-                    type TEXT NOT NULL,
-                    value DOUBLE PRECISION NOT NULL,
-                    meta JSONB
-                );
-            """)
-            try:
-                await conn.execute("SELECT create_hypertable('system_metrics', 'time', if_not_exists => TRUE);")
-                logger.info("Hypertable 'system_metrics' ensured.")
-            except Exception as e:
-                logger.warning(f"Hypertable creation msg (system_metrics): {e}")
-
+            logger.info("Database schema verification completed (SSoT: Migrations).")
         finally:
             await conn.close()
 
     async def start(self):
-        # 1. Connect to Resources
-        self.redis = await redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
-        # Create DB Pool
+        # 1. Initialize DB Pool
         self.db_pool = await asyncpg.create_pool(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
-        
         await self.init_db()
-        logger.info("TimescaleArchiver started. Connected to Redis & DB.")
+        logger.info("✅ Database pool initialized.")
 
+        # 2. Redis Connection Loop
+        while self.running:
+            try:
+                self.redis = await redis.from_url(REDIS_URL, encoding="utf-8", decode_responses=True)
+                await self.redis.ping()
+                logger.info(f"✅ Connected to Redis: {REDIS_URL}")
 
-        # 2. Subscribe to pattern (ticker.kr, ticker.us, orderbook.kr, orderbook.us, system.*)
-        pubsub = self.redis.pubsub()
-        await pubsub.psubscribe("ticker.*", "orderbook.*", "system.*")
-        logger.info("📡 Subscribed to: ticker.*, orderbook.*, system.*")
-        
-        # 3. Flush Task
-        asyncio.create_task(self.periodic_flush())
+                pubsub = self.redis.pubsub()
+                await pubsub.psubscribe("ticker.*", "tick:*", "orderbook.*", "system.*")
+                logger.info("📡 Subscribed to: ticker.*, tick:*, orderbook.*, system.*")
 
-        # 4. Listen Loop
-        logger.info("🔧 DEBUG: Entering listen loop...")
-        async for message in pubsub.listen():
-            msg_type = message["type"]
+                # Flush Task
+                flush_task = asyncio.create_task(self.periodic_flush())
 
-            
-            if msg_type == "pmessage":  # Pattern message
                 try:
-                    channel = message["channel"]
-                    data = json.loads(message["data"])
-                    
-                    if channel.startswith("ticker."):
-                        # Extract market from channel (ticker.kr -> KR, ticker.us -> US)
-                        market = channel.split('.')[-1].upper()
-                        
-                        # Ticks
-                        ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
-                        source = data.get('source', 'KIS')
-                        row = (ts, data['symbol'], source, float(data['price']), float(data.get('volume', 0)), float(data.get('change', 0)))
-                        self.batch.append(row)
-                        
-                        if len(self.batch) >= BATCH_SIZE:
-                            await self.flush()
-                    
-                    elif channel.startswith("orderbook."):
-                        await self.save_orderbook(data)
-                        
-                    elif channel == "system.metrics":
-                        await self.save_system_metrics(data)
-                        
+                    async for message in pubsub.listen():
+                        msg_type = message["type"]
+                        if msg_type == "pmessage":
+                            await self.handle_pmessage(message)
+                        elif msg_type == "message":
+                            await self.handle_message(message)
+                
+                except redis.ConnectionError as e:
+                    logger.error(f"Redis Connection Lost: {e}. Reconnecting...")
                 except Exception as e:
-                    logger.error(f"Parse/Queue Error (pattern): {e}")
+                    logger.error(f"Unexpected error in listen loop: {e}")
+                finally:
+                    flush_task.cancel()
+                    await self.redis.close()
+                    logger.info("Redis connection closed. Retrying in 5s...")
+                    await asyncio.sleep(5)
             
-            elif msg_type == "message":  # Direct message
-                try:
-                    channel = message["channel"]
-                    data = json.loads(message["data"])
-                    
-                    if channel == "market_orderbook":
-                        await self.save_orderbook(data)
-                    elif channel == "system.metrics": # Direct message fallback
-                        await self.save_system_metrics(data)
-                        
-                except Exception as e:
-                    logger.error(f"Parse/Queue Error (direct): {e}")
+            except Exception as e:
+                logger.error(f"Failed to connect to Redis: {e}. Retrying in 5s...")
+                await asyncio.sleep(5)
+
+    async def handle_pmessage(self, message):
+        try:
+            channel = message["channel"]
+            data = json.loads(message["data"])
+            
+            # Handle both ticker.* (KIS) and tick:* (Kiwoom/Standard)
+            if channel.startswith("ticker.") or channel.startswith("tick:"):
+                # Extract market
+                if channel.startswith("tick:"):
+                    try:
+                        market = channel.split(':')[1].upper()
+                    except:
+                        market = "KR"
+                else:
+                    market = channel.split('.')[-1].upper()
+                
+                # Ticks
+                ts = datetime.fromisoformat(data['timestamp']) if 'timestamp' in data else datetime.now()
+                source = data.get('source', 'KIS')
+                broker = data.get('broker')
+                broker_time = datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None
+                received_time = datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now()
+                seq_no = data.get('sequence_number')
+                
+                row = (
+                    ts, 
+                    data['symbol'], 
+                    float(data['price']), 
+                    float(data.get('volume', 0)), 
+                    float(data.get('change', 0)),
+                    broker,
+                    broker_time,
+                    received_time,
+                    seq_no,
+                    source
+                )
+                self.batch.append(row)
+                
+                if len(self.batch) >= BATCH_SIZE:
+                    await self.flush()
+            
+            elif channel.startswith("orderbook."):
+                await self.save_orderbook(data)
+                
+            elif channel == "system.metrics":
+                await self.save_system_metrics(data)
+                
+        except Exception as e:
+            logger.error(f"Parse/Queue Error (pattern): {e}")
+
+    async def handle_message(self, message):
+        try:
+            channel = message["channel"]
+            data = json.loads(message["data"])
+            
+            if channel == "market_orderbook":
+                await self.save_orderbook(data)
+            elif channel == "system.metrics": # Direct message fallback
+                await self.save_system_metrics(data)
+                
+        except Exception as e:
+            logger.error(f"Parse/Queue Error (direct): {e}")
 
     async def save_system_metrics(self, data):
         """시스템 메트릭 저장 (Generic)"""
@@ -154,15 +191,15 @@ class TimescaleArchiver:
                      if 'disk' in data:
                          rows.append((ts, 'disk', float(data['disk']), None))
                      
-                     await conn.executemany("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", rows)
+                     await conn.executemany("INSERT INTO system_metrics (time, metric_name, value, labels) VALUES ($1, $2, $3, $4)", rows)
                 
                 else:
                     # New Generic Format
                     m_type = data.get('type')
                     val = float(data.get('value'))
-                    meta = json.dumps(data.get('meta')) if data.get('meta') else None
+                    labels = json.dumps(data.get('meta')) if data.get('meta') else None
                     
-                    await conn.execute("INSERT INTO system_metrics (time, type, value, meta) VALUES ($1, $2, $3, $4)", ts, m_type, val, meta)
+                    await conn.execute("INSERT INTO system_metrics (time, metric_name, value, labels) VALUES ($1, $2, $3, $4)", ts, m_type, val, labels)
 
             except Exception as e:
                 logger.error(f"System Metric Save Error: {e}")
@@ -174,8 +211,16 @@ class TimescaleArchiver:
                 ts = datetime.fromisoformat(data['timestamp'])
                 source = data.get('source', 'KIS')
                 
-                # Base row: [time, symbol, source]
-                row = [ts, data['symbol'], source]
+                # Base row: [time, symbol, source, broker, broker_time, received_time, sequence_number]
+                row = [
+                    ts, 
+                    data['symbol'], 
+                    source,
+                    data.get('broker'),
+                    datetime.fromisoformat(data['broker_time']) if data.get('broker_time') else None,
+                    datetime.fromisoformat(data['received_time']) if data.get('received_time') else datetime.now(),
+                    data.get('sequence_number')
+                ]
                 
                 # Add Asks 1~10
                 asks = data.get('asks', [])
@@ -193,13 +238,13 @@ class TimescaleArchiver:
                     else:
                         row.extend([None, None])
 
-                # Total params: 3 + 20 + 20 = 43 params
-                # Generate placeholders $1..$43
+                # Total params: 7 + 20 + 20 = 47 params
+                # Generate placeholders $1..$47
                 placeholders = ",".join([f"${i+1}" for i in range(len(row))])
                 
                 query = f"""
                     INSERT INTO market_orderbook (
-                        time, symbol, source,
+                        time, symbol, source, broker, broker_time, received_time, sequence_number,
                         ask_price1, ask_vol1, ask_price2, ask_vol2, ask_price3, ask_vol3, ask_price4, ask_vol4, ask_price5, ask_vol5,
                         ask_price6, ask_vol6, ask_price7, ask_vol7, ask_price8, ask_vol8, ask_price9, ask_vol9, ask_price10, ask_vol10,
                         bid_price1, bid_vol1, bid_price2, bid_vol2, bid_price3, bid_vol3, bid_price4, bid_vol4, bid_price5, bid_vol5,
@@ -222,16 +267,20 @@ class TimescaleArchiver:
         """메모리 버퍼에 쌓인 틱 데이터를 DB에 벌크 인서트"""
         if not self.batch:
             return
-            
+
         async with self.db_pool.acquire() as conn:
             try:
                 # asyncpg copy_records_to_table is fast
                 await conn.copy_records_to_table(
                     'market_ticks',
                     records=self.batch,
-                    columns=['time', 'symbol', 'source', 'price', 'volume', 'change']
+                    columns=['time', 'symbol', 'price', 'volume', 'change', 'broker', 'broker_time', 'received_time', 'sequence_number', 'source']
                 )
                 logger.info(f"Flushed {len(self.batch)} ticks to TimescaleDB")
+
+                # ISSUE-035: Record successful DB ingestion
+                await self._record_db_success(len(self.batch))
+
                 self.batch = []
             except Exception as e:
                 logger.error(f"DB Flush Error: {e}")

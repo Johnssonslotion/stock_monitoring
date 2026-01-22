@@ -24,9 +24,10 @@ def archiver():
 @pytest.mark.asyncio
 async def test_flush_buffer(archiver):
     """버퍼에 데이터가 찼을 때 DuckDB에 저장이 잘 되는지 테스트"""
+    from datetime import datetime
     sample_ticks = [
-        {"source": "upbit", "symbol": "KRW-BTC", "timestamp": 100, "price": 100.0, "volume": 1.0, "side": "ask", "id": "1"},
-        {"source": "upbit", "symbol": "KRW-BTC", "timestamp": 200, "price": 101.0, "volume": 2.0, "side": "bid", "id": "2"}
+        {"source": "upbit", "symbol": "KRW-BTC", "timestamp": datetime.now(), "price": 100.0, "volume": 1.0, "side": "ask", "execution_no": "1"},
+        {"source": "upbit", "symbol": "KRW-BTC", "timestamp": datetime.now(), "price": 101.0, "volume": 2.0, "side": "bid", "execution_no": "2"}
     ]
     
     # 1. Fill Buffer
@@ -37,14 +38,15 @@ async def test_flush_buffer(archiver):
     
     # 3. Verify
     conn = duckdb.connect(TEST_DB_PATH)
-    result = conn.execute("SELECT * FROM ticks ORDER BY id").fetchall()
+    # Schema: symbol, timestamp, price, volume, source, execution_no, created_at
+    result = conn.execute("SELECT * FROM market_ticks ORDER BY execution_no").fetchall()
     conn.close()
     
-    # (source, symbol, timestamp, price, volume, side, id, ingested_at)
+    # (symbol, timestamp, price, volume, source, execution_no, created_at)
     assert len(result) == 2
-    assert result[0][1] == "KRW-BTC"
-    assert result[0][3] == 100.0 # Price
-    assert result[1][5] == "bid" # Side
+    assert result[0][0] == "KRW-BTC"   # symbol is col 0
+    assert result[0][2] == 100.0       # price is col 2
+    assert result[0][5] == "1"         # execution_no is col 5
     
     # Cleanup
     if os.path.exists(TEST_DB_PATH):
@@ -53,10 +55,11 @@ async def test_flush_buffer(archiver):
 def test_duckdb_schema(archiver):
     """테이블 스키마가 의도한 대로 생성되었는지 확인"""
     conn = duckdb.connect(TEST_DB_PATH)
-    columns = conn.execute("DESCRIBE ticks").fetchall()
+    columns = conn.execute("DESCRIBE market_ticks").fetchall()
     conn.close()
     
     col_names = [col[0] for col in columns]
     assert "source" in col_names
     assert "price" in col_names
-    assert "ingested_at" in col_names
+    assert "created_at" in col_names
+    assert "execution_no" in col_names

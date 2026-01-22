@@ -26,9 +26,7 @@ class KRASPCollector(BaseCollector):
         self.symbols = []
         logger.info("KIS Orderbook Collection Disabled (Strategy: Pure Role Separation)")
         return self.symbols
-        except Exception as e:
-            logger.error(f"Symbol Load Error: {e}")
-            return []
+
 
     def parse_tick(self, body_str: str):
         # 호가 파싱
@@ -58,3 +56,7 @@ class KRASPCollector(BaseCollector):
         except Exception as e:
             logger.error(f"KR ASP Parse Error: {e}")
             return None
+
+    def parse_orderbook(self, body_str: str):
+        """Test compatibility alias"""
+        return self.parse_tick(body_str)
