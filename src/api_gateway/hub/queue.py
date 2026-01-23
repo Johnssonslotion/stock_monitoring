@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 # Queue 키 정의
 NORMAL_QUEUE = "api:request:queue"
 PRIORITY_QUEUE = "api:priority:queue"
+RESPONSE_PREFIX = "api:response:"  # 결과 저장 키 prefix
+DEFAULT_RESPONSE_TTL = 3600  # 결과 TTL (1시간)
 
 
 class QueueManager:
@@ -148,3 +150,99 @@ class QueueManager:
             await self.redis.delete(NORMAL_QUEUE)
 
         logger.info("🗑️ Queue cleared")
+
+    # ========================================================================
+    # Response Storage (태스크 결과 저장/조회)
+    # ========================================================================
+
+    async def set_response(
+        self,
+        task_id: str,
+        response: dict,
+        ttl: int = DEFAULT_RESPONSE_TTL
+    ):
+        """
+        태스크 결과 저장
+
+        Args:
+            task_id: 태스크 ID
+            response: 결과 딕셔너리
+            ttl: TTL 초 (기본 1시간)
+        """
+        if self.redis is None:
+            await self.connect()
+
+        key = f"{RESPONSE_PREFIX}{task_id}"
+        response_json = json.dumps(response, default=str)
+        await self.redis.setex(key, ttl, response_json)
+
+        logger.debug(f"📝 Response saved: {task_id}")
+
+    async def get_response(
+        self,
+        task_id: str,
+        timeout: float = 30.0,
+        poll_interval: float = 0.1
+    ) -> Optional[dict]:
+        """
+        태스크 결과 대기 및 조회
+
+        Args:
+            task_id: 태스크 ID
+            timeout: 최대 대기 시간 (초)
+            poll_interval: 폴링 간격 (초)
+
+        Returns:
+            결과 딕셔너리 또는 None (타임아웃)
+        """
+        if self.redis is None:
+            await self.connect()
+
+        import asyncio
+        import time
+
+        key = f"{RESPONSE_PREFIX}{task_id}"
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            response_json = await self.redis.get(key)
+            if response_json:
+                try:
+                    response = json.loads(response_json)
+                    # 결과 삭제 (일회성)
+                    await self.redis.delete(key)
+                    logger.debug(f"📤 Response retrieved: {task_id}")
+                    return response
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ Failed to parse response: {e}")
+                    return None
+
+            await asyncio.sleep(poll_interval)
+
+        logger.warning(f"⏰ Response timeout: {task_id}")
+        return None
+
+    async def push_and_wait(
+        self,
+        task: dict,
+        timeout: float = 30.0
+    ) -> Optional[dict]:
+        """
+        태스크 푸시 후 결과 대기 (동기식 호출 패턴)
+
+        Args:
+            task: 태스크 딕셔너리 (task_id 필수)
+            timeout: 결과 대기 타임아웃
+
+        Returns:
+            결과 딕셔너리 또는 None
+        """
+        task_id = task.get("task_id")
+        if not task_id:
+            raise ValueError("task_id is required")
+
+        # 1. 태스크 푸시
+        await self.push(task)
+
+        # 2. 결과 대기
+        return await self.get_response(task_id, timeout=timeout)
