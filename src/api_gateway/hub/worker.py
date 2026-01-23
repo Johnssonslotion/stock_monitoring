@@ -264,7 +264,10 @@ class RestApiWorker:
 
 async def main():
     """엔트리포인트"""
-    worker = RestApiWorker()
+    enable_mock = os.getenv("ENABLE_MOCK", "true").lower() == "true"
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/15")
+    
+    worker = RestApiWorker(redis_url=redis_url, enable_mock=enable_mock)
 
     # Signal 핸들러 등록 (Graceful Shutdown)
     def signal_handler(sig, frame):

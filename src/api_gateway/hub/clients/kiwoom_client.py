@@ -45,8 +45,8 @@ class KiwoomClient(BaseAPIClient):
             base_url: Kiwoom API Base URL (환경변수 KIWOOM_API_URL 대체 가능)
             token_manager: TokenManager 인스턴스 (Redis SSoT)
         """
-        self.api_key = api_key or os.getenv("KIWOOM_API_KEY")
-        self.secret_key = secret_key or os.getenv("KIWOOM_SECRET_KEY")
+        self.api_key = api_key or os.getenv("KIWOOM_API_KEY") or os.getenv("KIWOOM_APP_KEY")
+        self.secret_key = secret_key or os.getenv("KIWOOM_SECRET_KEY") or os.getenv("KIWOOM_APP_SECRET")
 
         if not self.api_key or not self.secret_key:
             raise ValueError(
