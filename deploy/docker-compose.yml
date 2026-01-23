@@ -409,7 +409,7 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}-gateway-worker-mock
-    command: python -m src.api_gateway.hub.worker
+    command: python -m src.api_gateway.hub
     environment:
       - REDIS_URL=redis://redis:6379/15
       - ENABLE_MOCK=true
