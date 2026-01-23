@@ -152,6 +152,10 @@
 | HUB-W-01 | `test_worker_initialization` | `tests/unit/test_api_hub_worker.py` | RestApiWorker 기본 초기화 및 Mock 모드 검증 | 1 | ✅ Pass (6/6) |
 | HUB-W-02 | `test_mock_client_execute` | `tests/unit/test_api_hub_worker.py` | MockClient API 실행 및 응답 검증 | 1 | ✅ Pass |
 | HUB-W-03 | `test_worker_run_and_stop` | `tests/unit/test_api_hub_worker.py` | Worker 이벤트 루프 및 정상 종료 검증 | 1 | ✅ Pass |
+| HUB-INT-01 ⭐ | `test_full_api_hub_flow_integration` | `tests/integration/test_api_hub_v2_integration.py` | Queue → Worker → Dispatcher → MockClient 전체 플로우 | 1 | ✅ Pass (4/4) |
+| HUB-INT-02 | `test_priority_queue_precedence` | `tests/integration/test_api_hub_v2_integration.py` | Priority Queue 우선 처리 검증 | 1 | ✅ Pass |
+| HUB-INT-03 | `test_worker_graceful_shutdown` | `tests/integration/test_api_hub_v2_integration.py` | Worker Graceful Shutdown 검증 | 1 | ✅ Pass |
+| HUB-INT-04 | `test_mock_client_both_providers` | `tests/integration/test_api_hub_v2_integration.py` | KIS/KIWOOM MockClient 양쪽 검증 | 1 | ✅ Pass |
 
 ### 8.4 Rate Limiter & Token
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
