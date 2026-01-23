@@ -11,7 +11,11 @@ from pathlib import Path
 from src.data_ingestion.price.kr.kiwoom_ws import KiwoomWSCollector
 
 # Logging Setup
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z'
+)
 logger = logging.getLogger("Kiwoom-Service")
 
 # Environment Variables

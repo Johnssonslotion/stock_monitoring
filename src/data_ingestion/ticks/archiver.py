@@ -65,59 +65,60 @@ class TickArchiver:
         self.redis_client = redis.from_url(self.redis_url, encoding="utf-8", decode_responses=True)
         await self.redis_client.ping()
 
+    def _prepare_data_for_insert(self) -> List[tuple]:
+        """버퍼 데이터를 DuckDB INSERT용 튜플 리스트로 변환 (동기)"""
+        data_to_insert = []
+        for d in self.buffer:
+            symbol = d.get("symbol")
+            raw_ts = d.get("timestamp") or d.get("dt")
+
+            # Timestamp Normalization Logic
+            ts_obj = datetime.now()
+            if isinstance(raw_ts, (int, float)):
+                if raw_ts > 10000000000:
+                    ts_obj = datetime.fromtimestamp(raw_ts / 1000.0)
+                else:
+                    ts_obj = datetime.fromtimestamp(float(raw_ts))
+            elif isinstance(raw_ts, str):
+                try:
+                    ts_obj = datetime.fromisoformat(raw_ts)
+                except:
+                    ts_obj = datetime.now()
+
+            timestamp = ts_obj.strftime('%Y-%m-%d %H:%M:%S.%f')
+            price = float(d.get("price") or 0)
+            volume = int(float(d.get("volume") or 0))
+            source = d.get("source", "REALTIME")
+            execution_no = str(d.get("execution_no", ""))
+
+            data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
+        return data_to_insert
+
+    def _sync_flush_to_db(self, data_to_insert: List[tuple]):
+        """DuckDB에 동기적으로 데이터 삽입 (to_thread에서 호출)"""
+        self.conn.executemany("""
+            INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
+            VALUES (?, CAST(? AS TIMESTAMP), ?, ?, ?, ?)
+        """, data_to_insert)
+
     async def flush_buffer(self):
-        """버퍼에 있는 데이터를 DuckDB에 저장"""
+        """버퍼에 있는 데이터를 DuckDB에 저장 (비동기 - 블로킹 해제)"""
         if not self.buffer:
             return
 
         try:
-            # Buffer -> List of Tuples
-            # Schema: symbol, timestamp, price, volume, source, execution_no
-            data_to_insert = []
-            for d in self.buffer:
-                # Redis message format might vary, standardize it
-                symbol = d.get("symbol")
-                raw_ts = d.get("timestamp") or d.get("dt")
-                
-                # Timestamp Normalization Logic
-                ts_obj = datetime.now()
-                if isinstance(raw_ts, (int, float)):
-                    # Check if milliseconds (usually > 10^10 for seconds since 1970 is 20th century, 
-                    # but KIS/Upbit timestamps are often ms ~ 1.6e12)
-                    # 3000-01-01 is about 3.2e10 (seconds), so anything larger is likely ms or us
-                    if raw_ts > 10000000000: # 10 billion - safe threshold for ms
-                         ts_obj = datetime.fromtimestamp(raw_ts / 1000.0)
-                    else:
-                         ts_obj = datetime.fromtimestamp(float(raw_ts))
-                elif isinstance(raw_ts, str):
-                    try:
-                        ts_obj = datetime.fromisoformat(raw_ts)
-                    except:
-                        ts_obj = datetime.now()
-                
-                # Use ISO string for DuckDB TIMESTAMP compatibility
-                timestamp = ts_obj.strftime('%Y-%m-%d %H:%M:%S.%f')
-                
-                price = float(d.get("price") or 0)
-                volume = int(float(d.get("volume") or 0))
-                source = d.get("source", "REALTIME")
-                execution_no = str(d.get("execution_no", ""))
-                
-                # [FIX] Explicit conversions for DuckDB (INTEGER -> TIMESTAMP error prevention)
-                # ISO format string is safest for DuckDB binding
-                data_to_insert.append((symbol, timestamp, price, volume, source, execution_no))
-            
-            self.conn.executemany("""
-                INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
-                VALUES (?, CAST(? AS TIMESTAMP), ?, ?, ?, ?)
-            """, data_to_insert)
-            
+            # 1. 데이터 준비 (빠름, 메인 스레드에서 처리)
+            data_to_insert = self._prepare_data_for_insert()
             self.buffer.clear()
+
+            # 2. DuckDB 쓰기를 별도 스레드에서 실행 (블로킹 해제)
+            await asyncio.to_thread(self._sync_flush_to_db, data_to_insert)
+
             self.last_flush_time = datetime.now()
-            
+
         except Exception as e:
             logger.error(f"Failed to flush to DuckDB: {e}")
-            if data_to_insert:
+            if 'data_to_insert' in locals() and data_to_insert:
                 logger.error(f"Sample Row: {data_to_insert[0]}")
                 logger.error(f"Types: {[type(x) for x in data_to_insert[0]]}")
 
@@ -197,9 +198,10 @@ class TickArchiver:
                             await self.flush_buffer()
                         
                         # 3. Recovery Merge Check (Every 5 seconds)
+                        # [ISSUE-039 FIX] 동기 I/O를 별도 스레드에서 실행하여 블로킹 해제
                         merge_diff = (now - self.last_merge_check).total_seconds()
                         if merge_diff >= 5.0:
-                            self.merge_recovery_files()
+                            await asyncio.to_thread(self.merge_recovery_files)
                             self.last_merge_check = now
                         
                         await asyncio.sleep(0.01)

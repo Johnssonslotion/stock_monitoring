@@ -1,6 +1,6 @@
 # ISSUE-039: [Bug] TickArchiver (DuckDB) Redis 연결 불안정 - 동기 블로킹 I/O 문제
 
-**Status**: Open
+**Status**: Done
 **Priority**: P1
 **Type**: bug
 **Created**: 2026-01-23
@@ -82,10 +82,10 @@ async def run(self):
 
 ## Acceptance Criteria
 
-- [ ] `flush_buffer()`가 이벤트 루프를 차단하지 않음
-- [ ] `merge_recovery_files()`가 이벤트 루프를 차단하지 않음
-- [ ] Redis 연결이 1시간 이상 안정적으로 유지됨
-- [ ] 틱 데이터 소비 속도 >= 생산 속도 (초당 117+ ticks)
+- [x] `flush_buffer()`가 이벤트 루프를 차단하지 않음 ✅ `asyncio.to_thread()` 적용
+- [x] `merge_recovery_files()`가 이벤트 루프를 차단하지 않음 ✅ `asyncio.to_thread()` 적용
+- [ ] Redis 연결이 1시간 이상 안정적으로 유지됨 (배포 후 검증 필요)
+- [ ] 틱 데이터 소비 속도 >= 생산 속도 (배포 후 검증 필요)
 
 ## 작업 일정
 

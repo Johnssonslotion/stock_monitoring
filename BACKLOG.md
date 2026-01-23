@@ -8,7 +8,7 @@
 
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISSUE-039: TickArchiver Redis 연결 불안정** | Developer | **P1** | [/] | 동기 블로킹 I/O 문제, 장 마감 후 수정 예정 |
+| *(현재 진행 중인 태스크 없음)* | - | - | - | - |
 
 ---
 
@@ -28,7 +28,7 @@
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
 | **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | - | 중앙 큐 기반 API 호출 전담 워커 |
-| **ISSUE-038: Sentinel & Global Logging Standard** | Developer | - | 로깅 표준화 |
+| ~~ISSUE-038: Sentinel & Global Logging Standard~~ | Developer | - | ✅ 완료 |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -48,6 +48,9 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-23)
+- [x] **ISSUE-039: TickArchiver Redis 연결 불안정 (P1)** - `asyncio.to_thread()` 적용, 블로킹 해제
+- [x] **ISSUE-038: Sentinel & Global Logging Standard (P1)** - 이미 적용 확인, development.md 가이드 추가
+- [x] **SSoT: Unified Backlog Management System (v2.18)** - `deferred_work.md` 통합 및 거버넌스 개정
 - [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)** - 494,505 ticks/1h 검증 완료
 
 ### 2026-01-22
@@ -103,7 +106,7 @@
 2. **ISSUE Tracking**: 모든 작업은 가급적 ISSUE 번호와 연계하여 추적성을 확보한다.
 3. **Commit with TaskID**: 모든 커밋은 가급적 백로그의 태스크 또는 ISSUE와 연계되도록 기술한다.
 4. **Review**: 주 단위 또는 마일스톤 종료 시 PM 페르소나가 백로그의 DoD를 점검한다.
-5. **Deferred Work**: RFC 승인 후 구현이 이연된 작업은 [Deferred Work Registry](docs/governance/deferred_work.md)에 별도 관리한다.
+5. **Deferred Work**: RFC 승인은 되었으나 구현이 이연된 작업은 하단의 `## 4. Deferred Work` 섹션에 통합 관리한다.
 
 ---
 
@@ -131,8 +134,21 @@
 | [ISSUE-034](docs/issues/ISSUE-034.md) | TimescaleDB Storage Efficiency | P1 | Open | Developer |
 | [ISSUE-035](docs/issues/ISSUE-035.md) | 장 초반 적재 보장 | P0 | Done | Developer |
 | [ISSUE-036](docs/issues/ISSUE-036.md) | DB 스키마 정합성 복구 | P0 | Done | Developer |
-| [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Todo | Developer |
-| [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | In Progress | Developer |
+| [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Done | Developer |
+| [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | Done | Developer |
+
+---
+
+## 4. 이연 작업 (Deferred Work)
+
+RFC/ADR 승인은 되었으나 특정 조건 충족 시 착수하기 위해 대기 중인 작업들입니다.
+
+| ID | 태스크 (Task Name) | 우선순위 | 트리거 조건 (Trigger) | 관련 RFC/ISSUE |
+| :--- | :--- | :--- | :--- | :--- |
+| **DEF-API-HUB-001** | Unified API Hub v2 (Centralized REST Worker) | **P1** | 2026-01-23 장 마감 후 또는 다음 스프린트 | [Spec](docs/specs/api_hub_specification.md) |
+| **DEF-003-001** | 전략 파라미터 Config 분리 | **P1** | 사용자 일정 여유 확보 시 | [RFC-003](docs/governance/decisions/RFC-003_config_management_standard.md) |
+| **DEF-034-001** | 틱 데이터 공백 복구 (Log + REST Hybrid) | **P1** | 시스템 안정화 후 일괄 복구 필요 시 | [RFC-008](docs/governance/rfc/RFC-008-tick-completeness-qa.md) |
+| **DEF-034-002** | TimescaleDB Post-Market 최적화 자동화 | **P2** | 장 마감 후 자동 스케줄링(Cron) 적용 시 | [ISSUE-034](docs/issues/ISSUE-034.md) |
 
 ---
 
