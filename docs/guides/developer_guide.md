@@ -17,7 +17,7 @@ API Hub v2 개발과 관련된 모든 가이드와 템플릿을 모아놓은 문
 - [Kiwoom TR ID Reference](../specs/api_reference/kiwoom_tr_id_reference.md) - 키움증권 API ID 목록
 
 ### 3. 구현 가이드
-- [Container Migration Guide](./container_migration_guide.md) - 컨테이너 통합 가이드
+- [Container Migration Guide](./api_hub_migration_guide.md) - 컨테이너 통합 가이드
 - [API Schema Discovery Guide](../operations/testing/api_schema_discovery_guide.md) - API 스키마 자동 수집
 
 ---

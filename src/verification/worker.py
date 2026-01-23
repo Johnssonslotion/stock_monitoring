@@ -466,7 +466,7 @@ class VerificationConsumer:
         try:
             kiwoom_tr_id = get_tr_id_for_use_case(UseCase.MINUTE_CANDLE_KIWOOM)
             kiwoom_result = await self.hub_client.execute(
-                provider="Kiwoom",
+                provider="KIWOOM",
                 tr_id=kiwoom_tr_id,
                 params={
                     "symbol": symbol,

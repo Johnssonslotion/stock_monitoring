@@ -13,6 +13,7 @@
 - **[Strategy Hub (INDEX)](strategy/master_roadmap.md)**: 로드맵 및 핵심 아키텍처 (Master Roadmap)
 - **[Grand Strategy](strategy/grand_strategy.md)** / **[Data Management](strategy/data_management_strategy.md)**
 - **[Portfolio Strategy](strategy/target_portfolio.md)** / **[Architecture](strategy/architecture_design.md)**
+- **[API Hub Migration Guide](guides/api_hub_migration_guide.md)**: 워커 컨테이너 통합 마이그레이션 가이드
 
 ## 📡 기술 명세서 (Specifications)
 - **[Specifications Hub (INDEX)](specs/INDEX.md)**: 전체 기술 명세 및 설계 문서 인덱스
@@ -24,6 +25,7 @@
 ## 🛠️ 운영 및 가이드 (Operations)
 - **[Testing Master](operations/testing/TESTING_MASTER_GUIDE.md)**: 테스트 실행 통합 매뉴얼
 - **[Registry](operations/testing/test_registry.md)** / **[FMEA](operations/testing/FAILURE_MODE_ANALYSIS.md)**
+- **[API Schema Discovery Guide](operations/testing/api_schema_discovery_guide.md)**: API 응답 스키마 자동 수집 및 문서화 가이드
 - **[Runbooks](operations/runbooks/)** / **[Infrastructure](operations/infrastructure/monitoring_requirements.md)**
 - **[Security](operations/security_guidelines.md)** / **[Deployment](operations/deployment/CHECKLIST.md)**
 
