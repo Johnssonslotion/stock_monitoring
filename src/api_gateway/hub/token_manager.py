@@ -65,8 +65,9 @@ class TokenManager:
         data = await self.redis.get(key)
 
         if not data:
-            logger.warning(f"⚠️ No token found for {provider}")
-            return None
+            logger.warning(f"⚠️ No token found for {provider}, triggering initial refresh")
+            # 토큰이 없으면 즉시 전역 락 기반 갱신 시도
+            return await self.refresh_token_with_lock(provider)
 
         token_info = json.loads(data)
 
@@ -390,8 +391,8 @@ class TokenManager:
 
     async def _refresh_kiwoom_token(self) -> str:
         """Kiwoom 토큰 갱신"""
-        api_key = os.getenv("KIWOOM_API_KEY")
-        secret_key = os.getenv("KIWOOM_SECRET_KEY")
+        api_key = os.getenv("KIWOOM_API_KEY") or os.getenv("KIWOOM_APP_KEY")
+        secret_key = os.getenv("KIWOOM_SECRET_KEY") or os.getenv("KIWOOM_APP_SECRET")
         base_url = os.getenv(
             "KIWOOM_API_URL",
             "https://openapi.kiwoom.com:9443"
