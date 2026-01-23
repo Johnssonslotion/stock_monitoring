@@ -52,7 +52,7 @@ ISSUE-040(Phase 2)에서 구현된 API Hub v2의 실제 연동 기능을 기반�
 2. **verification-worker** - 데이터 검증 및 복구
    - **현재 API 호출**:
      - KIS: 분봉 데이터 조회 (`FHKST01010400`)
-     - Kiwoom: 분봉 데이터 조회 (`KIS_CL_PBC_04020`)
+     - Kiwoom: 분봉 데이터 조회 (`ka10080`) _(Fixed: 2026-01-23, was `KIS_CL_PBC_04020`)_
      - KIS: 틱 데이터 복구 (`FHKST01010300`)
    - **마이그레이션**: API 호출을 API Hub Queue로 전환
 

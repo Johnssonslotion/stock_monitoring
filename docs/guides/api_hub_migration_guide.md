@@ -109,7 +109,7 @@ API_TR_MAPPING = {
         "tick_data": "FHKST01010300"
     },
     "Kiwoom": {
-        "minute_candle": "KIS_CL_PBC_04020"
+        "minute_candle": "ka10080"  # Fixed: 2026-01-23 (was KIS_CL_PBC_04020)
     }
 }
 
@@ -255,7 +255,7 @@ Use this checklist when migrating a new container:
 **TR IDs Used:**
 - `FHKST01010400` - KIS 국내주식 분봉 조회
 - `FHKST01010300` - KIS 국내주식 틱 조회
-- `KIS_CL_PBC_04020` - Kiwoom 분봉 조회
+- `ka10080` - Kiwoom 분봉 조회 (Fixed: 2026-01-23, was `KIS_CL_PBC_04020`)
 
 **Stats:** 288 insertions(+), 266 deletions(-)
 
@@ -291,7 +291,9 @@ Common TR IDs used in migrations:
 | `FHKST01010300` | KIS | 국내주식 틱 조회 | `/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion` |
 | `FHKST03010200` | KIS | 국내주식 분봉 이력 | `/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice` |
 | `HHDFS76950200` | KIS | 해외주식 분봉 이력 | `/uapi/overseas-price/v1/quotations/inquire-time-itemchartprice` |
-| `KIS_CL_PBC_04020` | Kiwoom | 분봉 조회 | `/openapi/kiwoomcommon/getCandleDatas` |
+| `ka10080` | Kiwoom | 분봉 조회 | `/api/dostk/chart` |
+
+**Note**: ~~`KIS_CL_PBC_04020`~~ was an incorrect TR ID, replaced with `ka10080` (2026-01-23).
 
 For full TR ID list, see: `configs/api_hub_v2.yaml`
 
