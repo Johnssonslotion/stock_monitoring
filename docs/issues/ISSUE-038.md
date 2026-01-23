@@ -23,6 +23,8 @@ logging.basicConfig(
 - **방지책**: `src.core.logger` 유틸리티를 신설하거나 `development.md`에 규정 명시.
 
 ## 5. 완료 조건 (DoD)
-- [ ] Sentinel 로그에 타임스탬프 표시 확인.
-- [ ] KIS/Kiwoom 서비스 로그 포맷 통일.
-- [ ] `development.md`에 로그 표준 가이드 추가.
+- [x] Sentinel 로그에 타임스탬프 표시 확인. ✅ 이미 적용됨
+- [x] KIS/Kiwoom 서비스 로그 포맷 통일. ✅ 이미 적용됨
+- [x] `development.md`에 로그 표준 가이드 추가. ✅ 섹션 2.4 신설
+
+**Status**: Done (2026-01-23)

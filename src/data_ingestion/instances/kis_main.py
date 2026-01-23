@@ -19,7 +19,11 @@ from src.data_ingestion.price.kr.asp_collector import KRASPCollector
 from src.data_ingestion.price.us.asp_collector import USASPCollector
 
 # Logging Setup
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z'
+)
 logger = logging.getLogger("KIS-Service")
 
 # Environment Variables

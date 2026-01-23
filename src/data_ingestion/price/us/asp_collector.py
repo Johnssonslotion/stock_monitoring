@@ -6,7 +6,11 @@ from datetime import datetime
 from src.core.schema import OrderbookData, OrderbookUnit
 from src.data_ingestion.price.common.websocket_base import BaseCollector
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z'
+)
 logger = logging.getLogger("USASPCollector")
 
 CONFIG_FILE = os.getenv("CONFIG_FILE", "configs/us_symbols.yaml")

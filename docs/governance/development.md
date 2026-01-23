@@ -72,14 +72,30 @@
 2.  **Ingestion Gate Pinning**: 진입점에서 생성 후 Dependency Injection.
 3.  **UTC First / ISO 8601 준수**.
 
-### 2.4 데이터 정합성 표준 (Data Integrity Standard) [NEW]
+### 2.4 로깅 표준 (Logging Standard) [ISSUE-038]
+모든 서비스 및 모듈은 다음 표준 로깅 포맷을 준수해야 한다.
+
+```python
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z'
+)
+logger = logging.getLogger("ServiceName")
+```
+
+-   **포맷**: `[타임스탬프] [레벨] [모듈명] 메시지`
+-   **시간 형식**: ISO 8601 (`%Y-%m-%dT%H:%M:%S%z`)
+-   **적용 대상**: `sentinel.py`, `kis_main.py`, `kiwoom_sub.py`, `archiver.py` 등 모든 진입점.
+
+### 2.5 데이터 정합성 표준 (Data Integrity Standard)
 1.  **Ground Truth Policy**: 시스템의 모든 데이터는 **[Ground Truth Policy](ground_truth_policy.md)**에 정의된 위계를 따른다.
     -   **REST API 분봉 = 최종 참값**.
     -   틱 집계 데이터는 검증(Volume Check) 완료 후에만 준참값으로 격상된다.
 2.  **Centralized API Control**: 모든 KIS/Kiwoom REST API 호출은 `RedisRateLimiter`(`gatekeeper`)를 경유해야 한다.
 3.  **Schema Compliance**: 모든 분봉 데이터는 `source_type` 컬럼을 포함하여 출처를 명시해야 한다.
 
-### 2.5 Git Flow
+### 2.6 Git Flow
 -   Conventional Commits + **Strict Git Flow**.
 -   모든 작업은 `feat/...`, `fix/...` 독립 브랜치에서 수행. Mega-Commit 금지.
 
