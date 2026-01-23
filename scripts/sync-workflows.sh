@@ -31,7 +31,7 @@ for workflow in ${WORKFLOWS_DIR}/*.md; do
     # Create symlink with relative path
     ln -sf "../../${workflow}" "${CLAUDE_COMMANDS_DIR}/${filename}"
     echo "  ✓ /${filename%.md}"
-    ((count++))
+    count=$((count + 1))
 done
 
 echo ""
