@@ -373,21 +373,19 @@ class TokenManager:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{base_url}/oauth2/tokenP",
+                headers={"Content-Type": "application/json; charset=UTF-8"},
                 json={
                     "grant_type": "client_credentials",
                     "appkey": app_key,
                     "appsecret": app_secret
                 },
-                timeout=10.0
+                timeout=20.0
             )
 
-            if response.status_code != 200:
-                logger.error(f"❌ KIS token refresh error ({response.status_code}): {response.text}")
-                response.raise_for_status()
-
             data = response.json()
-            if data.get("rt_cd") != "0":
-                raise Exception(f"KIS token refresh error: {data.get('msg1')}")
+            if response.status_code != 200 or "access_token" not in data:
+                logger.error(f"❌ KIS token refresh error ({response.status_code}): {data}")
+                response.raise_for_status()
 
             return data["access_token"]
 
@@ -408,22 +406,18 @@ class TokenManager:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{base_url}/oauth/token",
+                headers={"Content-Type": "application/json; charset=UTF-8"},
                 json={
                     "grant_type": "client_credentials",
                     "appkey": api_key,
                     "secretkey": secret_key
                 },
-                timeout=10.0
+                timeout=20.0
             )
 
-            if response.status_code != 200:
-                logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {response.text}")
-                response.raise_for_status()
-
             data = response.json()
-            if data.get("rsp_cd") != "0000":
-                raise Exception(
-                    f"Kiwoom token refresh error: {data.get('rsp_msg')}"
-                )
+            if response.status_code != 200 or "access_token" not in data:
+                logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {data}")
+                response.raise_for_status()
 
             return data["access_token"]
