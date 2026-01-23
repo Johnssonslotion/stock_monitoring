@@ -7,11 +7,11 @@ and provider-specific settings.
 
 Usage:
     from src.api_gateway.hub.config import hub_config
-    
+
     # Access config values
     redis_url = hub_config.get("worker.redis_url")
     enable_mock = hub_config.get("worker.enable_mock", default=True)
-    
+
     # Or use typed access
     worker_config = hub_config.config["api_hub"]["worker"]
 """
@@ -123,25 +123,25 @@ class ApiHubConfig(BaseModel):
 class HubConfig:
     """
     API Hub v2 Configuration Manager
-    
+
     Loads configuration from YAML file and provides typed access
     to configuration values with environment variable overrides.
     """
-    
+
     def __init__(self, config_path: Optional[str] = None):
         """
         Initialize configuration manager.
-        
+
         Args:
             config_path: Path to config file. If None, uses default path or env var.
         """
         if config_path is None:
             config_path = os.getenv("HUB_CONFIG_PATH", "configs/api_hub_v2.yaml")
-        
+
         self.config_path = Path(config_path)
         self.raw_config = self._load_yaml()
         self.config = self._apply_env_overrides(self.raw_config)
-        
+
         # Validate and create typed config
         try:
             self.typed_config = ApiHubConfig(**self.config["api_hub"])
@@ -152,19 +152,19 @@ class HubConfig:
             logger = logging.getLogger("HubConfig")
             logger.warning(f"Config validation failed: {e}. Using raw config.")
             self.typed_config = None
-    
+
     def _load_yaml(self) -> Dict[str, Any]:
         """Load YAML configuration file"""
         if not self.config_path.exists():
             # Return defaults if config file not found
             return self._get_defaults()
-        
+
         with open(self.config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
             if config is None:
                 return self._get_defaults()
             return config
-    
+
     def _get_defaults(self) -> Dict[str, Any]:
         """Get default configuration values"""
         return {
@@ -218,18 +218,18 @@ class HubConfig:
                 }
             }
         }
-    
+
     def _apply_env_overrides(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Apply environment variable overrides to configuration.
-        
+
         Environment variables take precedence over YAML values.
         """
         if "api_hub" not in config:
             config["api_hub"] = {}
-        
+
         api_hub = config["api_hub"]
-        
+
         # Worker overrides
         if "worker" in api_hub:
             worker = api_hub["worker"]
@@ -243,7 +243,7 @@ class HubConfig:
                 worker["timeout"] = float(os.environ["HUB_TIMEOUT"])
             if "LOG_LEVEL" in os.environ and "monitoring" in api_hub:
                 api_hub["monitoring"]["log_level"] = os.environ["LOG_LEVEL"]
-        
+
         # Provider URL overrides (inject from environment)
         if "providers" in api_hub:
             providers = api_hub["providers"]
@@ -251,38 +251,38 @@ class HubConfig:
                 providers["KIS"]["base_url"] = os.environ["KIS_BASE_URL"]
             if "KIWOOM" in providers and "KIWOOM_API_URL" in os.environ:
                 providers["KIWOOM"]["base_url"] = os.environ["KIWOOM_API_URL"]
-        
+
         # Rate limiter override
         if "rate_limiter" in api_hub and "RATE_LIMITER_URL" in os.environ:
             api_hub["rate_limiter"]["redis_url"] = os.environ["RATE_LIMITER_URL"]
-        
+
         return config
-    
+
     def get(self, key_path: str, default: Any = None) -> Any:
         """
         Get configuration value by dot notation path.
-        
+
         Args:
             key_path: Dot-separated path (e.g., "worker.redis_url")
             default: Default value if key not found
-            
+
         Returns:
             Configuration value or default
-            
+
         Examples:
             >>> hub_config.get("worker.redis_url")
             "redis://localhost:6379/15"
-            
+
             >>> hub_config.get("worker.enable_mock", default=True)
             True
         """
         # Always prepend "api_hub" if not present
         if not key_path.startswith("api_hub."):
             key_path = f"api_hub.{key_path}"
-        
+
         keys = key_path.split('.')
         value = self.config
-        
+
         for key in keys:
             if isinstance(value, dict):
                 value = value.get(key)
@@ -290,30 +290,30 @@ class HubConfig:
                     return default
             else:
                 return default
-        
+
         return value if value is not None else default
-    
+
     def get_provider_config(self, provider_name: str) -> Optional[Dict[str, Any]]:
         """
         Get configuration for a specific provider.
-        
+
         Args:
             provider_name: Provider name (e.g., "KIS", "KIWOOM")
-            
+
         Returns:
             Provider configuration dict or None if not found
         """
         providers = self.get("providers", {})
         return providers.get(provider_name)
-    
+
     def is_mock_enabled(self) -> bool:
         """Check if mock mode is enabled"""
         return self.get("worker.enable_mock", default=True)
-    
+
     def get_redis_url(self) -> str:
         """Get Redis URL for worker"""
         return self.get("worker.redis_url", default="redis://localhost:6379/15")
-    
+
     def get_rate_limiter_url(self) -> str:
         """Get Rate Limiter Redis URL"""
         return self.get("rate_limiter.redis_url", default="redis://redis-gatekeeper:6379/0")
