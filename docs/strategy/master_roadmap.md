@@ -15,12 +15,13 @@
 ## 🏛️ 4대 핵심 필러 (Strategic Pillars)
 
 ### Pillar 0: 거버넌스 및 스펙 표준화 (Governance & Spec) (Status: ✅ **COMPLETED** - 2026-01-17)
-- [x] **Pillar 0: Governance & Standards 강화** (Status: ✅ **COMPLETED** - 2026-01-22)
-    - [x] `.ai-rules.md`- [Core Constitution (v2.17)](../../.ai-rules.md)
+- [x] **Pillar 0: Governance & Standards 강화** (Status: ✅ **COMPLETED** - 2026-01-23)
+    - [x] `.ai-rules.md`- [Core Constitution (v2.18)](../../.ai-rules.md)
 - [Governance History](../governance/HISTORY.md)
 - [Observability Roadmap (New)](observability_roadmap.md)
     - [x] 10대 핵심 워크플로우 자동화 (`.agent/workflows/`)
-    - [x] 거버넌스 이연 작업 레지스트리 (`deferred_work.md`) 구축
+    - [x] 거버넌스 이연 작업 레지스트리 (`deferred_work.md`) 구축 (v2.6)
+    - [x] 통합 백로그 관리 체계 (`BACKLOG.md` SSoT) 수립 (v2.18)
     - [x] 아이디어 인큐베이터 (`docs/ideas/`) 및 브레인스토밍 체계화
 - **Goal**: "No Spec, No Code". 모든 개발 활동의 선행 지표로서 문서화 강제.
 - **Phase 1 (Validation)**: `ai-rules.md` 헌법 개정 및 LLM Self-Check 도입. (✅ DONE)
