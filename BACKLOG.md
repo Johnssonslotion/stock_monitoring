@@ -47,6 +47,7 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-23)
+- [x] **ISSUE-041: API Hub v2 Phase 3-B - Container Unification (P0)** - verification-worker & history-collector 완전 마이그레이션, 직접 API 호출 제거, 중앙화된 Token/Rate Limit 관리, 코드 감소 ~350 lines
 - [x] **ISSUE-040: API Hub v2 Phase 2 - Real API Integration (P0)** - TokenManager Redlock, BaseAPIClient 통합, Rate Limiter Ground Truth 준수, BackfillManager Queue 전환, 22 new tests, Gap Analysis PASS
 - [x] **ISSUE-037: Unified API Hub v2 - Phase 1 Mock Mode (P0)** - Worker 구현, 29/29 테스트 통과, Docker 배포 검증 완료
 - [x] **ISSUE-037-A: BaseAPIClient 설계 문서 (P0)** - Phase 2 선행 작업 1/5 완료 (300+ lines)
@@ -143,7 +144,7 @@
 | [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Done | Developer |
 | [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | Done | Developer |
 | [ISSUE-040](docs/issues/ISSUE-040.md) | **API Hub v2 Phase 2 - Real API Integration** | **P0** | Done | Developer |
-| [ISSUE-041](docs/issues/ISSUE-041.md) | **API Hub v2 Phase 3 - Production & Monitoring** | **P0** | **🔄 Active** | Developer |
+| [ISSUE-041](docs/issues/ISSUE-041.md) | **API Hub v2 Phase 3 - Production & Monitoring** | **P0** | **✅ Phase 3-B Done** | Developer |
 
 ---
 
