@@ -373,13 +373,16 @@ class TokenManager:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{base_url}/oauth2/tokenP",
-                headers={"Content-Type": "application/json; charset=UTF-8"},
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "APIHub/Manager"
+                },
                 json={
                     "grant_type": "client_credentials",
                     "appkey": app_key,
                     "appsecret": app_secret
                 },
-                timeout=20.0
+                timeout=15.0
             )
 
             data = response.json()
@@ -406,13 +409,16 @@ class TokenManager:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{base_url}/oauth/token",
-                headers={"Content-Type": "application/json; charset=UTF-8"},
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "APIHub/Manager"
+                },
                 json={
                     "grant_type": "client_credentials",
                     "appkey": api_key,
                     "secretkey": secret_key
                 },
-                timeout=20.0
+                timeout=15.0
             )
 
             data = response.json()
