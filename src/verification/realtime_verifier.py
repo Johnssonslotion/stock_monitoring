@@ -15,14 +15,11 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 
-import aiohttp
 import redis.asyncio as redis
 import asyncpg
 
-from src.api_gateway.rate_limiter import gatekeeper
-from src.verification.api_registry import (
-    api_registry, APIProvider, APIEndpointType
-)
+from src.api_gateway.hub.client import APIHubClient
+from src.api_gateway.hub.tr_registry import UseCase, get_tr_id_for_use_case
 from src.verification.scheduler import (
     VerificationSchedulerManager,
     VerificationSchedule,
@@ -30,7 +27,6 @@ from src.verification.scheduler import (
     MarketSchedule
 )
 from src.verification.worker import (
-    KiwoomAPIClient,
     VerificationProducer,
     VerificationConfig,
     VerificationResult,
@@ -97,11 +93,10 @@ class RealtimeVerifier:
         self.db_url = db_url or os.getenv("TIMESCALE_URL")
 
         self.redis: Optional[redis.Redis] = None
-        self.kiwoom_client = KiwoomAPIClient()
+        self.api_hub_client = APIHubClient()
         self.producer = VerificationProducer(redis_url)
         self.db_pool: Optional[asyncpg.Pool] = None
 
-        self._session: Optional[aiohttp.ClientSession] = None
         self._running = False
         self._stats = {
             "verified": 0,
@@ -113,8 +108,6 @@ class RealtimeVerifier:
     async def initialize(self):
         """초기화"""
         self.redis = await redis.from_url(self.redis_url, decode_responses=True)
-        self._session = aiohttp.ClientSession()
-        await gatekeeper.connect()
         await self.producer.connect()
         
         # DB Pool initialization
@@ -127,8 +120,6 @@ class RealtimeVerifier:
     async def cleanup(self):
         """정리"""
         self._running = False
-        if self._session:
-            await self._session.close()
         if self.redis:
             await self.redis.close()
         if self.db_pool:
@@ -166,40 +157,42 @@ class RealtimeVerifier:
                 message=f"Low volume: {db_volume} < {self.config.min_volume_threshold}"
             )
 
-        # 2. Rate Limit 획득 후 분봉 API 조회
-        target = api_registry.get_target(APIEndpointType.MINUTE_CANDLE, APIProvider.KIWOOM)
-        if not target:
+        # 2. Use API Hub Client to fetch minute candle data
+        try:
+            tr_id = get_tr_id_for_use_case(UseCase.MINUTE_CANDLE_KIWOOM)
+            result = await self.api_hub_client.execute(
+                provider="KIWOOM",
+                tr_id=tr_id,
+                params={
+                    "symbol": symbol,
+                    "time_unit": "1",  # 1-minute candles
+                    "adj_price": "0",
+                    "modified": "0",
+                    "start_date": target_minute.strftime("%Y%m%d"),
+                    "end_date": target_minute.strftime("%Y%m%d")
+                },
+                timeout=10.0
+            )
+            
+            if not result or result.get("status") != "success":
+                return VerificationResult(
+                    symbol=symbol,
+                    minute=target_minute.isoformat(),
+                    status=VerificationStatus.ERROR,
+                    confidence=ConfidenceLevel.SKIP,
+                    message="API Hub returned error or no data"
+                )
+            
+            api_data = result.get("data", [])
+            
+        except Exception as e:
+            logger.error(f"API Hub error for {symbol}: {e}")
             return VerificationResult(
                 symbol=symbol,
                 minute=target_minute.isoformat(),
                 status=VerificationStatus.ERROR,
                 confidence=ConfidenceLevel.SKIP,
-                message="No API target available"
-            )
-
-        acquired = await gatekeeper.wait_acquire(target.rate_limit_key, timeout=2.0)
-        if not acquired:
-            self._stats["skipped"] += 1
-            return VerificationResult(
-                symbol=symbol,
-                minute=target_minute.isoformat(),
-                status=VerificationStatus.SKIPPED,
-                confidence=ConfidenceLevel.SKIP,
-                message="Rate limit timeout"
-            )
-
-        # API 호출
-        api_data = await self.kiwoom_client.fetch_minute_candle(
-            self._session, symbol, target
-        )
-
-        if not api_data:
-            return VerificationResult(
-                symbol=symbol,
-                minute=target_minute.isoformat(),
-                status=VerificationStatus.ERROR,
-                confidence=ConfidenceLevel.SKIP,
-                message="API returned no data"
+                message=f"API Hub error: {str(e)}"
             )
 
         # 해당 분봉 찾기

@@ -185,9 +185,14 @@ class KISClient(BaseAPIClient):
         """KIS API 응답 처리"""
         data = response.json()
 
+        # DEBUG: 응답 구조 확인
+        self.logger.info(f"🔍 KIS API Response keys: {list(data.keys())[:10]}")
+        self.logger.info(f"🔍 rt_cd={repr(data.get('rt_cd'))}, msg_cd={data.get('msg_cd')}, msg1={data.get('msg1')}")
+
         # 에러 체크
         rt_cd = data.get("rt_cd")
-        if rt_cd != "0":
+        # rt_cd가 None이거나 "0"이거나 빈 문자열이면 성공으로 간주
+        if rt_cd and rt_cd != "0":
             error_msg = data.get("msg1", "Unknown error")
             # 보안: 전체 응답 데이터를 로그에 출력하지 않음 (토큰이 포함될 수 있음)
             self.logger.error(f"❌ KIS API Error: rt_cd={rt_cd}, msg1={error_msg}")
