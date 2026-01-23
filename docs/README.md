@@ -16,6 +16,8 @@
 
 ## 📡 기술 명세서 (Specifications)
 - **[Specifications Hub (INDEX)](specs/INDEX.md)**: 전체 기술 명세 및 설계 문서 인덱스
+- **[API Hub v2 Overview](specs/api_hub_v2_overview.md)**: 통합 REST API Gateway 전체 설계 (ISSUE-037)
+- **[API Hub v2 Configuration (SSoT)](specs/api_hub_config_spec.md)**: API Hub 설정 옵션 참조 문서
 - **[Database Spec](specs/database_specification.md)** / **[API Spec](specs/api_specification.md)**
 - **[UI Master](specs/ui_design_master.md)** / **[Data Normalization](specs/data_normalization_spec.md)**
 

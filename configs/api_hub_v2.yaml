@@ -1,0 +1,85 @@
+# API Hub v2 Configuration
+# Phase 1: Mock Mode (Production-ready)
+# Phase 2: Real API Integration (Configuration complete)
+
+api_hub:
+  # Worker Configuration
+  worker:
+    redis_url: "redis://localhost:6379/15"  # Dedicated DB 15 for API Hub isolation
+    enable_mock: true  # Phase 1: true, Phase 2: false
+    max_retries: 3  # Maximum retry attempts per task
+    timeout: 10.0  # Task timeout in seconds
+    batch_size: 100  # Maximum tasks to process in parallel
+    shutdown_timeout: 5.0  # Graceful shutdown timeout in seconds
+    
+  # Queue Configuration
+  queues:
+    priority: "api:priority:queue"  # High-priority requests (critical operations)
+    normal: "api:request:queue"  # Normal priority requests
+    response_ttl: 3600  # Response cache TTL in seconds (1 hour)
+    max_queue_size: 10000  # Maximum queue size before rejection
+    
+  # Circuit Breaker Configuration
+  circuit_breaker:
+    failure_threshold: 5  # Number of failures before opening circuit
+    recovery_timeout: 30.0  # Time in seconds before attempting recovery
+    half_open_max_calls: 3  # Max calls allowed in half-open state
+    success_threshold: 2  # Successes needed to close circuit from half-open
+    
+  # Provider-specific Configuration
+  providers:
+    # Korea Investment & Securities (KIS)
+    KIS:
+      enabled: true
+      base_url: "${KIS_BASE_URL}"  # Injected from environment
+      timeout: 10.0  # Request timeout in seconds
+      rate_limit:
+        requests_per_second: 20  # KIS API limit
+        burst: 5  # Burst allowance
+        window: 1.0  # Time window in seconds
+      retry:
+        max_attempts: 3
+        backoff_factor: 2.0  # Exponential backoff multiplier
+        
+    # Kiwoom Securities
+    KIWOOM:
+      enabled: true
+      base_url: "${KIWOOM_API_URL}"  # Injected from environment
+      timeout: 10.0  # Request timeout in seconds
+      rate_limit:
+        requests_per_second: 10  # Kiwoom API limit (more conservative)
+        burst: 3  # Burst allowance
+        window: 1.0  # Time window in seconds
+      retry:
+        max_attempts: 3
+        backoff_factor: 2.0  # Exponential backoff multiplier
+        
+  # Token Manager Configuration (Phase 2)
+  token_manager:
+    redis_key_prefix: "api:token:"  # Redis key prefix for token storage
+    auto_refresh_margin: 300  # Refresh token 5 minutes before expiry
+    max_refresh_retries: 3  # Maximum token refresh retry attempts
+    refresh_backoff_factor: 2.0  # Exponential backoff for token refresh
+    token_ttl_buffer: 60  # Safety buffer for token expiry (1 minute)
+    
+  # Rate Limiter Integration (Phase 2)
+  rate_limiter:
+    redis_url: "redis://redis-gatekeeper:6379/0"  # Dedicated Redis Gatekeeper
+    enabled: true  # Enable rate limiting
+    global_limit: 50  # Global requests per second across all providers
+    per_provider_limit: true  # Enable per-provider limits (see providers config)
+    algorithm: "sliding_window"  # Algorithm: sliding_window | token_bucket
+    rejection_ttl: 60  # TTL for rejection tracking in seconds
+    
+  # Monitoring & Logging
+  monitoring:
+    log_level: "INFO"  # Logging level: DEBUG | INFO | WARNING | ERROR
+    metrics_enabled: true  # Enable Prometheus-style metrics
+    health_check_interval: 10.0  # Health check interval in seconds
+    alert_on_circuit_open: true  # Alert when circuit breaker opens
+    
+  # Testing & Development
+  testing:
+    mock_latency_ms: 100  # Simulated network latency for mock mode
+    mock_failure_rate: 0.0  # Simulated failure rate (0.0 = no failures, 1.0 = all failures)
+    enable_test_endpoints: false  # Enable test endpoints for integration testing

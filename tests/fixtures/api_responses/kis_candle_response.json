@@ -1,0 +1,63 @@
+{
+  "rt_cd": "0",
+  "msg_cd": "MCA00000",
+  "msg1": "정상처리 되었습니다.",
+  "output1": {
+    "prdy_vrss": "100",
+    "prdy_vrss_sign": "2",
+    "prdy_ctrt": "0.17",
+    "stck_prdy_clpr": "59000"
+  },
+  "output2": [
+    {
+      "stck_bsop_date": "20260123",
+      "stck_cntg_hour": "153000",
+      "stck_prpr": "59100",
+      "stck_oprc": "59000",
+      "stck_hgpr": "59200",
+      "stck_lwpr": "59000",
+      "cntg_vol": "1523",
+      "acml_tr_pbmn": "185234567"
+    },
+    {
+      "stck_bsop_date": "20260123",
+      "stck_cntg_hour": "152900",
+      "stck_prpr": "59000",
+      "stck_oprc": "58950",
+      "stck_hgpr": "59050",
+      "stck_lwpr": "58950",
+      "cntg_vol": "2341",
+      "acml_tr_pbmn": "183711000"
+    },
+    {
+      "stck_bsop_date": "20260123",
+      "stck_cntg_hour": "152800",
+      "stck_prpr": "58950",
+      "stck_oprc": "59000",
+      "stck_hgpr": "59000",
+      "stck_lwpr": "58900",
+      "cntg_vol": "1876",
+      "acml_tr_pbmn": "181370000"
+    },
+    {
+      "stck_bsop_date": "20260123",
+      "stck_cntg_hour": "152700",
+      "stck_prpr": "59000",
+      "stck_oprc": "58900",
+      "stck_hgpr": "59050",
+      "stck_lwpr": "58900",
+      "cntg_vol": "3124",
+      "acml_tr_pbmn": "179494000"
+    },
+    {
+      "stck_bsop_date": "20260123",
+      "stck_cntg_hour": "152600",
+      "stck_prpr": "58900",
+      "stck_oprc": "58950",
+      "stck_hgpr": "58950",
+      "stck_lwpr": "58850",
+      "cntg_vol": "2567",
+      "acml_tr_pbmn": "176370000"
+    }
+  ]
+}

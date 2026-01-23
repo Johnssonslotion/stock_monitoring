@@ -17,7 +17,7 @@
 ### 🔴 P0 (긴급)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
-| *(현재 P0 이슈 없음)* | - | - | - |
+| *(현재 P0 태스크 없음)* | - | - | - |
 
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -27,7 +27,6 @@
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
-| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | - | 중앙 큐 기반 API 호출 전담 워커 |
 | ~~ISSUE-038: Sentinel & Global Logging Standard~~ | Developer | - | ✅ 완료 |
 
 ### 🟡 P2 (보통)
@@ -48,6 +47,12 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-23)
+- [x] **ISSUE-037: Unified API Hub v2 - Phase 1 Mock Mode (P0)** - Worker 구현, 29/29 테스트 통과, Docker 배포 검증 완료
+- [x] **ISSUE-037-A: BaseAPIClient 설계 문서 (P0)** - Phase 2 선행 작업 1/5 완료 (300+ lines)
+- [x] **ISSUE-037-B: API 응답 Fixture 수집 (P0)** - Phase 2 선행 작업 2/5 완료 (KIS + Kiwoom)
+- [x] **ISSUE-037-C: Token Manager 설계 (P0)** - Phase 2 선행 작업 3/5 완료 (Redis SSoT)
+- [x] **ISSUE-037-D: Rate Limiter 통합 계획 (P0)** - Phase 2 선행 작업 4/5 완료 (Gatekeeper)
+- [x] **ISSUE-037-E: Phase 2 테스트 계획 (P0)** - Phase 2 선행 작업 5/5 완료 (Mock-only)
 - [x] **ISSUE-039: TickArchiver Redis 연결 불안정 (P1)** - `asyncio.to_thread()` 적용, 블로킹 해제
 - [x] **ISSUE-038: Sentinel & Global Logging Standard (P1)** - 이미 적용 확인, development.md 가이드 추가
 - [x] **SSoT: Unified Backlog Management System (v2.18)** - `deferred_work.md` 통합 및 거버넌스 개정

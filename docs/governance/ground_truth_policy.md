@@ -180,6 +180,96 @@ def is_verified(tick_volume, api_volume):
 
 ---
 
+## 8. API Hub v2 Configuration Ground Truth
+
+### 8.1 Provider Rate Limits (API 참조값)
+
+본 섹션은 API Hub v2가 준수해야 하는 증권사 API의 **공식 Rate Limit**을 정의합니다.
+
+| Provider | REST API Rate Limit | 근거 (Authority) | Config Path |
+|----------|---------------------|------------------|-------------|
+| **KIS** (한국투자증권) | **20 req/s** | [KIS OpenAPI 공식 문서](https://apiportal.koreainvestment.com) | `providers.KIS.rate_limit.requests_per_second` |
+| **Kiwoom** (키움증권) | **10 req/s** | Kiwoom REST API 공식 문서 | `providers.KIWOOM.rate_limit.requests_per_second` |
+
+**변경 절차**:
+1. Broker API 공식 문서에서 Rate Limit 변경 확인
+2. 본 섹션(Ground Truth Policy) 먼저 업데이트
+3. `configs/api_hub_v2.yaml` 동기화
+4. `/council-review` 워크플로우 호출 (아키텍처 영향도 검토)
+
+**연관 문서**:
+- **Config Spec**: `docs/specs/api_hub_config_spec.md#provider-configuration`
+- **Implementation**: `src/api_gateway/hub/config.py` (HubConfig class)
+
+---
+
+### 8.2 Circuit Breaker Thresholds (운영 기준값)
+
+Circuit Breaker는 Broker API 장애 격리를 위한 임계값을 정의합니다.
+
+| Parameter | Production Value | Test Value | Config Path | 근거 |
+|-----------|------------------|------------|-------------|------|
+| **Failure Threshold** | 5 failures | 3 failures | `circuit_breaker.failure_threshold` | Broker API 간헐적 장애 허용 (Council 승인) |
+| **Recovery Timeout** | 30 seconds | 10 seconds | `circuit_breaker.recovery_timeout` | Broker API SLA (99.5% uptime, 평균 장애 30초) |
+| **Half-Open Max Calls** | 3 calls | 2 calls | `circuit_breaker.half_open_max_calls` | 점진적 복구 검증 (Martin Fowler Pattern) |
+
+**Authority**:
+- Design Pattern: Martin Fowler's Circuit Breaker Pattern
+- Thresholds: ISSUE-037 Phase 1 Integration Tests (4/4 passing, 2026-01-23)
+- Recovery Timeout: Broker API 장애 모니터링 데이터 (2026-01-20 측정)
+
+**변경 시 필수 작업**:
+1. Production Metrics 분석 (`circuit_breaker_open_total` > 10/hour)
+2. `/council-review` 호출 (Infra + QA 승인 필수)
+3. Canary Deployment로 검증 후 롤아웃
+
+---
+
+### 8.3 Token Refresh Policy (OAuth 참조값)
+
+OAuth 토큰 자동 갱신 정책은 Broker API의 토큰 만료 정책과 동기화됩니다.
+
+| Parameter | Value | Rationale | Config Path | Authority |
+|-----------|-------|-----------|-------------|-----------|
+| **Auto-Refresh Margin** | 300s (5분) | 만료 전 여유 시간, Clock Skew 대응 | `token_manager.auto_refresh_margin` | OAuth 2.0 Best Practices (RFC 6749) |
+| **Max Refresh Retries** | 3 attempts | Network 장애 허용, 무한 루프 방지 | `token_manager.max_refresh_retries` | ISSUE-037-C Token Manager Spec |
+| **Token TTL Buffer** | 60s (1분) | Redis 만료와 실제 토큰 만료 간 Gap | `token_manager.token_ttl_buffer` | Clock Skew 허용 (NTP ±1초 × 60) |
+
+**Authority**:
+- **Token Manager Design**: `docs/specs/token_manager_spec.md` (200+ lines, ISSUE-037-C)
+- **RFC 6749**: OAuth 2.0 Authorization Framework
+- **Clock Skew**: NTP 동기화 허용 오차 (±1초)
+
+**변경 금지 사유**:
+- `auto_refresh_margin < 60s`: Clock Skew로 인한 만료 위험
+- `token_ttl_buffer < 30s`: Redis와 실제 만료 시점 불일치 위험
+
+---
+
+### 8.4 Config 정합성 검증
+
+모든 Config 변경은 아래 체크리스트를 준수해야 합니다:
+
+**변경 전 필수 검증**:
+- [ ] Ground Truth Policy 본 섹션 먼저 업데이트
+- [ ] `configs/api_hub_v2.yaml` 동기화
+- [ ] `docs/specs/api_hub_config_spec.md` 동기화
+- [ ] Unit Tests 통과: `pytest tests/unit/test_api_hub_config.py`
+- [ ] Integration Tests 통과: `pytest tests/integration/test_api_hub_v2_integration.py -m manual`
+
+**변경 후 필수 작업**:
+- [ ] `/council-review` 워크플로우 호출 (Rate Limit, Circuit Breaker 변경 시)
+- [ ] Production Metrics 모니터링 (48시간)
+- [ ] Rollback Plan 수립
+
+**관련 문서**:
+- **Config Spec (SSoT)**: `docs/specs/api_hub_config_spec.md`
+- **Config Manager**: `src/api_gateway/hub/config.py`
+- **Overview**: `docs/specs/api_hub_v2_overview.md#configuration`
+- **Tests**: `tests/unit/test_api_hub_config.py` (23 tests)
+
+---
+
 ## 9. 실시간 데이터 파이프라인 및 컨테이너 매핑
 
 [RFC-007], [RFC-008], [RFC-009]를 통합한 실시간 데이터 흐름 및 각 담당 컨테이너 명세입니다.

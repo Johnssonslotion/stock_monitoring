@@ -402,6 +402,96 @@ services:
       - real
       - verification
 
+  # [ISSUE-037] API Gateway Worker (Mock Mode - Phase 1)
+  # Council 승인: Mock Mode Only, 실제 API 호출 없음
+  gateway-worker-mock:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}-gateway-worker-mock
+    command: python -m src.api_gateway.hub
+    environment:
+      - REDIS_URL=redis://redis:6379/15
+      - ENABLE_MOCK=true
+      - APP_ENV=${APP_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HUB_CONFIG_PATH=/app/configs/api_hub_v2.yaml
+    volumes:
+      - ../src:/app/src
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      - default
+    profiles:
+      - hub-mock
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "worker"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # [ISSUE-037] API Gateway Worker (Real Mode - Phase 2)
+  # Production-ready with real KIS/Kiwoom API integration
+  gateway-worker-real:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}-gateway-worker-real
+    command: python -m src.api_gateway.hub
+    env_file:
+      - ../${ENV_FILE:-.env.prod}
+    environment:
+      - REDIS_URL=redis://redis:6379/15
+      - ENABLE_MOCK=false  # Real API mode
+      - APP_ENV=${APP_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HUB_CONFIG_PATH=/app/configs/api_hub_v2.yaml
+      # KIS Provider
+      - KIS_APP_KEY=${KIS_APP_KEY}
+      - KIS_APP_SECRET=${KIS_APP_SECRET}
+      - KIS_BASE_URL=${KIS_BASE_URL}
+      # Kiwoom Provider
+      - KIWOOM_APP_KEY=${KIWOOM_APP_KEY}
+      - KIWOOM_APP_SECRET=${KIWOOM_APP_SECRET}
+      - KIWOOM_API_URL=${KIWOOM_API_URL}
+      # Rate Limiter
+      - RATE_LIMITER_URL=redis://redis-gatekeeper:6379/0
+    volumes:
+      - ../src:/app/src
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+      redis-gatekeeper:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - default
+    profiles:
+      - hub-real
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "worker"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   redis-data:
   redis-gatekeeper-data:
