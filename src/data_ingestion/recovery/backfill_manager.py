@@ -1,3 +1,12 @@
+"""
+BackfillManager - 틱 데이터 복구 관리자
+
+API Hub Queue 기반으로 REST API 호출을 중앙 집중화.
+
+Reference:
+    - ISSUE-040: API Hub v2 Phase 2 - Real API Integration
+    - RFC-009: Ground Truth & API Control Policy
+"""
 import asyncio
 import os
 import yaml
@@ -15,6 +24,7 @@ load_dotenv()
 
 from src.data_ingestion.price.common import KISAuthManager
 from src.api_gateway.rate_limiter import gatekeeper
+from src.api_gateway.hub.client import APIHubClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,18 +38,35 @@ OUTPUT_DIR = "data/recovery"
 SYMBOLS_FILE = "configs/kr_symbols.yaml"
 
 class BackfillManager:
-    def __init__(self, target_symbols: Optional[List[str]] = None):
+    """
+    틱 데이터 복구 관리자
+
+    Args:
+        target_symbols: 복구 대상 종목 코드 리스트
+        use_hub: API Hub Queue 사용 여부 (기본: True)
+    """
+
+    def __init__(
+        self,
+        target_symbols: Optional[List[str]] = None,
+        use_hub: bool = True
+    ):
         self.auth_manager = KISAuthManager()
         self.symbols = target_symbols if target_symbols else self._load_symbols()
-        
+        self.use_hub = use_hub
+        self.hub_client: Optional[APIHubClient] = None
+
         # Create temp DB path with timestamp
         self.timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.db_filename = f"recovery_temp_{self.timestamp_str}.duckdb"
         self.db_path = os.path.join(OUTPUT_DIR, self.db_filename)
-        
+
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         self._self_diagnosis()  # RFC-009: Fail-Fast on missing config
         self._init_db()
+
+        if self.use_hub:
+            logger.info("🔗 API Hub mode enabled - using centralized Queue")
 
     def _self_diagnosis(self):
         """
@@ -163,9 +190,88 @@ class BackfillManager:
     async def fetch_real_ticks(self, session: aiohttp.ClientSession, symbol: str, token: str):
         """
         Fetch TICK Data using 'inquire-time-itemconclusion' (TR: FHKST01010300)
+
+        API Hub 모드 또는 레거시 직접 호출 모드 지원.
+        """
+        if self.use_hub:
+            return await self._fetch_ticks_via_hub(symbol)
+        else:
+            return await self._fetch_ticks_direct(session, symbol, token)
+
+    async def _fetch_ticks_via_hub(self, symbol: str):
+        """
+        API Hub Queue를 통한 틱 데이터 조회
+
+        ISSUE-040: 중앙 집중화된 API 호출
+        """
+        # Sampling Strategy: Every 1 minute from 15:30 to 09:00
+        target_times = []
+        curr = datetime.strptime("153000", "%H%M%S")
+        end = datetime.strptime("090000", "%H%M%S")
+
+        while curr >= end:
+            target_times.append(curr.strftime("%H%M%S"))
+            curr = curr - pd.Timedelta(minutes=1)
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        all_ticks = []
+
+        for t_time in target_times:
+            try:
+                # API Hub 통해 요청
+                result = await self.hub_client.execute(
+                    provider="KIS",
+                    tr_id="FHKST01010300",
+                    params={
+                        "symbol": symbol,
+                        "time": t_time
+                    },
+                    timeout=15.0
+                )
+
+                if result.get("status") == "SUCCESS":
+                    data = result.get("data", {})
+                    items = data.get("data", [])  # 정규화된 응답 구조
+
+                    for item in items:
+                        tick_time_str = item.get('stck_cntg_hour', t_time)
+                        timestamp = f"{today_str} {tick_time_str[:2]}:{tick_time_str[2:4]}:{tick_time_str[4:6]}"
+
+                        tick = {
+                            'symbol': symbol,
+                            'timestamp': timestamp,
+                            'price': float(item.get('stck_prpr', 0)),
+                            'volume': int(item.get('cntg_vol', 0)),
+                            'source': 'REST_API_KIS',  # RFC-009: Ground Truth
+                            'execution_no': f"{timestamp}_{item.get('cntg_vol', 0)}"
+                        }
+                        all_ticks.append(tick)
+
+                elif result.get("status") == "RATE_LIMITED":
+                    logger.warning(f"[{symbol}] Rate limited at {t_time}, skipping")
+                    continue
+                else:
+                    logger.warning(
+                        f"[{symbol}] Failed {t_time}: {result.get('reason')}"
+                    )
+
+            except TimeoutError:
+                logger.warning(f"[{symbol}] Timeout at {t_time}, skipping")
+            except Exception as e:
+                logger.error(f"[{symbol}] Error at {t_time}: {e}")
+
+        self._save_ticks(symbol, all_ticks)
+
+    async def _fetch_ticks_direct(
+        self, session: aiohttp.ClientSession, symbol: str, token: str
+    ):
+        """
+        레거시 직접 API 호출 (gatekeeper 사용)
+
+        use_hub=False일 때 호출됨.
         """
         url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
-        
+
         headers = {
             "Content-Type": "application/json; charset=utf-8",
             "authorization": f"Bearer {token}",
@@ -174,17 +280,16 @@ class BackfillManager:
             "tr_id": "FHKST01010300",
             "custtype": "P"
         }
-        
+
         # Sampling Strategy: Every 1 minute from 15:30 to 09:00
-        # For fuller coverage, we would need 30s intervals or handle exact time cursors
         target_times = []
         curr = datetime.strptime("153000", "%H%M%S")
         end = datetime.strptime("090000", "%H%M%S")
-        
+
         while curr >= end:
             target_times.append(curr.strftime("%H%M%S"))
             curr = curr - pd.Timedelta(minutes=1)
-            
+
         today_str = datetime.now().strftime("%Y-%m-%d")
         all_ticks = []
 
@@ -194,13 +299,13 @@ class BackfillManager:
                 "FID_INPUT_ISCD": symbol,
                 "FID_INPUT_HOUR_1": t_time
             }
-            
+
             try:
                 # RFC-009: Use gatekeeper for centralized rate limiting
                 if not await gatekeeper.wait_acquire("KIS", timeout=10.0):
                     logger.warning(f"[{symbol}] Rate limit timeout at {t_time}, skipping")
                     continue
-                
+
                 async with session.get(url, headers=headers, params=params) as resp:
                     if resp.status == 200:
                         data = await resp.json()
@@ -208,22 +313,18 @@ class BackfillManager:
                         if items:
                             for item in items:
                                 tick_time_str = item['stck_cntg_hour']
-                                # Format: YYYY-MM-DD HH:MM:SS
                                 timestamp = f"{today_str} {tick_time_str[:2]}:{tick_time_str[2:4]}:{tick_time_str[4:6]}"
-                                
+
                                 tick = {
                                     'symbol': symbol,
                                     'timestamp': timestamp,
                                     'price': float(item['stck_prpr']),
                                     'volume': int(item['cntg_vol']),
-                                    'source': 'REST_API_KIS',  # RFC-009: Ground Truth source_type
-                                    'execution_no': f"{timestamp}_{item['cntg_vol']}" # Synthetic ID
+                                    'source': 'REST_API_KIS',  # RFC-009: Ground Truth
+                                    'execution_no': f"{timestamp}_{item['cntg_vol']}"
                                 }
                                 all_ticks.append(tick)
-                        
-                        # RFC-009: Use centralized gatekeeper instead of local sleep
-                        # await asyncio.sleep(0.06)  # DEPRECATED
-                        
+
                     else:
                         logger.warning(f"[{symbol}] Failed {t_time}: HTTP {resp.status}")
                         await asyncio.sleep(0.5)
@@ -232,13 +333,18 @@ class BackfillManager:
                 logger.error(f"[{symbol}] Error at {t_time}: {e}")
                 await asyncio.sleep(0.5)
 
+        self._save_ticks(symbol, all_ticks)
+
+    def _save_ticks(self, symbol: str, all_ticks: list):
+        """틱 데이터 DuckDB 저장"""
         if not all_ticks:
             logger.warning(f"[{symbol}] No ticks recovered.")
             return
 
-        # Save to DuckDB immediately to free memory
         try:
-            df = pd.DataFrame(all_ticks).drop_duplicates(subset=['timestamp', 'execution_no'])
+            df = pd.DataFrame(all_ticks).drop_duplicates(
+                subset=['timestamp', 'execution_no']
+            )
             conn = duckdb.connect(self.db_path)
             conn.executemany("""
                 INSERT INTO market_ticks (symbol, timestamp, price, volume, source, execution_no)
@@ -250,30 +356,63 @@ class BackfillManager:
             logger.error(f"[{symbol}] Database Error: {e}")
 
     async def run(self):
+        """
+        틱 데이터 복구 실행
+
+        API Hub 모드 또는 레거시 모드로 실행.
+        """
         logger.info(f"🚀 Starting Tick Recovery for {len(self.symbols)} symbols...")
         logger.info(f"💾 Temporary DB: {self.db_path}")
-        
-        token = await self.auth_manager.get_access_token()
-        if not token:
-            logger.error("❌ Failed to get access token.")
-            return
+        logger.info(f"🔗 Mode: {'API Hub' if self.use_hub else 'Legacy Direct'}")
 
-        async with aiohttp.ClientSession() as session:
-            # Chunking symbols to avoid overwhelming everything, although basic loop is sequential per symbol
-            # Implementing simple parallelism for symbols (e.g. batch of 5)
-            batch_size = 5
-            for i in range(0, len(self.symbols), batch_size):
-                batch = self.symbols[i:i+batch_size]
-                logger.info(f"Processing batch {i//batch_size + 1}: {batch}")
-                tasks = [self.fetch_real_ticks(session, sym, token) for sym in batch]
-                await asyncio.gather(*tasks)
+        if self.use_hub:
+            # API Hub 모드
+            async with APIHubClient() as hub_client:
+                self.hub_client = hub_client
 
-        print(f"OUTPUT_DB={self.db_path}") # stdout for pipe
+                # 배치 처리 (API Hub가 Rate Limit 관리)
+                batch_size = 5
+                for i in range(0, len(self.symbols), batch_size):
+                    batch = self.symbols[i:i+batch_size]
+                    logger.info(f"Processing batch {i//batch_size + 1}: {batch}")
+                    tasks = [self.fetch_real_ticks(None, sym, None) for sym in batch]
+                    await asyncio.gather(*tasks)
+
+        else:
+            # 레거시 모드 (직접 호출 + gatekeeper)
+            token = await self.auth_manager.get_access_token()
+            if not token:
+                logger.error("❌ Failed to get access token.")
+                return
+
+            async with aiohttp.ClientSession() as session:
+                batch_size = 5
+                for i in range(0, len(self.symbols), batch_size):
+                    batch = self.symbols[i:i+batch_size]
+                    logger.info(f"Processing batch {i//batch_size + 1}: {batch}")
+                    tasks = [self.fetch_real_ticks(session, sym, token) for sym in batch]
+                    await asyncio.gather(*tasks)
+
+        print(f"OUTPUT_DB={self.db_path}")  # stdout for pipe
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='KIS Tick Data Recovery')
     parser.add_argument('--symbols', nargs='+', help='Specific symbols to recover')
+    parser.add_argument(
+        '--use-hub',
+        action='store_true',
+        default=True,
+        help='Use API Hub Queue (default: True)'
+    )
+    parser.add_argument(
+        '--legacy',
+        action='store_true',
+        help='Use legacy direct API calls (disables Hub mode)'
+    )
     args = parser.parse_args()
 
-    manager = BackfillManager(target_symbols=args.symbols)
+    # --legacy 플래그로 Hub 모드 비활성화
+    use_hub = not args.legacy
+
+    manager = BackfillManager(target_symbols=args.symbols, use_hub=use_hub)
     asyncio.run(manager.run())
