@@ -381,9 +381,11 @@ class TokenManager:
                 timeout=10.0
             )
 
-            response.raise_for_status()
-            data = response.json()
+            if response.status_code != 200:
+                logger.error(f"❌ KIS token refresh error ({response.status_code}): {response.text}")
+                response.raise_for_status()
 
+            data = response.json()
             if data.get("rt_cd") != "0":
                 raise Exception(f"KIS token refresh error: {data.get('msg1')}")
 
@@ -414,9 +416,11 @@ class TokenManager:
                 timeout=10.0
             )
 
-            response.raise_for_status()
-            data = response.json()
+            if response.status_code != 200:
+                logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {response.text}")
+                response.raise_for_status()
 
+            data = response.json()
             if data.get("rsp_cd") != "0000":
                 raise Exception(
                     f"Kiwoom token refresh error: {data.get('rsp_msg')}"
