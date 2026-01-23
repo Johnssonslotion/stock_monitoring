@@ -485,6 +485,7 @@ services:
     networks:
       - default
     profiles:
+      - real
       - hub-real
     healthcheck:
       # Redis Hub (DB 15) 및 Redis Gatekeeper (DB 0) 연결 확인
