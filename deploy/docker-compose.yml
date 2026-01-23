@@ -371,6 +371,7 @@ services:
       - real
 
   # Verification Worker (Automated Quality Gate) [ISSUE-036 Extension]
+  # ISSUE-041: Now uses API Hub for all REST API calls
   verification-worker:
     build:
       context: ..
@@ -386,6 +387,7 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=${DB_NAME:-stockval}
       - REDIS_URL=redis://redis:6379/1
+      - API_HUB_REDIS_URL=redis://redis:6379/15
     volumes:
       - ../src:/app/src
       - ../configs:/app/configs
@@ -393,6 +395,7 @@ services:
     depends_on:
       - timescaledb
       - redis
+      - gateway-worker-real
     networks:
       - default
     restart: always
