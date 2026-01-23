@@ -72,10 +72,17 @@ class KiwoomClient(BaseAPIClient):
 
     def _build_headers(self, tr_id: str, **kwargs) -> Dict[str, str]:
         """Kiwoom API 헤더 구성 (RFC-008 준수)"""
+        # OpenAPI+ TR ID → REST API ID 매핑
+        api_id_map = {
+            "opt10081": "ka10080",  # 분봉 조회
+            "opt10079": "ka10079",  # 틱 조회
+        }
+        api_id = api_id_map.get(tr_id, tr_id)
+        
         return {
             "Content-Type": "application/json; charset=UTF-8",
             "authorization": f"Bearer {self._access_token}",
-            "api-id": tr_id,
+            "api-id": api_id,  # 매핑된 API ID 사용
             "content-yn": "N",
             "User-Agent": "Mozilla/5.0"
         }
@@ -83,18 +90,19 @@ class KiwoomClient(BaseAPIClient):
     def _build_request_body(
         self, tr_id: str, params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Kiwoom API 요청 바디 구성 (ka100xx 형식)"""
+        """Kiwoom API 요청 바디 구성 (REST API ka100xx 형식)"""
 
-        # 분봉 조회 (ka10080)
-        if tr_id == "ka10080" or tr_id == "opt10081":
+        # 분봉 조회 (ka10080) - opt10081은 REST API에서 지원 안함
+        # opt10081을 ka10080으로 매핑
+        if tr_id in ["ka10080", "opt10081"]:
             return {
                 "stk_cd": params["symbol"],
                 "tic_scope": params.get("timeframe", "1"),
                 "upd_stkpc_tp": "1"
             }
 
-        # Tick 조회 (ka10079)
-        if tr_id == "ka10079" or tr_id == "opt10079":
+        # Tick 조회 (ka10079) - opt10079를 ka10079로 매핑  
+        if tr_id in ["ka10079", "opt10079"]:
             return {
                 "stk_cd": params["symbol"],
                 "tic_scope": params.get("tick_unit", "1"),
@@ -125,15 +133,15 @@ class KiwoomClient(BaseAPIClient):
         if not output_data and tr_id not in ["LOGIN", "REG"]:
             # 데이터가 없는 경우를 에러로 볼 것인지 결정 필요. 
             # 일단 빈 리스트 반환을 허용하되, 명확한 에러 메시지가 있으면 예외 발생
-            if "rsp_msg" in data and data.get("rsp_cd") != "0000":
-                 raise APIError(f"Kiwoom API Error: {data.get('rsp_msg')}")
+            if "return_msg" in data and data.get("return_code") != "0000":
+                 raise APIError(f"Kiwoom API Error: {data.get('return_msg')}")
 
         return {
             "status": "success",
             "provider": "KIWOOM",
             "tr_id": tr_id,
             "data": output_data,
-            "message": data.get("rsp_msg", "Success")
+            "message": data.get("return_msg", "Success")
         }
 
     async def refresh_token(self) -> str:
