@@ -19,6 +19,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 import redis.asyncio as redis
+import asyncpg
 
 from src.api_gateway.hub.client import APIHubClient
 
@@ -241,12 +242,23 @@ class VerificationConsumer:
     - Rate Limiting은 API Hub의 Dispatcher가 담당
     """
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: Optional[str] = None, db_url: Optional[str] = None):
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/1")
+        self.db_url = db_url or self._get_db_url()
         self.redis: Optional[redis.Redis] = None
         self.hub_client: Optional[APIHubClient] = None
+        self.db_pool: Optional[asyncpg.Pool] = None
         self._running = False
         self._results: List[VerificationResult] = []
+    
+    def _get_db_url(self) -> str:
+        """Get TimescaleDB connection URL from environment"""
+        db_host = os.getenv("DB_HOST", "timescaledb")
+        db_port = os.getenv("DB_PORT", "5432")
+        db_user = os.getenv("DB_USER", "postgres")
+        db_password = os.getenv("DB_PASSWORD", "password")
+        db_name = os.getenv("DB_NAME", "stockval")
+        return f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
     async def connect(self):
         """Redis 및 API Hub Client 연결"""
@@ -257,6 +269,14 @@ class VerificationConsumer:
         if not self.hub_client:
             self.hub_client = APIHubClient()
             logger.info("API Hub Client initialized")
+        
+        # DB Pool 초기화 (검증 결과 저장용)
+        if self.db_url and not self.db_pool:
+            try:
+                self.db_pool = await asyncpg.create_pool(self.db_url, min_size=2, max_size=10)
+                logger.info("DB pool connected for verification results")
+            except Exception as e:
+                logger.error(f"Failed to connect DB pool: {e}")
 
     async def close(self):
         """연결 종료"""
@@ -267,6 +287,10 @@ class VerificationConsumer:
         if self.hub_client:
             await self.hub_client.close()
             self.hub_client = None
+        if self.db_pool:
+            await self.db_pool.close()
+            self.db_pool = None
+            logger.info("DB pool closed")
 
     async def start(self):
         """소비 루프 시작"""
@@ -307,15 +331,65 @@ class VerificationConsumer:
                     result = await self._process_task(task)
                 
                 self._results.append(result)
+                
+                # DB에 검증 결과 저장 (감사 추적)
+                await self._save_verification_result(result)
 
+                # Gap 발견 시 자동 복구 작업 생성
                 if result.status == VerificationStatus.NEEDS_RECOVERY:
-                    logger.warning(f"Recovery needed: {result.symbol}, delta={result.delta_pct:.2%}")
+                    logger.warning(f"⚠️  Gap detected: {result.symbol}, delta={result.delta_pct:.2%}")
+                    logger.info(f"🔧 Auto-triggering recovery task for {result.symbol}")
+                    
+                    # 복구 작업 생성 (우선순위 큐에 추가)
+                    recovery_task = VerificationTask(
+                        task_type="recovery",
+                        symbol=result.symbol,
+                        minute=result.minute,
+                        priority="high"
+                    )
+                    await self.redis.lpush(
+                        VerificationConfig.PRIORITY_QUEUE_KEY,
+                        recovery_task.to_json()
+                    )
+                    logger.info(f"✅ Recovery task added to priority queue: {result.symbol}")
 
             except Exception as e:
                 logger.error(f"Task failed: {e}")
                 # Dead Letter Queue로 이동
                 if raw_task:
                     await self.redis.lpush(VerificationConfig.DLQ_KEY, raw_task)
+
+    async def _save_verification_result(self, result: VerificationResult):
+        """
+        검증 결과를 DB에 저장 (감사 추적용)
+        
+        Table: market_verification_results
+        - 교차 검증 결과 기록
+        - Gap 발견 시 복구 트리거 근거
+        """
+        if not self.db_pool or not result.minute:
+            return
+        
+        try:
+            async with self.db_pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO market_verification_results
+                    (time, symbol, kis_vol, kiwoom_vol, vol_delta_kis, vol_delta_kiwoom, status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
+                    datetime.fromisoformat(result.minute),
+                    result.symbol,
+                    float(result.kis_volume) if result.kis_volume else None,
+                    float(result.kiwoom_volume) if result.kiwoom_volume else None,
+                    result.delta_pct,
+                    result.delta_pct,
+                    result.status.value
+                )
+                logger.debug(f"✓ Saved verification result: {result.symbol} @ {result.minute[:16]} → {result.status.value}")
+        except Exception as e:
+            logger.error(f"Failed to save verification result to DB: {e}")
+
 
     async def _handle_recovery_task(self, task: VerificationTask) -> VerificationResult:
         """
