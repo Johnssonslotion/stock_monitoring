@@ -1,4 +1,4 @@
-# AI Rules v2.17 - The Constitution (Index)
+# AI Rules v2.18 - The Constitution (Index)
 *상세 규칙은 `docs/governance/` 하위 문서를 참조한다.*
 
 ## 0. 헌장 (Preamble)
@@ -15,7 +15,6 @@
 | **인프라 & DB** | [Infrastructure](./docs/governance/infrastructure.md) | **Tailscale**, DB 격리(Snapshot), **Zero Cost** 원칙 |
 | **마이그레이션** | [Migration Strategy](./docs/governance/database_migration_strategy.md) | **DB 스키마 SSoT**, `migrate.sh` 운영 전략 (v2.15+) |
 | **문서 표준** | **[Documentation Standard](./docs/governance/documentation_standard.md)** | **RFC & ADR Process**, Versioning, Changelog 관리 |
-| **이연 작업** | [Deferred Work Registry](./docs/governance/deferred_work.md) | 승인되었으나 미뤄진 작업 추적 및 관리 |
 
 ## 2. 절대 헌법 (The Immutable Laws)
 다음 10가지 원칙은 어떤 경우에도 타협할 수 없는 절대 규칙이다.
@@ -84,15 +83,16 @@ AI는 **모든 구현 작업 전**에 다음 항목을 자동으로 검증해야
 
 ---
 
-## 7. Task Management 3-Tier Architecture (v2.9)
+## 7. Unified Task Management Strategy (v2.18)
 
 ### 7.1. 문서 역할 정의 (Document Roles)
+본 프로젝트는 **BACKLOG.md**를 단일 진실 공급원(SSoT)으로 하여 모든 단기 및 이연 작업을 통합 관리한다.
 
-| Tier | 문서 | 역할 | 갱신 주기 | SSoT (Source of Truth) |
-|------|------|------|-----------|----------------------|
-| **Tier 1: Execution** | **Git Branches** | 실행 중인 작업 추적 | 실시간 | ✅ **YES** |
-| **Tier 2: Tactical** | **BACKLOG.md** | 단기 작업 목록 | 자동 (스크립트) | ❌ No |
-| **Tier 3: Strategic** | **master_roadmap.md** | 분기별 전략 계획 | 수동 (Council 승인) | ✅ **YES** |
+| 계층 | 문서 | 역할 | 갱신 주기 | SSoT |
+|------|------|------|-----------|------|
+| **Tactical** | **BACKLOG.md** | **Active & Deferred** 작업 통합 관리 | 실시간/스크립트 | ✅ **YES** |
+| **Strategic** | **master_roadmap.md** | 분기별 전략 및 마일스톤 | 수동 (Council 승인) | ✅ **YES** |
+| **Execution** | **Git Branches** | 현재 물리적으로 진행 중인 작업 | 실시간 | ✅ **YES** |
 
 ---
 
