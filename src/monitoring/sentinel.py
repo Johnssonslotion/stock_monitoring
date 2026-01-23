@@ -16,12 +16,15 @@ logger = logging.getLogger("Sentinel")
 
 # Config
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# [Council 2차 결정] 물리적 분리된 Gatekeeper Redis
+REDIS_URL_GATEKEEPER = os.getenv("REDIS_URL_GATEKEEPER", "redis://localhost:6381/0")
 HEARTBEAT_THRESHOLD_SEC = 300  # 5 minutes
 PRICE_CHANGE_THRESHOLD = 0.10  # 10%
 
 class Sentinel:
     def __init__(self):
         self.redis = None
+        self.redis_gatekeeper = None  # [Council 2차] Rate Limiter 전용 Redis
         self.last_prices = {}  # {symbol: price}
         self.last_arrival = {} # {market: timestamp}
         self.startup_time = datetime.now()
@@ -230,6 +233,55 @@ class Sentinel:
             
             await asyncio.sleep(60) # Every 1 minute for detailed health
 
+    async def monitor_redis_gatekeeper(self):
+        """[Council 2차 결정] Monitor Redis-Gatekeeper (Rate Limiter 전용 인스턴스)"""
+        logger.info("🔒 Redis-Gatekeeper Health Monitor Started...")
+        
+        while self.is_running:
+            try:
+                if not self.redis_gatekeeper:
+                    self.redis_gatekeeper = await redis.from_url(REDIS_URL_GATEKEEPER, decode_responses=True)
+                    logger.info(f"✅ Connected to Redis-Gatekeeper: {REDIS_URL_GATEKEEPER}")
+                
+                # Get Gatekeeper INFO
+                info = await self.redis_gatekeeper.info()
+                ts = datetime.now().isoformat()
+                
+                # Rate Limiter 안정성에 중요한 메트릭
+                metrics = [
+                    ("gatekeeper_used_memory", float(info.get('used_memory', 0))),
+                    ("gatekeeper_connected_clients", float(info.get('connected_clients', 0))),
+                    ("gatekeeper_ops_per_sec", float(info.get('instantaneous_ops_per_sec', 0))),
+                ]
+                
+                # Rate Limit 키 상태 확인
+                try:
+                    kis_tokens = await self.redis_gatekeeper.hget("rate_limit:KIS", "tokens")
+                    kiwoom_tokens = await self.redis_gatekeeper.hget("rate_limit:KIWOOM", "tokens")
+                    metrics.append(("gatekeeper_kis_tokens", float(kis_tokens or 0)))
+                    metrics.append(("gatekeeper_kiwoom_tokens", float(kiwoom_tokens or 0)))
+                except:
+                    pass
+                
+                for m_type, val in metrics:
+                    payload = {
+                        "timestamp": ts,
+                        "type": m_type,
+                        "value": val,
+                        "meta": {"status": "ok", "instance": "gatekeeper"}
+                    }
+                    await self.redis.publish("system.metrics", json.dumps(payload))
+                
+                logger.info(f"🔒 Gatekeeper Health: MEM {info.get('used_memory_human')} | CLIENTS {info.get('connected_clients')} | OPS {info.get('instantaneous_ops_per_sec')}/s")
+                
+            except redis.ConnectionError as e:
+                logger.error(f"❌ Redis-Gatekeeper Connection Lost: {e}. Reconnecting...")
+                self.redis_gatekeeper = None
+            except Exception as e:
+                logger.error(f"Gatekeeper Health Poll Error: {e}")
+            
+            await asyncio.sleep(60)  # Every 1 minute
+
     async def monitor_governance(self):
         """Monitor Governance Compliance (Based on Registry & Audit docs)"""
         logger.info("⚖️ Governance Monitor Started...")
@@ -431,6 +483,9 @@ class Sentinel:
 
         # Start redis health monitor
         asyncio.create_task(self.monitor_redis())
+
+        # [Council 2차 결정] Start redis-gatekeeper health monitor
+        asyncio.create_task(self.monitor_redis_gatekeeper())
 
         # ISSUE-035: Start ingestion lag monitor (Critical for market open)
         asyncio.create_task(self.monitor_ingestion_lag())

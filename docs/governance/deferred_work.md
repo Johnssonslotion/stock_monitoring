@@ -53,6 +53,21 @@
 
 ---
 
+## 3. 아키텍처 개선 및 리팩토링
+
+| 항목 | 내용 |
+| :--- | :--- |
+| **ID** | `DEF-API-HUB-001` |
+| **Title** | Unified API Hub v2 (Centralized REST Worker & Queue) |
+| **Related RFC** | [Spec: API Hub](file:///home/ubuntu/workspace/stock_monitoring/docs/specs/api_hub_specification.md) |
+| **Status** | ⏳ DEFERRED |
+| **Trigger** | 2026-01-23 장 마감 후 또는 다음 스프린트 시작 시 |
+| **Priority** | P1 (High) |
+| **Scope** | - Redis 기반 리퀘스트 큐(`api:request:queue`) 구축<br>- REST API 전담 워커(`rest_worker.py`) 구현<br>- KIS/Kiwoom 호출부 통합 및 리팩토링 |
+| **Created** | 2026-01-23 |
+
+---
+
 ## 관리 프로세스
 - **주기적 리뷰**: 매 분기 말 PM 페르소나가 검토.
 - **활성화 (Activation)**: 사용자가 다음과 같이 명령 시 즉시 Todo로 이동.

@@ -12,6 +12,9 @@ import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Tuple
 
+# RFC-009: Centralized API Rate Limiting
+from src.api_gateway.rate_limiter import gatekeeper
+
 # Setup Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger("HistoryLoader")
@@ -89,7 +92,7 @@ class HistoryLoader:
     def __init__(self):
         self.db_pool = None
         self.kiss_token = None
-        self.throttler = SmartThrottler(max_req_per_sec=10)
+        # [RFC-009] SmartThrottler 제거, gatekeeper로 중앙 집중 Rate Limiting
         self.checkpoint = CheckpointManager()
 
     async def get_kis_token(self):
@@ -225,7 +228,10 @@ class HistoryLoader:
         last_hour = "" 
         
         for i in range(20): 
-            await self.throttler.acquire()
+            # RFC-009: Use gatekeeper for centralized rate limiting
+            if not await gatekeeper.wait_acquire("KIS", timeout=10.0):
+                logger.warning("Rate limit exceeded for KIS API, skipping...")
+                continue
             
             params = {
                 "FID_COND_MRKT_DIV_CODE": "J",
@@ -414,8 +420,10 @@ class HistoryLoader:
                     logger.info(f"No new data to save for {symbol}")
                     return
 
-                # Re-generate records after filtering
+                # Re-generate records after filtering (RFC-009: source_type 추가)
                 records = []
+                # [Ground Truth Policy] REST API 분봉 = 참값
+                source_type = 'REST_API_KIS'
                 for index, row in df.iterrows():
                     ts = pd.to_datetime(index, utc=True)
                     o = row.get('Open', 0)
@@ -423,12 +431,12 @@ class HistoryLoader:
                     l = row.get('Low', 0)
                     c = row.get('Close', 0)
                     v = row.get('Volume', 0)
-                    records.append((ts, symbol, interval, float(o), float(h), float(l), float(c), float(v)))
+                    records.append((ts, symbol, interval, float(o), float(h), float(l), float(c), float(v), source_type))
 
                 await conn.copy_records_to_table(
                     'market_candles',
                     records=records,
-                    columns=['time', 'symbol', 'interval', 'open', 'high', 'low', 'close', 'volume']
+                    columns=['time', 'symbol', 'interval', 'open', 'high', 'low', 'close', 'volume', 'source_type']
                 )
             except Exception as e:
                 logger.error(f"DB Save Error {symbol}: {e}")
