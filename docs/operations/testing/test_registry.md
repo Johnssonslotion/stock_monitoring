@@ -133,26 +133,37 @@
 ### 8.1 Queue & Dispatcher
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| HUB-Q-01 ⭐ | `test_queue_push_pop` | `tests/unit/test_api_hub_queue.py` | Redis 큐 push/pop, 우선순위 처리 | 1 | ⏳ 예정 |
-| HUB-Q-02 | `test_priority_dispatch` | `tests/unit/test_api_hub_queue.py` | HIGH 우선순위 태스크 선처리 | 1 | ⏳ 예정 |
-| HUB-CB-01 ⭐ | `test_circuit_breaker` | `tests/unit/test_api_hub_dispatcher.py` | 연속 실패 시 backpressure 동작 | 1 | ⏳ 예정 |
+| HUB-Q-01 ⭐ | `test_queue_push_pop` | `tests/unit/test_api_hub_queue.py` | Redis 큐 push/pop, 우선순위 처리 | 1 | ✅ Pass (6/6) |
+| HUB-Q-02 | `test_priority_dispatch` | `tests/unit/test_api_hub_queue.py` | HIGH 우선순위 태스크 선처리 | 1 | ✅ Pass |
+| HUB-CB-01 ⭐ | `test_circuit_breaker` | `tests/unit/test_api_hub_dispatcher.py` | 연속 실패 시 backpressure 동작 | 1 | ✅ Pass (10/10) |
 
 ### 8.2 Data Models & Schema
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| HUB-MDL-01 ⭐ | `test_candle_model` | `tests/unit/test_api_hub_models.py` | CandleModel Pydantic 검증 | 1 | ⏳ 예정 |
-| HUB-MDL-02 | `test_tick_model` | `tests/unit/test_api_hub_models.py` | TickModel 직렬화/역직렬화 | 1 | ⏳ 예정 |
-| HUB-GT-01 | `test_source_type_ground_truth` | `tests/unit/test_api_hub_models.py` | source_type 필드 Ground Truth 검증 | 1 | ⏳ 예정 |
+| HUB-MDL-01 ⭐ | `test_candle_model` | `tests/unit/test_api_hub_models.py` | CandleModel Pydantic 검증 | 1 | ✅ Pass (7/7) |
+| HUB-MDL-02 | `test_tick_model` | `tests/unit/test_api_hub_models.py` | TickModel 직렬화/역직렬화 | 1 | ✅ Pass |
+| HUB-GT-01 | `test_source_type_ground_truth` | `tests/unit/test_api_hub_models.py` | source_type 필드 Ground Truth 검증 | 1 | ✅ Pass |
 | HUB-SCH-01 | `test_kis_response_schema` | `tests/unit/test_api_hub_schema.py` | KIS API 응답 ↔ CandleModel 호환 | 1 | ⏳ 예정 |
 | HUB-SCH-02 | `test_kiwoom_response_schema` | `tests/unit/test_api_hub_schema.py` | Kiwoom API 응답 ↔ CandleModel 호환 | 1 | ⏳ 예정 |
 
-### 8.3 Rate Limiter & Token
+### 8.3 Worker & Integration
+| ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| HUB-W-01 | `test_worker_initialization` | `tests/unit/test_api_hub_worker.py` | RestApiWorker 기본 초기화 및 Mock 모드 검증 | 1 | ✅ Pass (6/6) |
+| HUB-W-02 | `test_mock_client_execute` | `tests/unit/test_api_hub_worker.py` | MockClient API 실행 및 응답 검증 | 1 | ✅ Pass |
+| HUB-W-03 | `test_worker_run_and_stop` | `tests/unit/test_api_hub_worker.py` | Worker 이벤트 루프 및 정상 종료 검증 | 1 | ✅ Pass |
+| HUB-INT-01 ⭐ | `test_full_api_hub_flow_integration` | `tests/integration/test_api_hub_v2_integration.py` | Queue → Worker → Dispatcher → MockClient 전체 플로우 | 1 | ✅ Pass (4/4) |
+| HUB-INT-02 | `test_priority_queue_precedence` | `tests/integration/test_api_hub_v2_integration.py` | Priority Queue 우선 처리 검증 | 1 | ✅ Pass |
+| HUB-INT-03 | `test_worker_graceful_shutdown` | `tests/integration/test_api_hub_v2_integration.py` | Worker Graceful Shutdown 검증 | 1 | ✅ Pass |
+| HUB-INT-04 | `test_mock_client_both_providers` | `tests/integration/test_api_hub_v2_integration.py` | KIS/KIWOOM MockClient 양쪽 검증 | 1 | ✅ Pass |
+
+### 8.4 Rate Limiter & Token
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | HUB-RL-01 | `test_gatekeeper_integration` | `tests/integration/test_api_hub_rate.py` | redis-gatekeeper 토큰 획득 | 1 | ⏳ 예정 |
 | HUB-TKN-01 | `test_token_manager_ssot` | `tests/integration/test_api_hub_token.py` | Redis SSoT 토큰 관리 (`api:token:*`) | 2 | ⏳ 예정 |
 
-### 8.4 Client & Integration
+### 8.5 Client & Integration
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | HUB-KIS-01 | `test_kis_client_mock` | `tests/integration/test_api_hub_clients.py` | KIS REST API Mock 호출 | 2 | ⏳ 예정 |
@@ -160,13 +171,13 @@
 | HUB-REG-01 | `test_backfill_compatibility` | `tests/integration/test_api_hub_compat.py` | BackfillManager 호환성 검증 | 2 | ⏳ 예정 |
 | HUB-SCH-03 | `test_schema_drift_detection` | `tests/integration/test_api_hub_schema.py` | 실제 API 호출 후 스키마 변경 감지 | 2 | ⏳ 예정 |
 
-### 8.5 E2E & Performance
+### 8.6 E2E & Performance
 | ID | 테스트명 | 파일명 | 검증 상황 | Phase | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | HUB-E2E-01 | `test_api_hub_e2e` | `tests/e2e/test_api_hub_e2e.py` | 전체 파이프라인 + Chaos 시나리오 | 2 | ⏳ 예정 |
 | HUB-RES-01 | `test_memory_usage` | `tests/integration/test_api_hub_perf.py` | 메모리 512M 이하 검증 (Zero Cost) | 2 | ⏳ 예정 |
 
-### 8.6 Test Fixtures
+### 8.7 Test Fixtures
 ```
 tests/fixtures/api_responses/
 ├── kis_candle_response.json      # KIS 분봉 API 샘플

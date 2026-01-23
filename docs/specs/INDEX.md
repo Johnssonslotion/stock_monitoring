@@ -10,6 +10,11 @@
 
 ## 2. API & Integration
 - **[API Specification](api_specification.md)**: 전체 API 인터페이스 정의 (OpenAPI).
+- **[API Hub v2 Overview](api_hub_v2_overview.md)**: 통합 REST API Gateway 전체 설계 (ISSUE-037).
+- **[API Hub v2 Configuration](api_hub_config_spec.md)**: API Hub 설정 옵션 참조 문서 (SSoT).
+- **[BaseAPIClient Spec](api_hub_base_client_spec.md)**: API Client 추상화 설계 (Phase 2).
+- **[Token Manager Spec](token_manager_spec.md)**: OAuth 토큰 자동 갱신 설계 (Phase 2).
+- **[Rate Limiter Integration](rate_limiter_integration_plan.md)**: Rate Limit 통합 계획 (Phase 2).
 - **[Data Normalization](data_normalization_spec.md)**: 외부 API 통합 정규화 규격.
 - **[Kiwoom Chart API](kiwoom-chart-api.md)**: 키움 전용 차트 API 연동 가이드.
 - **[Virtual Investment API](virtual_investment_api.md)**: 가상 투자 모듈 및 API 명세.
