@@ -110,16 +110,25 @@ class VerificationConfig:
 
 
 # === TR ID Mapping (API Hub용) ===
+# Centralized TR Registry 사용
+from src.api_gateway.hub.tr_registry import (
+    UseCase,
+    get_tr_id_for_use_case,
+    validate_tr_id
+)
 
-API_TR_MAPPING = {
-    "KIS": {
-        "minute_candle": "FHKST01010400",  # 국내주식 분봉 조회
-        "tick_data": "FHKST01010300",      # 국내주식 체결 조회
-    },
-    "KIWOOM": {
-        "minute_candle": "KIS_CL_PBC_04020",  # 국내주식 분봉 조회
-    }
-}
+# TR ID 검증 (Startup Validation)
+_REQUIRED_TR_IDS = [
+    UseCase.MINUTE_CANDLE_KIS,
+    UseCase.TICK_DATA_KIS,
+    UseCase.MINUTE_CANDLE_KIWOOM,
+]
+
+for use_case in _REQUIRED_TR_IDS:
+    tr_id = get_tr_id_for_use_case(use_case)
+    if not validate_tr_id(tr_id):
+        raise ValueError(f"Invalid TR ID for {use_case}: {tr_id}")
+    logger.debug(f"✓ Validated TR ID: {use_case.value} → {tr_id}")
 
 
 # === Producer ===
@@ -323,10 +332,11 @@ class VerificationConsumer:
         logger.info(f"🛠️ Handling recovery task for {symbol} @ {dt_min.strftime('%H:%M')}")
         
         try:
-            # API Hub를 통한 틱 데이터 조회
+            # API Hub를 통한 틱 데이터 조회 (TR Registry 사용)
+            tr_id = get_tr_id_for_use_case(UseCase.TICK_DATA_KIS)
             result = await self.hub_client.execute(
                 provider="KIS",
-                tr_id=API_TR_MAPPING["KIS"]["tick_data"],
+                tr_id=tr_id,
                 params={
                     "FID_COND_MRKT_DIV_CODE": "J",
                     "FID_INPUT_ISCD": symbol,
@@ -423,11 +433,12 @@ class VerificationConsumer:
         symbol = task.symbol
         api_results = {}
 
-        # KIS API 호출 (API Hub를 통해)
+        # KIS API 호출 (API Hub를 통해 - TR Registry 사용)
         try:
+            kis_tr_id = get_tr_id_for_use_case(UseCase.MINUTE_CANDLE_KIS)
             kis_result = await self.hub_client.execute(
                 provider="KIS",
-                tr_id=API_TR_MAPPING["KIS"]["minute_candle"],
+                tr_id=kis_tr_id,
                 params={
                     "FID_COND_MRKT_DIV_CODE": "J",
                     "FID_INPUT_ISCD": symbol,
@@ -451,11 +462,12 @@ class VerificationConsumer:
         except Exception as e:
             logger.error(f"KIS API call exception for {symbol}: {e}")
 
-        # Kiwoom API 호출 (API Hub를 통해)
+        # Kiwoom API 호출 (API Hub를 통해 - TR Registry 사용)
         try:
+            kiwoom_tr_id = get_tr_id_for_use_case(UseCase.MINUTE_CANDLE_KIWOOM)
             kiwoom_result = await self.hub_client.execute(
                 provider="Kiwoom",
-                tr_id=API_TR_MAPPING["Kiwoom"]["minute_candle"],
+                tr_id=kiwoom_tr_id,
                 params={
                     "symbol": symbol,
                     "time_unit": "1",  # 1분봉
