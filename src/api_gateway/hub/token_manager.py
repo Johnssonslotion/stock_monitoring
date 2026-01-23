@@ -64,8 +64,10 @@ class TokenManager:
         key = f"api:token:{provider.lower()}"
         data = await self.redis.get(key)
 
+        logger.debug(f"🔍 TokenManager.get_token('{provider}') -> key='{key}', data_exists={data is not None}")
+
         if not data:
-            logger.warning(f"⚠️ No token found for {provider}, triggering initial refresh")
+            logger.warning(f"⚠️ No token found for {provider} (key: {key}), triggering initial refresh")
             # 토큰이 없으면 즉시 전역 락 기반 갱신 시도
             return await self.refresh_token_with_lock(provider)
 
