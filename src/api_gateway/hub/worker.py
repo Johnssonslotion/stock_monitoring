@@ -167,8 +167,8 @@ class RestApiWorker:
             rate_limiter=rate_limiter
         )
 
-        mode_str = "Mock" if self.enable_mock else "Real API"
-        logger.info(f"✅ RestApiWorker setup completed ({mode_str} mode)")
+        self.mode_str = "Mock" if self.enable_mock else "Real API"
+        logger.info(f"✅ RestApiWorker setup completed ({self.mode_str} mode)")
 
     async def process_task(self, task: dict):
         """
@@ -183,7 +183,7 @@ class RestApiWorker:
         task_id = task.get("task_id", "unknown")
         provider = task.get("provider", "unknown")
 
-        logger.info(f"📥 Processing task: {task_id} (provider: {provider})")
+        logger.info(f"📥 Processing task: {task_id} (provider: {provider}, mode: {self.mode_str})")
 
         # Dispatcher로 실행
         result = await self.dispatcher.dispatch(task)
@@ -217,7 +217,7 @@ class RestApiWorker:
         await self.setup()
 
         self.is_running = True
-        logger.info("🟢 RestApiWorker started (Mock Mode)")
+        logger.info(f"🟢 RestApiWorker started ({self.mode_str} mode)")
 
         try:
             while self.is_running:
