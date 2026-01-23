@@ -8,39 +8,34 @@
 
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISSUE-001: Virtual Investment Simulation Platform** | Developer, Data Scientist | **P1** | [/] | 가상 투자 백엔드 구현 |
-| **ISSUE-014: 외부 모니터링 대시보드** | Developer + Architect | **P1** | [/] | A1 상태 모니터링 독립 API & UI |
+| **ISSUE-039: TickArchiver Redis 연결 불안정** | Developer | **P1** | [/] | 동기 블로킹 I/O 문제, 장 마감 후 수정 예정 |
 
 ---
 
 ## 2. 대기 중 (Todo)
 
 ### 🔴 P0 (긴급)
-
-### 🔴 P0 (긴급)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
-| **ISSUE-019: Critical Bug Fixes** | Developer | - | (Placeholder) |
-| **ISSUE-033: TimescaleArchiver Schema Mismatch** | Developer | - | 데이터 적재 정지 |
+| *(현재 P0 이슈 없음)* | - | - | - |
 
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **ISSUE-002: Virtual Investment Platform - Frontend UI** | Frontend Developer | ISSUE-001 | 화면 구현 대기 |
 | **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
-| **ISSUE-002: Virtual Investment Platform - Frontend UI** | Frontend Developer | ISSUE-001 | 화면 구현 대기 |
-| **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
-| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | docs/specs/api_hub_specification.md | 중앙 큐 기반 API 호출 전담 워커 구축 |
-
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
+| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | - | 중앙 큐 기반 API 호출 전담 워커 |
+| **ISSUE-038: Sentinel & Global Logging Standard** | Developer | - | 로깅 표준화 |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
 | **ISSUE-005: 캔들 데이터 서비스** | Backend | - | `GET /api/candles` 다중 타임프레임 |
 | **ISSUE-006: 시장 섹터 서비스** | Data Engineer | - | 섹터별 성과 집계 배치 작업 |
+| **ISSUE-034: TimescaleDB Storage Efficiency** | Developer | - | 저장 공간 최적화 |
 
 ### 🔵 P3 (낮음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -52,7 +47,10 @@
 
 ## 3. 완료 (Done)
 
-### Latest (2026-01-22)
+### Latest (2026-01-23)
+- [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)** - 494,505 ticks/1h 검증 완료
+
+### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
   - ✅ `BackfillManager`: gatekeeper 통합 및 Self-Diagnosis 로직 추가
   - ✅ `impute_final_candles.py`: Ground Truth 우선순위 로직 적용
@@ -62,23 +60,28 @@
   - ✅ 거버넌스: Constitution v2.17 (No Review, No Work) 신설
   - ✅ **Redis 물리적 분리**: `redis-gatekeeper` 전용 컨테이너 (Council 2차 결정)
 - [x] **수집단(Collector) 독립화 [RFC-007]**
-  - ✅ kis-service: KIS API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kis_main)
-  - ✅ kiwoom-service: Kiwoom API 전용 컨테이너 분리 (python -m src.data_ingestion.instances.kiwoom_sub)
-  - ✅ Profile 기반 격리 (collection/real) 및 리소스 제한 (512M~2G)
-  - ✅ 환경별 자동 감지 (Mac=local, Linux=real) Makefile 통합
+  - ✅ kis-service: KIS API 전용 컨테이너 분리
+  - ✅ kiwoom-service: Kiwoom API 전용 컨테이너 분리
+  - ✅ Profile 기반 격리 및 리소스 제한 (512M~2G)
 
-### Previous (2026-01-21)
+### 2026-01-21
 - [x] **ISSUE-036: DB 스키마 정합성 복구 및 거버넌스(Law #10) 통합**
-  - ✅ 004/005 마이그레이션과 실제 DB 동기화 (MATCH)
-  - ✅ 수집기 모델 메타데이터 보강 및 Timestamp Pinning 적용
-  - ✅ Constitution Law #10 (Time Determinism) 신설
 - [x] **ISSUE-028: Chart UI Controls Overlap (Stabilization)**
-  - ✅ Timeframe/Zoom 컨트롤 그룹화 및 오버랩 방지
-  - ✅ 환경 인디케이터(Local/Prod) 및 로딩 인디케이터 개선
-- [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)**
 - [x] **ISSUE-035: 장 초반 적재 보장 (Zero-Tolerance Ingestion Guard)**
 - [x] **ISSUE-004: Fix Market Open Failure (Kiwoom/KIS Protocol)**
 - [x] **ISSUE-021: Critical KIS Auth Failure Remediation**
+
+### 2026-01-19~20 (Hotfix Batch)
+- [x] **ISSUE-016: 데이터 파이프라인 테스트 완벽성 강화 및 ZEVS 구축**
+- [x] **ISSUE-012: KIS WebSocket Approval Key & Auth Fix (P0)**
+- [x] **ISSUE-015: 데이터 누락 자동 보완 (Gap Filler & Backfill)**
+- [x] **ISSUE-007: WebSocket 연결 관리자 (Dual/Unified Manager)**
+- [x] **ISSUE-017: Implement DuckDBArchiver (Hybrid Architecture)**
+- [x] **ISSUE-018: Implement KIS Tick Recovery (Backfill Manager)**
+- [x] **ISSUE-019: API E2E Test Environment Fix**
+- [x] **ISSUE-020: Dual Data Collection (70 Symbols)**
+- [x] **ISSUE-022~030: Hotfix Batch** (타입 변환, 채널 표준화, 볼륨 경로 등)
+- [x] **RFC-003 Enhancement: Environment Variable Standardization**
 
 ### Phase 1 Week 1 (2026-01-16)
 - [x] TimestampManager 유틸리티 구현 (12 tests)
@@ -86,32 +89,6 @@
 - [x] DB 스키마 업데이트 (타임스탬프 계층, 중복 방지)
 - [x] Orchestrator Failover 로직 (8 tests)
 - [x] **Governance v2: 헌법 개정 및 10대 워크플로우 구축**
-- [x] **Git Sync: 거버넌스 및 명세서 문서 저장소 이관**
-- [x] **ISSUE-045: CPU 모니터링 수정 & 실시간 WS API (ISSUE-044) 전환**
-- [x] **ISSUE-016: 데이터 파이프라인 테스트 완벽성 강화 및 ZEVS 구축** (2026-01-19)
-- [x] **ISSUE-012: KIS WebSocket Approval Key & Auth Fix (P0)** (2026-01-19)
-- [x] **ISSUE-015: 데이터 누락 자동 보완 (Gap Filler & Backfill)** (2026-01-19)
-- [x] **ISSUE-007: WebSocket 연결 관리자 (Dual/Unified Manager)** (2026-01-19)
-- [x] **ISSUE-018: Implement KIS Tick Recovery (Backfill Manager)** (2026-01-19)
-- [x] **ISSUE-017: Implement DuckDBArchiver (Hybrid Architecture)** (2026-01-19)
-- [x] **ISSUE-019: API E2E Test Environment Fix** (2026-01-19)
-- [x] **ISSUE-020: Dual Data Collection (70 Symbols)** (2026-01-19)
-- [x] **RFC-003 Enhancement: Environment Variable Standardization** (2026-01-20)
-  - ✅ `.env.schema.yaml`: Define required/optional variables
-  - ✅ `scripts/validate_env.py`: Automated validation
-  - ✅ `.env.template`: Base template for all environments
-  - ✅ Makefile integration: Auto-validation on `up-dev`/`up-prod`
-  - ✅ Security: Remove `.env.test` from Git tracking
-
-### Hotfix Batch (2026-01-20)
-- [x] **ISSUE-022: DuckDB Timestamp Format Fix**
-- [x] **ISSUE-023: TimescaleArchiver Channel Standardization**
-- [x] **ISSUE-024: Dockerfile Dependency Update (httpx)**
-- [x] **ISSUE-025: Recovery Script Implementation**
-- [x] **ISSUE-026: Kiwoom Orderbook Publishing Standardization**
-- [x] **ISSUE-027: Kiwoom Tick Publishing Standardization**
-- [x] **ISSUE-029: Docker Volume Path Standardization**
-- [x] **ISSUE-030: Channel Naming Standardization**
 
 ### 이전 작업
 - [x] 브로커 소켓 제약사항 조사 (`socket_constraints.md`)
@@ -132,35 +109,31 @@
 
 ## 📌 활성 이슈 현황 (Active Issues)
 
+> `docs/issues/` 디렉토리 기준. 완료된 이슈는 `docs/ARCHIVE/issues/`로 이동됨.
+
 | 번호 | 제목 | 우선순위 | 상태 | 담당 |
 | :--- | :--- | :--- | :--- | :--- |
-| [ISSUE-001](docs/issues/ISSUE-001.md) | Virtual Investment Simulation Platform | P1 | In Progress | Developer |
-| [ISSUE-002](docs/issues/ISSUE-002.md) | Virtual Investment Platform - Frontend UI | P1 | Todo | Frontend Developer |
+| [ISSUE-002](docs/issues/ISSUE-002.md) | Virtual Investment Platform - Frontend UI | P1 | Todo | Frontend |
 | [ISSUE-003](docs/issues/ISSUE-003.md) | API Error Handling & Logging | P1 | Open | Developer |
-| [ISSUE-004](docs/ARCHIVE/issues/ISSUE-004.md) | Fix Market Open Failure | P0 | Done | Developer |
 | [ISSUE-005](docs/issues/ISSUE-005.md) | 캔들 데이터 서비스 | P2 | Open | Backend |
 | [ISSUE-006](docs/issues/ISSUE-006.md) | 시장 섹터 서비스 | P2 | Open | Data Engineer |
-| [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Open | Backend |
+| [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Done | Backend |
 | [ISSUE-008](docs/issues/ISSUE-008.md) | OrderBook Streaming | P1 | Open | Backend |
 | [ISSUE-009](docs/issues/ISSUE-009.md) | Execution Streaming | P1 | Open | Backend |
 | [ISSUE-010](docs/issues/ISSUE-010.md) | Correlation Engine | P3 | Open | Quant |
 | [ISSUE-011](docs/issues/ISSUE-011.md) | Whale Alert System | P3 | Open | Backend |
-| [ISSUE-012](docs/issues/ISSUE-012.md) | KIS WebSocket Approval Key | P0 | Open | Developer |
 | [ISSUE-013](docs/issues/ISSUE-013.md) | Virtual Trading Audit | P1 | Open | Architect |
-| [ISSUE-014](docs/issues/ISSUE-014.md) | 외부 모니터링 대시보드 | P1 | In Progress | Developer |
-| [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Open | Developer |
-| [ISSUE-016](docs/issues/ISSUE-016.md) | Enhance Data Pipeline Test Completeness & ZEVS | P0 | Done | Architect |
-| [ISSUE-017](docs/issues/ISSUE-017.md) | Implement DuckDBArchiver (Hybrid Architecture) | P1 | Open | Developer |
+| [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Done | Developer |
+| [ISSUE-017](docs/issues/ISSUE-017.md) | DuckDBArchiver (Hybrid Architecture) | P1 | Done | Developer |
+| [ISSUE-018](docs/issues/ISSUE-018.md) | KIS Tick Recovery (Backfill Manager) | P1 | Done | Developer |
 | [ISSUE-021](docs/issues/ISSUE-021.md) | Critical KIS Auth Failure Remediation | P0 | Done | Developer |
-| [ISSUE-022](docs/issues/ISSUE-022.md) | [Bug] TickArchiver DuckDB 타입 변환 오류 | P1 | Open | Developer |
-| [ISSUE-023](docs/issues/ISSUE-023.md) | [Bug] TimescaleArchiver Kiwoom 채널 구독 누락 | P1 | Open | Developer |
-| [ISSUE-024](docs/issues/ISSUE-024.md) | [Bug] Recovery Worker httpx 의존성 누락 | P2 | Open | Developer |
-| [ISSUE-025](docs/issues/ISSUE-025.md) | [Feature] Raw Log (JSONL) 기반 DB 복구 스크립트 | P1 | Open | Developer |
 | [ISSUE-028](docs/issues/ISSUE-028.md) | Chart UI Controls Overlap | P1 | Done | Frontend |
-| [ISSUE-031](docs/issues/ISSUE-031.md) | [Feature] 하이브리드 데이터 복구 (로그 + REST) | P1 | Open | Developer |
-| [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
-| [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
-| [ISSUE-034](docs/issues/ISSUE-034.md) | [Optimization] TimescaleDB Storage Efficiency | P1 | Open | Developer |
-| [ISSUE-037](docs/specs/api_hub_specification.md) | [Arch] Unified API Hub v2 (REST Worker) | P1 | Todo | Architect |
-| [ISSUE-038](docs/issues/ISSUE-038.md) | [Fix] Sentinel & Global Logging Standard | P1 | Todo | Developer |
-| [ISSUE-036](docs/issues/ISSUE-036.md) | DB 통합 및 스키마 정합성 복구 | P0 | Done | Developer |
+| [ISSUE-034](docs/issues/ISSUE-034.md) | TimescaleDB Storage Efficiency | P1 | Open | Developer |
+| [ISSUE-035](docs/issues/ISSUE-035.md) | 장 초반 적재 보장 | P0 | Done | Developer |
+| [ISSUE-036](docs/issues/ISSUE-036.md) | DB 스키마 정합성 복구 | P0 | Done | Developer |
+| [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Todo | Developer |
+| [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | In Progress | Developer |
+
+---
+
+*Last Updated: 2026-01-23*

@@ -15,8 +15,8 @@
 ## Acceptance Criteria
 - [x] `market_ticks` 테이블에 `source`, `broker`, `received_time` 등의 필수 컬럼이 포함되도록 `init_db` 수정
 - [x] `market_orderbook` 테이블이 없을 경우 자동 생성하는 로직 추가
-- [ ] 서비스 재시작 후 TimescaleDB에 데이터가 정상적으로 적재되는지 확인 (SQL query 결과 > 0)
-- [ ] Sentinel 알림에서 관련 에러가 사라지는지 확인
+- [x] 서비스 재시작 후 TimescaleDB에 데이터가 정상적으로 적재되는지 확인 (SQL query 결과 > 0) ✅ 494,505 ticks/1h (2026-01-23 검증)
+- [x] Sentinel 알림에서 관련 에러가 사라지는지 확인 ✅ timescale-archiver 정상 동작 중
 
 ## Technical Details
 - **Archiver Source**: `src/data_ingestion/archiver/timescale_archiver.py`
