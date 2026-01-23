@@ -54,35 +54,57 @@ graph TD
 - **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
 - **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](BACKLOG.md) 참조)
 
-### 🆕 ISSUE-037: Unified API Hub v2 (Phase 1 - Mock Mode) 🎯
+### 🆕 ISSUE-037: Unified API Hub v2 (REST Gateway) 🎯
 
-**Status**: In Progress (P0) | **Council Review**: ✅ Approved | **Tests**: 29/29 Pass
+**Status**: Phase 1 ✅ Complete | Phase 2 📝 In Design  
+**Council Review**: ✅ Approved (Conditional) | **Tests**: 33/33 Pass (29 Unit + 4 Integration)
 
-REST API 통합 워커 시스템의 Phase 1 Mock 모드 구현이 완료되었습니다:
+여러 증권사 REST API를 통합하여 단일 인터페이스로 제공하는 Gateway 시스템입니다.
 
-#### 구현 완료 항목
+#### ✅ Phase 1 완료 (Mock Mode - Production Ready)
 - ✅ **RestApiWorker**: Redis 큐 기반 태스크 처리 워커 (`src/api_gateway/hub/worker.py`)
 - ✅ **MockClient**: 실제 API 호출 없이 안전하게 테스트 가능한 Mock 클라이언트
-- ✅ **Queue Management**: 우선순위 큐 (`PRIORITY_QUEUE` > `NORMAL_QUEUE`) 처리
-- ✅ **Circuit Breaker**: 연속 실패 시 자동 차단 및 복구
-- ✅ **Docker Integration**: `gateway-worker-mock` 서비스 (Redis DB 15, 512M 메모리 제한)
-- ✅ **Test Coverage**: 29개 테스트 전체 통과 (Queue 6, Models 7, Dispatcher 10, Worker 6)
+- ✅ **QueueManager**: 우선순위 큐 처리 (`PRIORITY_QUEUE` > `NORMAL_QUEUE`)
+- ✅ **TaskDispatcher**: Provider별 라우팅 + Circuit Breaker + Rate Limiter
+- ✅ **Ground Truth Models**: CandleModel, TickModel (RFC-009 준수)
+- ✅ **Docker Integration**: `gateway-worker-mock` 서비스 (Redis DB 15, 512M 메모리)
+- ✅ **Test Coverage**: 33/33 통과 (29 unit + 4 integration)
+- ✅ **Docker Validation**: 메모리 25MB/512MB, CPU 0.07%
+
+#### 📝 Phase 2 설계 완료 (Real API Integration)
+**Prerequisites Complete** (5/5):
+- ✅ [BaseAPIClient 설계](docs/specs/api_hub_base_client_spec.md) - Abstract Base Class 패턴 (300+ lines)
+- ✅ [API Fixtures](tests/fixtures/api_responses/) - KIS + Kiwoom 샘플 응답
+- ✅ [Token Manager 설계](docs/specs/token_manager_spec.md) - Redis SSoT, Auto-refresh (200+ lines)
+- ✅ [Rate Limiter 통합 계획](docs/specs/rate_limiter_integration_plan.md) - Gatekeeper 패턴
+- ✅ [Phase 2 테스트 전략](docs/specs/phase2_test_plan.md) - Mock-only, CI-safe
+
+**Next Steps**:
+- ⏳ `BaseAPIClient`, `KISClient`, `KiwoomClient` 구현
+- ⏳ `TokenManager` 구현 (Redis SSoT)
+- ⏳ `redis-gatekeeper` 통합
+- ⏳ Fixture-based unit tests (90%+ coverage)
+
+#### 🔍 확장성
+- **신규 Provider 추가**: 기존 코드 수정 없이 새 Client 클래스만 작성 (Open/Closed Principle)
+- **Plugin Architecture**: `dispatcher.register_client("LS", ls_client)` 방식
+- **Provider별 격리**: Rate Limiter, Token Manager 자동 격리
 
 #### 실행 방법
 ```bash
-# Mock 워커 시작 (독립 실행)
+# Mock 워커 시작 (Phase 1)
 docker-compose --profile hub-mock up gateway-worker-mock
 
 # 테스트 실행
-PYTHONPATH=. poetry run pytest tests/unit/test_api_hub_{queue,models,dispatcher,worker}.py -v
+PYTHONPATH=. poetry run pytest tests/unit/test_api_hub_*.py -v  # Unit tests
+PYTHONPATH=. poetry run pytest tests/integration/test_api_hub_v2_integration.py -v -m manual  # Integration
 ```
 
-#### Phase 2 (실제 API 연동)
-- ⏳ `KISClient` / `KiwoomClient` 구현 (실제 REST API 호출)
-- ⏳ Token Manager 및 Rate Limiter 통합
-- ⏳ BackfillManager 호환성 검증
-
-자세한 내용은 [Council Review Report](docs/reports/20260123_issue037_council_review.md) 참조.
+#### 📚 관련 문서
+- **[API Hub v2 Overview](docs/specs/api_hub_v2_overview.md)** - 전체 개요 및 사용 가이드 ⭐
+- **[Council Review Report](docs/reports/20260123_issue037_council_review.md)** - Phase 1 승인 및 Phase 2 조건
+- **[Prerequisites Complete](docs/reports/20260123_issue037_prerequisites_complete.md)** - 5개 선행 작업 완료
+- **[Test Registry](docs/operations/testing/test_registry.md)** - HUB-* 테스트 목록 (33개)
 
 ---
 
