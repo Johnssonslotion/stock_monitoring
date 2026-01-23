@@ -39,8 +39,21 @@
 - **[Test Completeness Review](reviews/002_test_completeness_review_2026-01-19.md)**
 - **[Dashboard UX Review](reviews/001_dashboard_review.md)**
 
-## 6. 템플릿 (Templates)
-- **[Document Templates](templates/)**: RFC, ISSUE, 실험 보고서 등 각종 문서 양식.
+## 6. 템플릿 (Document Templates)
+- **[RFC Template](templates/rfc_template.md)**: 기술 제안서 양식.
+- **[Spec Template](templates/spec_template.md)**: 기능 명세서 양식.
+- **[Implementation Plan](templates/implementation_plan_template.md)**: 구현 계획서 양식.
+- **[Experiment Template](templates/experiment_template.md)**: 전략 실험 보고서 양식.
+- **[Incident Report Template](templates/incident_report_template.md)**: 장애 보고서 양식.
+- **[Roadmap Template](templates/roadmap_template.md)**: 로드맵 작성 양식.
+- **[Phase Specs/Tasks Index](templates/phase_spec_index_template.md)**: 단계별 명세/태스크 인덱스 양식.
+
+## 7. 핵심 기술 가이드 (Technical Guides)
+- **[E2E Test Guide](../operations/testing/E2E_TEST_GUIDE.md)**: 엔드투엔드 테스트 실행 가이드.
+- **[External Access Verification](../operations/testing/external_access_verification.md)**: 외부 접속 및 보안 검증 가이드.
+- **[KIS Integration Guide](../operations/kis_integration_guide.md)**: 한국투자증권 API 연동 상세.
+- **[Kiwoom WebSocket Guide](../specs/api_reference/kiwoom_websocket_guide.md)**: 키움증권 WebSocket 프로토콜 명세.
+- **[Tick Recovery Process](../operations/recovery/kiwoom_tick_recovery_process.md)**: 데이터 누락 복구 절차.
 
 ---
 > [!IMPORTANT]
