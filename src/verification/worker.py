@@ -1,11 +1,13 @@
 """
 Verification Worker (Producer/Consumer)
 =======================================
-RFC-008 Appendix E.4 구현
+RFC-008 Appendix E.4 구현 + ISSUE-041 Container Unification
 
 Redis Queue 기반 비동기 검증 작업 처리.
 - Producer: 검증 작업 생성 → Redis Queue
-- Consumer: Redis Queue → API 호출 → DB 저장
+- Consumer: Redis Queue → API Hub Queue → API 호출 → DB 저장
+
+ISSUE-041: API Hub Queue로 통합 (Token 관리 및 Rate Limiting 중앙화)
 """
 import asyncio
 import json
@@ -17,12 +19,8 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 import redis.asyncio as redis
-import aiohttp
 
-from src.api_gateway.rate_limiter import gatekeeper
-from src.verification.api_registry import (
-    api_registry, APITarget, APIProvider, APIEndpointType
-)
+from src.api_gateway.hub.client import APIHubClient
 
 logger = logging.getLogger(__name__)
 
@@ -111,176 +109,17 @@ class VerificationConfig:
     BATCH_DELAY_SEC = 1.0
 
 
-# === API Clients ===
+# === TR ID Mapping (API Hub용) ===
 
-class KiwoomAPIClient:
-    """Kiwoom REST API 클라이언트"""
-
-    BASE_URL = "https://api.kiwoom.com"
-    TOKEN_URL = f"{BASE_URL}/oauth2/token"
-
-    def __init__(self):
-        self._token: Optional[str] = None
-        self._token_expires: Optional[datetime] = None
-
-    async def get_token(self, session: aiohttp.ClientSession) -> str:
-        """토큰 발급 (캐싱)"""
-        # 만료 1시간 전 갱신
-        if self._token and self._token_expires:
-            if datetime.now() < self._token_expires - timedelta(hours=1):
-                return self._token
-
-        payload = {
-            "grant_type": "client_credentials",
-            "appkey": os.getenv("KIWOOM_APP_KEY"),
-            "secretkey": os.getenv("KIWOOM_APP_SECRET")
-        }
-        headers = {
-            "Content-Type": "application/json; charset=UTF-8",
-            "User-Agent": "Mozilla/5.0"
-        }
-
-        async with session.post(self.TOKEN_URL, json=payload, headers=headers) as resp:
-            data = await resp.json()
-            if data.get("return_code") == 0:
-                self._token = data.get("token")
-                # expires_dt: "20260121120000" 형식
-                expires_str = data.get("expires_dt", "")
-                if expires_str:
-                    self._token_expires = datetime.strptime(expires_str, "%Y%m%d%H%M%S")
-                logger.info(f"Kiwoom token acquired: {self._token[:15]}...")
-                return self._token
-            else:
-                raise Exception(f"Kiwoom token error: {data}")
-
-    async def fetch_minute_candle(
-        self,
-        session: aiohttp.ClientSession,
-        symbol: str,
-        target: APITarget
-    ) -> Optional[Dict[str, Any]]:
-        """분봉 데이터 조회"""
-        token = await self.get_token(session)
-
-        headers = {
-            "Content-Type": "application/json; charset=UTF-8",
-            "authorization": f"Bearer {token}",
-            "api-id": target.tr_id,
-            "User-Agent": "Mozilla/5.0"
-        }
-        body = {
-            "stk_cd": symbol,
-            "chart_type": "1"
-        }
-
-        url = f"{self.BASE_URL}{target.path}"
-        async with session.post(url, json=body, headers=headers, timeout=target.timeout_sec) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                if data.get("return_code") == 0:
-                    data_key = target.response_mapping.get("data_key", "stk_min_pole_chart_qry")
-                    return data.get(data_key, [])
-            elif resp.status == 429:
-                logger.warning(f"Kiwoom rate limit exceeded for {symbol}")
-            else:
-                logger.error(f"Kiwoom API error: {resp.status}")
-            return None
-
-
-class KISAPIClient:
-    """KIS REST API 클라이언트"""
-
-    BASE_URL = "https://openapi.koreainvestment.com:9443"
-    TOKEN_URL = f"{BASE_URL}/oauth2/tokenP"
-
-    def __init__(self):
-        self._token: Optional[str] = None
-        self._token_expires: Optional[datetime] = None
-
-    async def get_token(self, session: aiohttp.ClientSession) -> str:
-        """토큰 발급 (캐싱)"""
-        if self._token and self._token_expires:
-            if datetime.now() < self._token_expires - timedelta(hours=1):
-                return self._token
-
-        payload = {
-            "grant_type": "client_credentials",
-            "appkey": os.getenv("KIS_APP_KEY"),
-            "appsecret": os.getenv("KIS_APP_SECRET")
-        }
-
-        async with session.post(self.TOKEN_URL, json=payload) as resp:
-            data = await resp.json()
-            self._token = data.get("access_token")
-            expires_in = data.get("expires_in", 86400)
-            self._token_expires = datetime.now() + timedelta(seconds=expires_in)
-            logger.info(f"KIS token acquired: {self._token[:15]}...")
-            return self._token
-
-    async def fetch_minute_candle(
-        self,
-        session: aiohttp.ClientSession,
-        symbol: str,
-        target: APITarget
-    ) -> Optional[Dict[str, Any]]:
-        """분봉 데이터 조회"""
-        token = await self.get_token(session)
-
-        headers = {
-            "Content-Type": "application/json; charset=UTF-8",
-            "authorization": f"Bearer {token}",
-            "appkey": os.getenv("KIS_APP_KEY"),
-            "appsecret": os.getenv("KIS_APP_SECRET"),
-            "tr_id": target.tr_id
-        }
-        params = {
-            "FID_COND_MRKT_DIV_CODE": "J",
-            "FID_INPUT_ISCD": symbol,
-            "FID_INPUT_HOUR_1": "",
-            "FID_PW_DATA_INCU_YN": "Y"
-        }
-
-        url = f"{self.BASE_URL}{target.path}"
-        async with session.get(url, headers=headers, params=params, timeout=target.timeout_sec) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                return data.get("output2", [])
-            else:
-                logger.error(f"KIS API error: {resp.status}")
-            return None
-
-    async def fetch_tick_data(
-        self,
-        session: aiohttp.ClientSession,
-        symbol: str,
-        target_time: str
-    ) -> List[Dict[str, Any]]:
-        """틱 데이터 조회 (복구용)"""
-        token = await self.get_token(session)
-        
-        # TR_ID: 실전/모의 구분
-        tr_id = "FHKST01010300" if "openapi" in self.BASE_URL else "VTKST01010300"
-
-        headers = {
-            "Content-Type": "application/json; charset=utf-8",
-            "authorization": f"Bearer {token}",
-            "appkey": os.getenv("KIS_APP_KEY"),
-            "appsecret": os.getenv("KIS_APP_SECRET"),
-            "tr_id": tr_id,
-            "custtype": "P"
-        }
-        params = {
-            "fid_cond_mrkt_div_code": "J",
-            "fid_input_iscd": symbol,
-            "fid_input_hour_1": target_time
-        }
-
-        url = f"{self.BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
-        async with session.get(url, headers=headers, params=params) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                return data.get('output1', [])
-            return []
+API_TR_MAPPING = {
+    "KIS": {
+        "minute_candle": "FHKST01010400",  # 국내주식 분봉 조회
+        "tick_data": "FHKST01010300",      # 국내주식 체결 조회
+    },
+    "KIWOOM": {
+        "minute_candle": "KIS_CL_PBC_04020",  # 국내주식 분봉 조회
+    }
+}
 
 
 # === Producer ===
@@ -386,25 +225,29 @@ class VerificationProducer:
 
 class VerificationConsumer:
     """
-    검증 작업 소비자 (Redis Queue → API → DB)
+    검증 작업 소비자 (Redis Queue → API Hub Queue → DB)
 
-    Queue에서 작업을 가져와 듀얼 API 검증 수행 후 결과 저장.
+    ISSUE-041: API Hub Queue 통합
+    - Token 관리는 API Hub의 TokenManager가 담당
+    - Rate Limiting은 API Hub의 Dispatcher가 담당
     """
 
     def __init__(self, redis_url: Optional[str] = None):
         self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/1")
         self.redis: Optional[redis.Redis] = None
-        self.kiwoom_client = KiwoomAPIClient()
-        self.kis_client = KISAPIClient()
+        self.hub_client: Optional[APIHubClient] = None
         self._running = False
         self._results: List[VerificationResult] = []
 
     async def connect(self):
-        """Redis 연결"""
+        """Redis 및 API Hub Client 연결"""
         if not self.redis:
             self.redis = await redis.from_url(self.redis_url, decode_responses=True)
-            await gatekeeper.connect()
             logger.info(f"Consumer connected to Redis: {self.redis_url}")
+        
+        if not self.hub_client:
+            self.hub_client = APIHubClient()
+            logger.info("API Hub Client initialized")
 
     async def close(self):
         """연결 종료"""
@@ -412,12 +255,15 @@ class VerificationConsumer:
         if self.redis:
             await self.redis.close()
             self.redis = None
+        if self.hub_client:
+            await self.hub_client.close()
+            self.hub_client = None
 
     async def start(self):
         """소비 루프 시작"""
         await self.connect()
         self._running = True
-        logger.info("Consumer started")
+        logger.info("Consumer started (API Hub mode)")
         await self._consume_loop()
 
     async def stop(self):
@@ -427,48 +273,47 @@ class VerificationConsumer:
 
     async def _consume_loop(self):
         """메인 소비 루프"""
-        async with aiohttp.ClientSession() as session:
-            while self._running:
-                task = None
+        while self._running:
+            task = None
 
-                # 1. 우선순위 큐 먼저 확인
-                raw_task = await self.redis.rpop(VerificationConfig.PRIORITY_QUEUE_KEY)
+            # 1. 우선순위 큐 먼저 확인
+            raw_task = await self.redis.rpop(VerificationConfig.PRIORITY_QUEUE_KEY)
 
-                # 2. 일반 큐에서 Blocking Pop
-                if not raw_task:
-                    result = await self.redis.brpop(VerificationConfig.QUEUE_KEY, timeout=5)
-                    if result:
-                        _, raw_task = result
+            # 2. 일반 큐에서 Blocking Pop
+            if not raw_task:
+                result = await self.redis.brpop(VerificationConfig.QUEUE_KEY, timeout=5)
+                if result:
+                    _, raw_task = result
 
-                if not raw_task:
-                    continue
+            if not raw_task:
+                continue
 
-                # 3. 작업 실행
-                try:
-                    task = VerificationTask.from_json(raw_task)
-                    
-                    if task.task_type == "recovery":
-                        result = await self._handle_recovery_task(session, task)
-                    else:
-                        result = await self._process_task(session, task)
-                    
-                    self._results.append(result)
+            # 3. 작업 실행
+            try:
+                task = VerificationTask.from_json(raw_task)
+                
+                if task.task_type == "recovery":
+                    result = await self._handle_recovery_task(task)
+                else:
+                    result = await self._process_task(task)
+                
+                self._results.append(result)
 
-                    if result.status == VerificationStatus.NEEDS_RECOVERY:
-                        logger.warning(f"Recovery needed: {result.symbol}, delta={result.delta_pct:.2%}")
+                if result.status == VerificationStatus.NEEDS_RECOVERY:
+                    logger.warning(f"Recovery needed: {result.symbol}, delta={result.delta_pct:.2%}")
 
-                except Exception as e:
-                    logger.error(f"Task failed: {e}")
-                    # Dead Letter Queue로 이동
-                    if raw_task:
-                        await self.redis.lpush(VerificationConfig.DLQ_KEY, raw_task)
+            except Exception as e:
+                logger.error(f"Task failed: {e}")
+                # Dead Letter Queue로 이동
+                if raw_task:
+                    await self.redis.lpush(VerificationConfig.DLQ_KEY, raw_task)
 
-    async def _handle_recovery_task(
-        self,
-        session: aiohttp.ClientSession,
-        task: VerificationTask
-    ) -> VerificationResult:
-        """긴급 복구 작업 처리"""
+    async def _handle_recovery_task(self, task: VerificationTask) -> VerificationResult:
+        """
+        긴급 복구 작업 처리 (API Hub Queue 사용)
+        
+        ISSUE-041: KIS Tick Data 복구를 API Hub를 통해 처리
+        """
         symbol = task.symbol
         # minute format: "2026-01-20T09:00:00"
         dt_min = datetime.fromisoformat(task.minute)
@@ -477,28 +322,48 @@ class VerificationConsumer:
         
         logger.info(f"🛠️ Handling recovery task for {symbol} @ {dt_min.strftime('%H:%M')}")
         
-        # Rate Limit
-        if await gatekeeper.wait_acquire("KIS", timeout=5.0):
-            items = await self.kis_client.fetch_tick_data(session, symbol, target_time_req)
+        try:
+            # API Hub를 통한 틱 데이터 조회
+            result = await self.hub_client.execute(
+                provider="KIS",
+                tr_id=API_TR_MAPPING["KIS"]["tick_data"],
+                params={
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_HOUR_1": target_time_req
+                },
+                timeout=10.0
+            )
             
-            if items:
-                # Filter and Save Ticks
-                recovered_count = await self._save_recovered_ticks(symbol, dt_min, items)
+            if result.get("status") == "SUCCESS":
+                data = result.get("data", {})
+                items = data.get("output1", [])
                 
-                return VerificationResult(
-                    symbol=symbol,
-                    minute=task.minute,
-                    status=VerificationStatus.PASS,
-                    confidence=ConfidenceLevel.HIGH,
-                    message=f"Recovered {recovered_count} ticks"
-                )
+                if items:
+                    # Filter and Save Ticks
+                    recovered_count = await self._save_recovered_ticks(symbol, dt_min, items)
+                    
+                    return VerificationResult(
+                        symbol=symbol,
+                        minute=task.minute,
+                        status=VerificationStatus.PASS,
+                        confidence=ConfidenceLevel.HIGH,
+                        message=f"Recovered {recovered_count} ticks via API Hub"
+                    )
+            elif result.get("status") == "RATE_LIMITED":
+                logger.warning(f"[{symbol}] Rate limited by API Hub")
+            else:
+                logger.warning(f"[{symbol}] API Hub error: {result.get('reason')}")
+        
+        except Exception as e:
+            logger.error(f"[{symbol}] Recovery failed: {e}")
         
         return VerificationResult(
             symbol=symbol,
             minute=task.minute,
             status=VerificationStatus.FAIL,
             confidence=ConfidenceLevel.LOW,
-            message="Recovery failed (API error or Rate Limit)"
+            message="Recovery failed (API Hub error)"
         )
 
     async def _save_recovered_ticks(self, symbol: str, dt_min: datetime, items: List[Dict]) -> int:
@@ -542,50 +407,76 @@ class VerificationConsumer:
 
     async def _process_task(
         self,
-        session: aiohttp.ClientSession,
         task: VerificationTask
     ) -> VerificationResult:
         """
-        작업 처리: Rate Limit → API 호출 → 교차 검증
+        작업 처리: API Hub를 통한 듀얼 API 호출 → 교차 검증
+        
+        ISSUE-041: API Hub Queue를 사용하여 Rate Limiting과 Token 관리를 중앙화
 
         Args:
-            session: aiohttp 세션
             task: 검증 작업
 
         Returns:
             VerificationResult
         """
         symbol = task.symbol
-
-        # 듀얼 API 타겟 조회
-        targets = api_registry.get_all_targets(APIEndpointType.MINUTE_CANDLE)
         api_results = {}
 
-        for target in targets:
-            # Rate Limit 획득
-            acquired = await gatekeeper.wait_acquire(target.rate_limit_key, timeout=5.0)
-            if not acquired:
-                logger.warning(f"Rate limit timeout for {target.provider.value}")
-                continue
+        # KIS API 호출 (API Hub를 통해)
+        try:
+            kis_result = await self.hub_client.execute(
+                provider="KIS",
+                tr_id=API_TR_MAPPING["KIS"]["minute_candle"],
+                params={
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_HOUR_1": "",
+                    "FID_PW_DATA_INCU_YN": "Y"
+                },
+                timeout=10.0
+            )
+            
+            if kis_result.get("status") == "SUCCESS":
+                data = kis_result.get("data", {})
+                items = data.get("output2", [])
+                if items:
+                    # KIS 분봉 데이터는 output2에 담김, volume key는 "cntg_vol"
+                    kis_volume = sum(int(item.get("cntg_vol", 0)) for item in items if isinstance(item, dict))
+                    api_results["kis"] = kis_volume
+                    logger.debug(f"KIS volume for {symbol}: {kis_volume}")
+            else:
+                logger.warning(f"KIS API call failed for {symbol}: {kis_result.get('reason', 'Unknown')}")
+        
+        except Exception as e:
+            logger.error(f"KIS API call exception for {symbol}: {e}")
 
-            # API 호출
-            try:
-                if target.provider == APIProvider.KIWOOM:
-                    data = await self.kiwoom_client.fetch_minute_candle(session, symbol, target)
-                else:
-                    data = await self.kis_client.fetch_minute_candle(session, symbol, target)
-
-                if data:
-                    # 거래량 합계 계산
-                    volume_key = target.response_mapping.get("volume", "trde_qty")
-                    total_volume = sum(
-                        int(item.get(volume_key, 0)) for item in data if isinstance(item, dict)
-                    )
-                    api_results[target.provider.value] = total_volume
-                    logger.debug(f"{target.provider.value} volume for {symbol}: {total_volume}")
-
-            except Exception as e:
-                logger.error(f"API call failed: {target.provider.value} - {e}")
+        # Kiwoom API 호출 (API Hub를 통해)
+        try:
+            kiwoom_result = await self.hub_client.execute(
+                provider="Kiwoom",
+                tr_id=API_TR_MAPPING["Kiwoom"]["minute_candle"],
+                params={
+                    "symbol": symbol,
+                    "time_unit": "1",  # 1분봉
+                    "count": "120"     # 최근 2시간
+                },
+                timeout=10.0
+            )
+            
+            if kiwoom_result.get("status") == "SUCCESS":
+                data = kiwoom_result.get("data", {})
+                items = data.get("output", [])
+                if items:
+                    # Kiwoom 분봉 데이터는 output에 담김, volume key는 "trde_qty"
+                    kiwoom_volume = sum(int(item.get("trde_qty", 0)) for item in items if isinstance(item, dict))
+                    api_results["kiwoom"] = kiwoom_volume
+                    logger.debug(f"Kiwoom volume for {symbol}: {kiwoom_volume}")
+            else:
+                logger.warning(f"Kiwoom API call failed for {symbol}: {kiwoom_result.get('reason', 'Unknown')}")
+        
+        except Exception as e:
+            logger.error(f"Kiwoom API call exception for {symbol}: {e}")
 
         # 교차 검증
         return self._cross_validate(symbol, task.minute, api_results)
