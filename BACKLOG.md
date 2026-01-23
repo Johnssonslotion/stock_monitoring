@@ -8,7 +8,7 @@
 
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ISSUE-040: API Hub v2 Phase 2 - Real API Integration** | Developer | **P0** | 🔄 Active | Council 만장일치 승인 (2026-01-23), DEF-API-HUB-001 활성화 |
+| *(현재 진행 중인 태스크 없음)* | - | - | - | - |
 
 ---
 
@@ -47,6 +47,7 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-23)
+- [x] **ISSUE-040: API Hub v2 Phase 2 - Real API Integration (P0)** - TokenManager Redlock, BaseAPIClient 통합, Rate Limiter Ground Truth 준수, BackfillManager Queue 전환, 22 new tests, Gap Analysis PASS
 - [x] **ISSUE-037: Unified API Hub v2 - Phase 1 Mock Mode (P0)** - Worker 구현, 29/29 테스트 통과, Docker 배포 검증 완료
 - [x] **ISSUE-037-A: BaseAPIClient 설계 문서 (P0)** - Phase 2 선행 작업 1/5 완료 (300+ lines)
 - [x] **ISSUE-037-B: API 응답 Fixture 수집 (P0)** - Phase 2 선행 작업 2/5 완료 (KIS + Kiwoom)
