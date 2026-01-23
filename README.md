@@ -186,10 +186,11 @@ make test
 | 🏛️ 아키텍처 이해 | [UI Design Master](docs/ui_design_master.md) |
 | 👥 의사결정 방식 | [Personas & Council](docs/governance/personas.md) |
 
-## 📡 현재 시스템 상태 (As of 2026-01-21)
+## 📡 현재 시스템 상태 (As of 2026-01-23)
 - **Phase 1-5: Infrastructure, Pipeline, Monitoring, Optimization, Safety** ✅ [Completed]
 - **Phase 6: Verification** ✅ [Completed] (E2E Test & Data Rescue)
 - **Phase 7: Strategy & Experimentation** ✅ [Completed] (Isolated Backtest Infrastructure)
 - **Phase 8: Intelligence** 🚧 [In Progress] (SDLC Automation & Gap Analysis Enhancements)
+- **🆕 Unified Backlog Management**: `BACKLOG.md` SSoT 체계 구축 및 거버넌스(v2.18) 개정 완료.
 - **🆕 Kiwoom Integration**: WebSocket + REST 하이브리드 수집 환경 구축 완료.
 - **🆕 Zero-Tolerance Guard**: 장 초반 데이터 유실 방지 로직 구현 중 (`ISSUE-035`).

@@ -11,7 +11,11 @@ from typing import Optional
 from src.core.schema import MarketData
 from src.data_ingestion.price.common import KISAuthManager
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z'
+)
 logger = logging.getLogger("KRCollector")
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

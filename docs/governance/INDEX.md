@@ -3,7 +3,7 @@
 본 문서는 프로젝트 운영 원칙, 의사결정 기록, 문서 표준을 관리하는 인덱스입니다.
 
 ## 1. 핵심 규정 (Core Regulations)
-- **[ai-rules.md](../../.ai-rules.md)**: 최상위 절대 원칙 (Constitution, v2.17).
+- **[ai-rules.md](../../.ai-rules.md)**: 최상위 절대 원칙 (Constitution, v2.18).
 - **[Development Standard](development.md)**: 개발 가이드라인 및 품질 게이트.
 - **[Infrastructure & DB](infrastructure.md)**: 인프라 물리 구조 및 DB 격리 규정.
 - **[Documentation Standard](documentation_standard.md)**: RFC, ADR 등 문서 작성 규격.
@@ -12,9 +12,7 @@
 ## 2. 의사결정 및 이력 (Decisions & History)
 - **[Governance History](HISTORY.md)**: 거버넌스 변경 이력 및 Constitution v2.x 로그.
 - **[Decision Records (ADR)](decisions/)**: 주요 기술적 의사결정 모음.
-  - **[ADR-010: Governance Sync Gate](decisions/010_governance_sync_gate.md)** (v2.17)
-- **[RFC Records](rfc/)**: 기술 제안 및 표준화 기록.
-- **[Deferred Work Registry](deferred_work.md)**: 승인되었으나 연기된 작업 목록.
+  - **[RFC Records](rfc/)**: 기술 제안 및 표준화 기록.
 
 ## 3. RFC 목록 (Active RFCs)
 
