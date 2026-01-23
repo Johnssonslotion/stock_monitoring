@@ -83,11 +83,15 @@ class TaskDispatcher:
         if self.rate_limiter:
             acquired = await self.rate_limiter.wait_acquire(provider, timeout=5.0)
             if not acquired:
-                logger.warning(f"⏳ Task {task_id} rate limited")
+                logger.warning(
+                    f"⏳ [RATE_LIMIT_REJECTION] Task {task_id} rejected for {provider}: "
+                    "Rate limit wait timeout (5.0s)."
+                )
                 return {
                     "task_id": task_id,
                     "status": "RATE_LIMITED",
-                    "reason": "RATE_LIMIT_TIMEOUT"
+                    "reason": "RATE_LIMIT_TIMEOUT",
+                    "provider": provider
                 }
 
         # 4. 실행

@@ -18,6 +18,7 @@ from typing import Optional, Tuple
 
 import httpx
 import redis.asyncio as redis
+from .clients.exceptions import AuthenticationError
 
 logger = logging.getLogger("TokenManager")
 
@@ -126,9 +127,9 @@ class TokenManager:
             )
             return True, lock_key
         else:
-            logger.debug(
-                f"⏳ Lock not acquired for {provider} "
-                f"(another worker is refreshing)"
+            logger.warning(
+                f"⚠️ [REDLOCK_CONTENTION] Lock not acquired for {provider} "
+                f"(worker={self._lock_id}). Another instance is currently refreshing."
             )
             return False, lock_key
 
@@ -201,8 +202,8 @@ class TokenManager:
             await asyncio.sleep(LOCK_RETRY_DELAY)
 
         logger.warning(
-            f"⚠️ Lock wait timeout for {provider} "
-            f"(waited {max_wait}s)"
+            f"⚠️ [REDLOCK_TIMEOUT] Lock wait timeout for {provider} "
+            f"(waited {max_wait}s). This may indicate a hung worker or slow API."
         )
         return None
 
@@ -344,7 +345,7 @@ class TokenManager:
             except Exception as e:
                 logger.error(
                     f"❌ Failed to refresh {provider} token "
-                    f"(attempt {attempt + 1}): {e}"
+                    f"(attempt {attempt + 1}): {str(e)}"
                 )
 
                 if attempt < max_retries - 1:
@@ -376,8 +377,7 @@ class TokenManager:
             response = await client.post(
                 f"{base_url}/oauth2/tokenP",
                 headers={
-                    "Content-Type": "application/json",
-                    "User-Agent": "APIHub/Manager"
+                    "content-type": "application/json; utf-8"
                 },
                 json={
                     "grant_type": "client_credentials",
@@ -389,8 +389,10 @@ class TokenManager:
 
             data = response.json()
             if response.status_code != 200 or "access_token" not in data:
-                logger.error(f"❌ KIS token refresh error ({response.status_code}): {data}")
-                response.raise_for_status()
+                # 보안: 토큰이 포함될 수 있으므로 전체 data를 로그에 출력하지 않음
+                error_desc = data.get('error_description', data.get('error_code', 'No explanation'))
+                logger.error(f"❌ KIS token refresh error ({response.status_code}): {error_desc}")
+                raise AuthenticationError(f"KIS token refresh failed: {error_desc}")
 
             return data["access_token"]
 
@@ -398,9 +400,11 @@ class TokenManager:
         """Kiwoom 토큰 갱신"""
         api_key = os.getenv("KIWOOM_API_KEY") or os.getenv("KIWOOM_APP_KEY")
         secret_key = os.getenv("KIWOOM_SECRET_KEY") or os.getenv("KIWOOM_APP_SECRET")
+        
+        # [Council 결정] Kiwoom OAuth는 전용 도메인 사용 권장
         base_url = os.getenv(
-            "KIWOOM_API_URL",
-            "https://openapi.kiwoom.com:9443"
+            "KIWOOM_REST_URL", 
+            "https://api.kiwoom.com"
         )
 
         if not api_key or not secret_key:
@@ -409,11 +413,13 @@ class TokenManager:
             )
 
         async with httpx.AsyncClient() as client:
+            url = f"{base_url}/oauth2/token"
+            
             response = await client.post(
-                f"{base_url}/oauth/token",
+                url=url,
                 headers={
-                    "Content-Type": "application/json",
-                    "User-Agent": "APIHub/Manager"
+                    "Content-Type": "application/json; charset=UTF-8",
+                    "User-Agent": "Mozilla/5.0"
                 },
                 json={
                     "grant_type": "client_credentials",
@@ -424,8 +430,11 @@ class TokenManager:
             )
 
             data = response.json()
-            if response.status_code != 200 or "access_token" not in data:
-                logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {data}")
-                response.raise_for_status()
+            # Kiwoom returns 'return_code': 0 for success and the field is 'token'
+            if response.status_code != 200 or "token" not in data:
+                # 보안: 토큰이 포함될 수 있으므로 전체 data를 로그에 출력하지 않음
+                error_msg = data.get('return_msg', data.get('error', 'No explanation'))
+                logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {error_msg}")
+                raise AuthenticationError(f"Kiwoom token refresh failed: {error_msg}")
 
-            return data["access_token"]
+            return data["token"]
