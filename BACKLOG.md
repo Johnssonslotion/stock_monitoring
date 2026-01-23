@@ -142,7 +142,8 @@
 | [ISSUE-036](docs/issues/ISSUE-036.md) | DB 스키마 정합성 복구 | P0 | Done | Developer |
 | [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Done | Developer |
 | [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | Done | Developer |
-| [ISSUE-040](docs/issues/ISSUE-040.md) | **API Hub v2 Phase 2 - Real API Integration** | **P0** | **🔄 Active** | Developer |
+| [ISSUE-040](docs/issues/ISSUE-040.md) | **API Hub v2 Phase 2 - Real API Integration** | **P0** | Done | Developer |
+| [ISSUE-041](docs/issues/ISSUE-041.md) | **API Hub v2 Phase 3 - Production & Monitoring** | **P0** | **🔄 Active** | Developer |
 
 ---
 
