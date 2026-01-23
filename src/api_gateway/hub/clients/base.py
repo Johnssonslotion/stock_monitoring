@@ -160,9 +160,11 @@ class BaseAPIClient(ABC):
             # TokenManager에서 토큰 조회 (자동 갱신 포함)
             token = await self.token_manager.get_token(self.provider)
             if token:
+                self.logger.debug(f"✅ Token for {self.provider} acquired from manager")
                 self._access_token = token
                 return token
             else:
+                self.logger.error(f"❌ TokenManager returned None for {self.provider}")
                 raise AuthenticationError(
                     f"Failed to get token for {self.provider} from TokenManager"
                 )
