@@ -32,6 +32,7 @@
 | **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
+| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | docs/specs/api_hub_specification.md | 중앙 큐 기반 API 호출 전담 워커 구축 |
 
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
 
@@ -160,4 +161,6 @@
 | [ISSUE-032](docs/issues/ISSUE-032.md) | [Debt] Git 워크트리 관리 및 격리 강화 | P2 | In Progress | Developer |
 | [ISSUE-033](docs/issues/ISSUE-033.md) | [Bug] TimescaleArchiver Schema Mismatch | P0 | Open | Developer |
 | [ISSUE-034](docs/issues/ISSUE-034.md) | [Optimization] TimescaleDB Storage Efficiency | P1 | Open | Developer |
+| [ISSUE-037](docs/specs/api_hub_specification.md) | [Arch] Unified API Hub v2 (REST Worker) | P1 | Todo | Architect |
+| [ISSUE-038](docs/issues/ISSUE-038.md) | [Fix] Sentinel & Global Logging Standard | P1 | Todo | Developer |
 | [ISSUE-036](docs/issues/ISSUE-036.md) | DB 통합 및 스키마 정합성 복구 | P0 | Done | Developer |

@@ -178,7 +178,63 @@ def is_verified(tick_volume, api_volume):
 
 ---
 
-## 8. 승인 기록
+---
+
+## 9. 실시간 데이터 파이프라인 및 컨테이너 매핑
+
+[RFC-007], [RFC-008], [RFC-009]를 통합한 실시간 데이터 흐름 및 각 담당 컨테이너 명세입니다.
+
+### 9.1 파이프라인 아키텍처
+
+```mermaid
+graph TD
+    subgraph "Ingestion Layer"
+        KIS[kis-service] --> |Ticker/Orderbook| R_Pub[Redis Pub/Sub]
+        Kiwoom[kiwoom-service] --> |Ticker/Orderbook| R_Pub
+    end
+
+    subgraph "Storage Layer"
+        R_Pub --> |Subscribe| TSArch[timescale-archiver]
+        R_Pub --> |Subscribe| TArch[tick-archiver]
+        TSArch --> |Insert| TSDB[(TimescaleDB)]
+        TArch --> |Local Storage| Duck[(DuckDB/Parquet)]
+    end
+
+    subgraph "Verification Layer (Appendix H)"
+        RV[realtime-verifier] --> |Min + 5s| K_API[Kiwoom REST API]
+        RV --> |Query| TSDB
+        RV --> |Gap Detected| R_Que[Redis Recovery Queue]
+    end
+
+    subgraph "Recovery Layer"
+        R_Que --> |Consume| RW[recovery-worker]
+        RW --> |REST API Backfill| TSDB
+    end
+
+    subgraph "Monitoring"
+        Sentinel[sentinel-agent] --> |Monitor| R_Pub
+        Sentinel --> |Monitor| R_Gate[redis-gatekeeper]
+    end
+```
+
+### 9.2 서비스별 책임 명세 (Hybrid Recovery Hierarchy)
+
+본 프로젝트는 데이터 유실 방지를 위해 3단계 계층적 복구 체계를 운영합니다.
+
+| 서비스명 | 계층 | 담당 모듈 | 주요 역할 및 R&R |
+|:---------|:---:|:----------|:----------------|
+| **`realtime-verifier`** | **감지** | `realtime_verifier.py` | **Sensor**: 장 중 매 분(+5s) 틱/분봉 거래량 대조. Gap 감지 시 고우선순위 복구 큐 발행. |
+| **`verification-worker`** | **실시간 복구** | `worker.py` | **Fast Response**: 복구 큐를 상시 리스닝. 감지된 **특정 분봉(1분)**에 대해 즉시 KIS 틱 API 호출 및 DB 보정. |
+| **`recovery-worker`** | **대규모 백필** | `backfill_manager.py` | **Hard Recovery**: 장 마감 후 또는 대규모 장애 시 **일일 전체 Gap**을 전수 조사하여 DuckDB 병합 방식으로 광역 복구. |
+| `sentinel-agent` | **감시** | `sentinel.py` | **Watcher**: 파이프라인 생존 및 인프라(Redis/DB) 상태 상시 모니터링. |
+
+#### 차이점 요약
+- `verification-worker`는 **"장 중 1분 단위 정밀 타격"** (속도 중점)
+- `recovery-worker`는 **"장 마감 후 전수 대량 복구"** (안정성 중점)
+
+---
+
+## 10. 승인 기록
 
 | Role | Decision | Date |
 |------|----------|------|
@@ -194,3 +250,4 @@ def is_verified(tick_volume, api_volume):
 **Document Owner**: Council of Six  
 **Review Cycle**: Quarterly  
 **Next Review**: 2026-04-22
+
