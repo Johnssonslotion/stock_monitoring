@@ -435,7 +435,7 @@ services:
     profiles:
       - hub-mock
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "worker"]
+      test: [ "CMD", "pgrep", "-f", "worker" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -452,7 +452,7 @@ services:
       - ../${ENV_FILE:-.env.prod}
     environment:
       - REDIS_URL=redis://redis:6379/15
-      - ENABLE_MOCK=false  # Real API mode
+      - ENABLE_MOCK=false # Real API mode
       - APP_ENV=${APP_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - HUB_CONFIG_PATH=/app/configs/api_hub_v2.yaml
@@ -478,19 +478,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
+          cpus: '0.5'
           memory: 512M
+        reservations:
+          memory: 256M
     networks:
       - default
     profiles:
       - hub-real
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "worker"]
-      interval: 10s
-      timeout: 5s
+      # Redis Hub (DB 15) 및 Redis Gatekeeper (DB 0) 연결 확인
+      test: [ "CMD-SHELL", "python -c \"import redis; r1=redis.Redis.from_url('redis://redis:6379/15'); r1.ping(); r2=redis.Redis.from_url('redis://redis-gatekeeper:6379/0'); r2.ping(); print('healthy')\"" ]
+      interval: 30s
+      timeout: 10s
       retries: 3
+      start_period: 15s
 
 volumes:
   redis-data:
