@@ -124,6 +124,7 @@ class TestWorkerIntegration:
                 circuit_breaker=worker.circuit_breaker,
                 clients={}
             )
+            worker.mode_str = "Mock" if worker.enable_mock else "Real API"
             worker._mock_redis = mock_redis  # Test용 저장
         
         worker.setup = mock_setup

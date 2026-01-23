@@ -119,6 +119,23 @@ class KISClient(BaseAPIClient):
         """TR ID에 해당하는 URL 경로 반환"""
         return self.TR_URL_MAP.get(tr_id, f"/{tr_id}")
 
+    # GET 요청이 필요한 TR ID 목록
+    GET_TRS = {"FHKST01010100", "FHKST01010300"}
+
+    async def execute(
+        self,
+        tr_id: str,
+        params: Dict[str, Any],
+        method: str = None
+    ) -> Dict[str, Any]:
+        """
+        KIS API 실행 (GET/POST 자동 선택)
+        """
+        if method is None:
+            method = "GET" if tr_id in self.GET_TRS else "POST"
+        
+        return await super().execute(tr_id, params, method)
+
     async def _handle_response(
         self, response: httpx.Response, tr_id: str
     ) -> Dict[str, Any]:
@@ -129,6 +146,8 @@ class KISClient(BaseAPIClient):
         rt_cd = data.get("rt_cd")
         if rt_cd != "0":
             error_msg = data.get("msg1", "Unknown error")
+            # 보안: 전체 응답 데이터를 로그에 출력하지 않음 (토큰이 포함될 수 있음)
+            self.logger.error(f"❌ KIS API Error: rt_cd={rt_cd}, msg1={error_msg}")
             raise APIError(f"KIS API Error ({rt_cd}): {error_msg}")
 
         # 정규화된 데이터 반환
