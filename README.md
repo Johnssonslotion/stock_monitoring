@@ -54,6 +54,38 @@ graph TD
 - **Migration**: **Zero-Cost Migration System** (Bash+SQL) 도입 완료 (`scripts/db/migrate.sh`).
 - **Mock Data Mode**: 현재 UI는 시각적 검증을 위해 `Mock Data`로 구동 중입니다. (Backend 연동은 [BACKLOG.md](BACKLOG.md) 참조)
 
+### 🆕 ISSUE-037: Unified API Hub v2 (Phase 1 - Mock Mode) 🎯
+
+**Status**: In Progress (P0) | **Council Review**: ✅ Approved | **Tests**: 29/29 Pass
+
+REST API 통합 워커 시스템의 Phase 1 Mock 모드 구현이 완료되었습니다:
+
+#### 구현 완료 항목
+- ✅ **RestApiWorker**: Redis 큐 기반 태스크 처리 워커 (`src/api_gateway/hub/worker.py`)
+- ✅ **MockClient**: 실제 API 호출 없이 안전하게 테스트 가능한 Mock 클라이언트
+- ✅ **Queue Management**: 우선순위 큐 (`PRIORITY_QUEUE` > `NORMAL_QUEUE`) 처리
+- ✅ **Circuit Breaker**: 연속 실패 시 자동 차단 및 복구
+- ✅ **Docker Integration**: `gateway-worker-mock` 서비스 (Redis DB 15, 512M 메모리 제한)
+- ✅ **Test Coverage**: 29개 테스트 전체 통과 (Queue 6, Models 7, Dispatcher 10, Worker 6)
+
+#### 실행 방법
+```bash
+# Mock 워커 시작 (독립 실행)
+docker-compose --profile hub-mock up gateway-worker-mock
+
+# 테스트 실행
+PYTHONPATH=. poetry run pytest tests/unit/test_api_hub_{queue,models,dispatcher,worker}.py -v
+```
+
+#### Phase 2 (실제 API 연동)
+- ⏳ `KISClient` / `KiwoomClient` 구현 (실제 REST API 호출)
+- ⏳ Token Manager 및 Rate Limiter 통합
+- ⏳ BackfillManager 호환성 검증
+
+자세한 내용은 [Council Review Report](docs/reports/20260123_issue037_council_review.md) 참조.
+
+---
+
 ## 🧪 TDD 기반 무결성 보장
 
 모든 기능 구현은 반드시 테스트가 선행되거나 동치되어야 합니다.

@@ -8,7 +8,7 @@
 
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
-| *(현재 진행 중인 태스크 없음)* | - | - | - | - |
+| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | P0 | Phase 1 (Mock Mode) | Worker 구현 완료, 29/29 테스트 통과 |
 
 ---
 
@@ -27,7 +27,6 @@
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
 | **ISSUE-009: Execution Streaming** | Backend | - | Whale 거래 감지 및 플래깅 |
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
-| **ISSUE-037: Unified API Hub v2 (REST Worker)** | Architect | - | 중앙 큐 기반 API 호출 전담 워커 |
 | ~~ISSUE-038: Sentinel & Global Logging Standard~~ | Developer | - | ✅ 완료 |
 
 ### 🟡 P2 (보통)

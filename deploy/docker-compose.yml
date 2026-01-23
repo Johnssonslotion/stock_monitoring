@@ -402,6 +402,43 @@ services:
       - real
       - verification
 
+  # [ISSUE-037] API Gateway Worker (Mock Mode - Phase 1)
+  # Council 승인: Mock Mode Only, 실제 API 호출 없음
+  gateway-worker-mock:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: ${COMPOSE_PROJECT_NAME}-gateway-worker-mock
+    command: python -m src.api_gateway.hub.worker
+    environment:
+      - REDIS_URL=redis://redis:6379/15
+      - ENABLE_MOCK=true
+      - APP_ENV=${APP_ENV:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - ../src:/app/src
+      - ../configs:/app/configs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      - default
+    profiles:
+      - hub-mock
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "worker"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   redis-data:
   redis-gatekeeper-data:
