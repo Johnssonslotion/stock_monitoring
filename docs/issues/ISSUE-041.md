@@ -143,9 +143,9 @@ history-collector:
 - [ ] Redlock/RateLimit 로그가 표준 포맷에 따라 생성됨
 
 ### Phase 3-B: Container Unification
-- [ ] `verification-worker` API Hub Queue 전환 완료
-- [ ] `history-collector` API Hub Queue 전환 완료
-- [ ] Docker compose 파일 업데이트 (의존성 추가)
+- [x] `verification-worker` API Hub Queue 전환 완료
+- [x] `history-collector` API Hub Queue 전환 완료
+- [x] Docker compose 파일 업데이트 (의존성 추가)
 - [ ] Unit Test 90%+ 커버리지
 - [ ] Integration Test 통과
 
@@ -155,7 +155,48 @@ history-collector:
 
 ---
 
-## 4. 관련 문서
+## 6. Migration Summary (Phase 3-B)
+
+### ✅ verification-worker (완료)
+**Changes:**
+- 제거: `KISAPIClient`, `KiwoomAPIClient` (~170 lines)
+- 제거: `api_registry`, `gatekeeper` imports
+- 추가: `APIHubClient` with Redis Queue (DB 15)
+- 추가: `API_TR_MAPPING` (FHKST01010400, KIS_CL_PBC_04020)
+- 업데이트: `_handle_recovery_task()` → `hub_client.execute()`
+- 업데이트: `_process_task()` → `hub_client.execute()`
+
+**Benefits:**
+- RFC-009 준수: Ground Truth API Control Policy
+- 중앙화된 Token 관리 (TokenManager with Redlock)
+- 통합 Rate Limiting (redis-gatekeeper)
+- 코드 복잡도 감소 (288 insertions, 266 deletions)
+
+**Commit:** `affe62f`
+
+---
+
+### ✅ history-collector (완료)
+**Changes:**
+- 제거: `KISAuthManager`, `_safe_request()` (~120 lines)
+- 제거: `KIS_BASE_URL`, `APP_KEY`, `APP_SECRET` 직접 참조
+- 추가: `APIHubClient` with Redis Queue (DB 15)
+- 추가: `API_TR_MAPPING` (FHKST03010200, HHDFS76950200)
+- 업데이트: `run()` → `hub_client.connect()` (auth 로직 제거)
+- 업데이트: `fetch_kr_history()` → `hub_client.execute()`
+- 업데이트: `fetch_us_history()` → `hub_client.execute()`
+
+**Benefits:**
+- Token 재발급 로직 불필요 (API Hub에서 자동 처리)
+- Rate Limit 로직 제거 (API Hub Dispatcher가 조율)
+- 에러 복구 로직 단순화 (401/403 자동 처리)
+- 코드 가독성 향상 (376 → 318 lines)
+
+**Commit:** (pending)
+
+---
+
+## 7. 관련 문서
 - [implementation_plan.md](../../.gemini/antigravity/brain/a2dfdc21-d4e6-471e-b8b2-510fab073ce6/implementation_plan.md)
 - [api_hub_v2_overview.md](../specs/api_hub_v2_overview.md)
 - **ISSUE-040**: API Hub v2 Phase 2 - Real API Integration
@@ -167,9 +208,9 @@ history-collector:
 
 | Phase | 작업 | 예상 소요 | 상태 |
 |-------|------|----------|------|
-| 3-A-1 | verification-worker 마이그레이션 | 4 hours | 🔄 In Progress |
-| 3-A-2 | history-collector 마이그레이션 | 3 hours | ⏳ Pending |
-| 3-A-3 | Docker compose 업데이트 | 1 hour | ⏳ Pending |
+| 3-A-1 | verification-worker 마이그레이션 | 4 hours | ✅ Complete |
+| 3-A-2 | history-collector 마이그레이션 | 3 hours | ✅ Complete |
+| 3-A-3 | Docker compose 업데이트 | 1 hour | ✅ Complete |
 | 3-B | 테스트 작성 및 검증 | 3 hours | ⏳ Pending |
-| 3-C | 문서화 | 2 hours | ⏳ Pending |
+| 3-C | 문서화 | 2 hours | 🔄 In Progress |
 | **Total** | | **13 hours** | **~2 days** |
