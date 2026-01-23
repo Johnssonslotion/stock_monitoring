@@ -2,8 +2,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ${COMPOSE_PROJECT_NAME}-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # Security: No external port binding - internal network only
+    # ports:
+    #   - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -21,8 +22,9 @@ services:
   redis-gatekeeper:
     image: redis:7-alpine
     container_name: ${COMPOSE_PROJECT_NAME}-redis-gatekeeper
-    ports:
-      - "${REDIS_GATEKEEPER_PORT:-6381}:6379"
+    # Security: No external port binding - internal network only
+    # ports:
+    #   - "${REDIS_GATEKEEPER_PORT:-6381}:6379"
     volumes:
       - redis-gatekeeper-data:/data
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
@@ -108,6 +110,8 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=postgres
       - POSTGRES_DB=${DB_NAME:-stockval}
+    # Optional: Expose port for external DB tools (DBeaver, pgAdmin, etc.)
+    # For production, consider removing this and use SSH tunnel instead
     ports:
       - "5432:5432"
     volumes:
