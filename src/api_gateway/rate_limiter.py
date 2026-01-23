@@ -21,9 +21,10 @@ class RedisRateLimiter:
         
         self.redis = None
         # {API_NAME: (Rate, Capacity)}
+        # Ground Truth Policy 섹션 8.1 준수
         self.config = {
-            "KIS": (30, 5),    # 30 calls/sec, max 5 burst
-            "KIWOOM": (30, 5)  # 30 calls/sec, max 5 burst
+            "KIS": (20, 5),     # 20 calls/sec, max 5 burst (KIS 공식 제한)
+            "KIWOOM": (10, 3)   # 10 calls/sec, max 3 burst (Kiwoom 공식 제한)
         }
 
     async def connect(self):

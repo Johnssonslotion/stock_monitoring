@@ -14,6 +14,10 @@ description: Brainstorm and evolve ideas into roadmap items or RFCs
 
 ## Steps
 
+### 0. Context Analysis (Pre-requisite)
+**Action**: `docs/governance/HISTORY.md` 및 `docs/ideas/IDEA_BANK.md` 검토
+- 과거에 유사한 아이디어가 있었는지, 거버넌스 원칙과 상충되는지 확인합니다.
+
 ### 1. Identify Idea
 **Action**: 아이디어의 핵심 요약 및 카테고리 분류
 - **Title**: [아이디어 명칭]
@@ -53,11 +57,16 @@ description: Brainstorm and evolve ideas into roadmap items or RFCs
 - **Sprouting** → **Mature**: 기술 검증(PoC)이 완료되거나 상세 설계 준비가 끝났을 때
 - **Mature** → **RFC**: `/create-rfc` 워크플로우 호출 시점으로 연결
 
-### 5. Roadmap Update
-**Action**: 아이디어가 'Mature' 상태가 되면 로드맵의 'Pillar' 또는 'Deferred' 섹션에 예비 항목으로 자동 추가
-- `[project_name]_roadmap.md` 업데이트
+### 5. Roadmap & Hub Update
+**Action**: 아이디어 문서 생성 시 즉시 인덱싱을 수행합니다.
+1. `docs/ideas/IDEA_BANK.md`에 새 아이디어 링크를 추가합니다.
+2. 아이디어가 'Mature' 상태가 되면 로드맵의 'Pillar' 또는 'Deferred' 섹션에 예비 항목으로 추가합니다. (`master_roadmap.md` 업데이트)
 
-### 6. Notify User
+### 6. Quality Gate (DoD)
+**Action**: 생성된 문서의 정합성을 최종 확인합니다.
+- `/run-gap-analysis`를 실행하여 `IDEA_BANK.md`와 개별 문서 간의 링크 및 형식(Documentation Standard) 준수 여부를 검증합니다.
+
+### 7. Notify User
 - 생성된 아이디어 문서 링크 제공
 - 다음 단계(Research/RFC) 제안
 

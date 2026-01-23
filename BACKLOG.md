@@ -47,6 +47,7 @@
 ## 3. 완료 (Done)
 
 ### Latest (2026-01-23)
+- [x] **ISSUE-040: API Hub v2 Phase 2 - Real API Integration (P0)** - TokenManager Redlock, BaseAPIClient 통합, Rate Limiter Ground Truth 준수, BackfillManager Queue 전환, 22 new tests, Gap Analysis PASS
 - [x] **ISSUE-037: Unified API Hub v2 - Phase 1 Mock Mode (P0)** - Worker 구현, 29/29 테스트 통과, Docker 배포 검증 완료
 - [x] **ISSUE-037-A: BaseAPIClient 설계 문서 (P0)** - Phase 2 선행 작업 1/5 완료 (300+ lines)
 - [x] **ISSUE-037-B: API 응답 Fixture 수집 (P0)** - Phase 2 선행 작업 2/5 완료 (KIS + Kiwoom)
@@ -141,6 +142,7 @@
 | [ISSUE-036](docs/issues/ISSUE-036.md) | DB 스키마 정합성 복구 | P0 | Done | Developer |
 | [ISSUE-038](docs/issues/ISSUE-038.md) | Sentinel & Global Logging Standard | P1 | Done | Developer |
 | [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | Done | Developer |
+| [ISSUE-040](docs/issues/ISSUE-040.md) | **API Hub v2 Phase 2 - Real API Integration** | **P0** | **🔄 Active** | Developer |
 
 ---
 
@@ -150,11 +152,11 @@ RFC/ADR 승인은 되었으나 특정 조건 충족 시 착수하기 위해 대�
 
 | ID | 태스크 (Task Name) | 우선순위 | 트리거 조건 (Trigger) | 관련 RFC/ISSUE |
 | :--- | :--- | :--- | :--- | :--- |
-| **DEF-API-HUB-001** | Unified API Hub v2 (Centralized REST Worker) | **P1** | 2026-01-23 장 마감 후 또는 다음 스프린트 | [Spec](docs/specs/api_hub_specification.md) |
+| ~~DEF-API-HUB-001~~ | ~~Unified API Hub v2 (Centralized REST Worker)~~ | ~~P1~~ | ✅ **ACTIVATED** (2026-01-23) → ISSUE-040 | [Spec](docs/specs/api_hub_v2_overview.md) |
 | **DEF-003-001** | 전략 파라미터 Config 분리 | **P1** | 사용자 일정 여유 확보 시 | [RFC-003](docs/governance/decisions/RFC-003_config_management_standard.md) |
 | **DEF-034-001** | 틱 데이터 공백 복구 (Log + REST Hybrid) | **P1** | 시스템 안정화 후 일괄 복구 필요 시 | [RFC-008](docs/governance/rfc/RFC-008-tick-completeness-qa.md) |
 | **DEF-034-002** | TimescaleDB Post-Market 최적화 자동화 | **P2** | 장 마감 후 자동 스케줄링(Cron) 적용 시 | [ISSUE-034](docs/issues/ISSUE-034.md) |
 
 ---
 
-*Last Updated: 2026-01-23*
+*Last Updated: 2026-01-23 (DEF-API-HUB-001 Activated)*

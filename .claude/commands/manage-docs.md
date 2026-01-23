@@ -1,0 +1,1 @@
+../../.agent/workflows/manage-docs.md
