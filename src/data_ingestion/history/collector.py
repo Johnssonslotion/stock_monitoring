@@ -6,7 +6,7 @@ import asyncpg
 from datetime import datetime
 from typing import List, Dict
 
-from src.data_ingestion.price.common import KISAuthManager
+from src.api_gateway.hub.client import APIHubClient
 
 logger = logging.getLogger("HistoryCollector")
 
@@ -16,14 +16,18 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 DB_NAME = os.getenv("DB_NAME", "stockval")
-KIS_BASE_URL = os.getenv("KIS_BASE_URL", "https://openapi.koreainvestment.com:9443")
-APP_KEY = os.getenv("KIS_APP_KEY")
-APP_SECRET = os.getenv("KIS_APP_SECRET")
+
+# TR ID Mapping for API Hub
+API_TR_MAPPING = {
+    "KIS": {
+        "kr_minute_history": "FHKST03010200",  # 국내주식 분봉 조회
+        "us_minute_history": "HHDFS76950200",  # 해외주식 분봉 조회
+    }
+}
 
 class HistoryCollector:
     def __init__(self):
-        self.auth_manager = KISAuthManager()
-        self.access_token = None
+        self.hub_client = APIHubClient()
         self.db_pool = None
         self.symbols = [] # List of {'symbol': '...', 'market': 'KR'|'US'}
 
@@ -80,27 +84,25 @@ class HistoryCollector:
                     self._parse_symbols_recursive(v, market)
 
     async def run(self):
+        """
+        Main collection loop
+        ISSUE-041: Uses API Hub for centralized token management and rate limiting
+        """
         # 1. DB Init
         await self.init_db()
         self.db_pool = await asyncpg.create_pool(
             user=DB_USER, password=DB_PASSWORD, database=DB_NAME, host=DB_HOST, port=DB_PORT
         )
         
-        # 2. Auth with Retry
-        while True:
-            try:
-                self.access_token = await self.auth_manager.get_access_token()
-                break
-            except Exception as e:
-                logger.warning(f"Auth failed ({e}). Retrying in 60s...")
-                await asyncio.sleep(60)
+        # 2. Initialize API Hub Client (no direct auth needed)
+        await self.hub_client.connect()
+        logger.info("✅ API Hub Client initialized")
         
         # 3. Load Symbols
         await self.load_config_symbols()
         
         # 4. Start Collection Loop
-        # Concurrency: 1 symbol at a time to be safe with Rate Limit (2 req/sec).
-        # KIS limit is strict.
+        # Concurrency: 1 symbol at a time, API Hub handles rate limiting
         
         while True:
             # Check Schedule before processing ANY symbol
@@ -116,7 +118,7 @@ class HistoryCollector:
                 await self.collect_symbol_history(sym_info)
             
             if all_done:
-                logger.info("All symbols processed for history. SLeeping 1 hour before re-check (or exit).")
+                logger.info("All symbols processed for history. Sleeping 1 hour before re-check (or exit).")
                 await asyncio.sleep(3600)
 
     async def check_pause_window(self):
@@ -166,76 +168,11 @@ class HistoryCollector:
         else:
             await self.fetch_us_history(symbol)
 
-    async def _safe_request(self, url, headers, params=None):
-        """
-        Wrapper for API requests with Auto-Refresh Token logic.
-        If 401/403/500(sometimes KIS returns 500 for auth) error occurs, 
-        refresh token and retry ONCE.
-        """
-        import aiohttp
-        
-        # Max retries for auth issues
-        max_retries = 1
-        
-        for attempt in range(max_retries + 1):
-            try:
-                # Update Token in headers (in case it changed)
-                if self.access_token:
-                    headers["authorization"] = f"Bearer {self.access_token}"
-                
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, headers=headers, params=params) as resp:
-                        # KIS often returns 200 even for failures, but let's check standard codes
-                        if resp.status == 401 or resp.status == 403:
-                            logger.warning(f"Got {resp.status} Unauthorized. Attempt {attempt+1}/{max_retries+1}")
-                            if attempt < max_retries:
-                                logger.info("Refeshing Access Token...")
-                                self.access_token = await self.auth_manager.get_access_token()
-                                # Update header for next loop
-                                headers["authorization"] = f"Bearer {self.access_token}"
-                                continue
-                            else:
-                                logger.error("Max Auth Retries exceeded.")
-                                return None
-                        
-                        if resp.status != 200:
-                            logger.error(f"API Error: {resp.status}")
-                            return None
-                        
-                        data = await resp.json()
-                        
-                        # KIS Message Code Check (rt_cd)
-                        # REST API usually returns `rt_cd` in body. 0 = Success.
-                        # Some Auth errors return 200 OK but body has error code?
-                        # Case: "vt_mess_code": "MAC_TOKEN_FAIL" etc.
-                        # Let's check typical KIS error structure if needed.
-                        # For now, trust HTTP Status + Basic 200.
-                        
-                        # Extra Check: If body contains "Failure" regarding Token?
-                        # If data['msg1'] contains "Token", trigger retry?
-                        # Implementing simple HTTP status check first.
-                        
-                        return data
-
-            except Exception as e:
-                logger.error(f"Request Exception: {e}")
-                if attempt < max_retries:
-                    await asyncio.sleep(1)
-                    continue
-                return None
-        return None
-
     async def fetch_kr_history(self, symbol):
-        url = f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
-        headers = {
-            "content-type": "application/json; charset=utf-8",
-            "authorization": f"Bearer {self.access_token}",
-            "appkey": APP_KEY,
-            "appsecret": APP_SECRET,
-            "tr_id": "FHKST03010200",
-            "custtype": "P"
-        }
-        
+        """
+        국내주식 분봉 이력 조회 (API Hub 사용)
+        ISSUE-041: Token 관리 및 Rate Limiting을 API Hub에서 처리
+        """
         current_req_time = datetime.now().strftime("%H%M%S")
         target_year = datetime.now().year - 2
         
@@ -248,17 +185,20 @@ class HistoryCollector:
                 "FID_ETC_CLS_CODE": ""
             }
             
-            # Use _safe_request
-            data = await self._safe_request(url, headers, params)
+            # API Hub를 통한 호출
+            result = await self.hub_client.execute(
+                provider="KIS",
+                tr_id=API_TR_MAPPING["KIS"]["kr_minute_history"],
+                params=params,
+                timeout=15.0
+            )
             
-            if not data:
-                logger.error(f"Failed to fetch data for {symbol} at {current_req_time}")
+            if result.get("status") != "SUCCESS":
+                logger.error(f"Failed to fetch data for {symbol} at {current_req_time}: {result.get('reason')}")
                 await asyncio.sleep(5)
-                # Should we break or retry? 
-                # If it's a permanent error, break.
-                # For now, break to avoid infinite loop on error.
                 break
                 
+            data = result.get("data", {})
             rows = data.get('output2', [])
             
             if not rows:
@@ -290,18 +230,13 @@ class HistoryCollector:
                 logger.info(f"Reached target year {target_year}. Stopping.")
                 break
                         
-            await asyncio.sleep(0.5) # Rate Limit
+            await asyncio.sleep(0.5) # Additional safety delay
 
     async def fetch_us_history(self, symbol):
-        url = f"{KIS_BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-itemchartprice"
-        headers = {
-            "content-type": "application/json; charset=utf-8",
-            "authorization": f"Bearer {self.access_token}",
-            "appkey": APP_KEY,
-            "appsecret": APP_SECRET,
-            "tr_id": "HHDFS76950200"
-        }
-        
+        """
+        해외주식 분봉 이력 조회 (API Hub 사용)
+        ISSUE-041: Token 관리 및 Rate Limiting을 API Hub에서 처리
+        """
         next_key = ""
         keyb = "" 
         
@@ -317,11 +252,19 @@ class HistoryCollector:
                 "KEYB": keyb
             }
             
-            data = await self._safe_request(url, headers, params)
+            # API Hub를 통한 호출
+            result = await self.hub_client.execute(
+                provider="KIS",
+                tr_id=API_TR_MAPPING["KIS"]["us_minute_history"],
+                params=params,
+                timeout=15.0
+            )
             
-            if not data:
+            if result.get("status") != "SUCCESS":
+                logger.error(f"Failed to fetch US data for {symbol}: {result.get('reason')}")
                 break
                 
+            data = result.get("data", {})
             rows = data.get('output2', [])
             
             if not rows:

@@ -6,6 +6,7 @@
 
 ### 🚀 API 통합 및 자동 복구 (API Hub & Recovery)
 - **ID-apihub-integration**: [API Hub 중심의 중앙 집중식 통합 및 실시간 복구 체계 구축](stock_monitoring/ID-apihub-integration.md). 🌿 Sprouting
+- **ID-stateful-self-healing-worker**: [컨테이너 재시작 시 공백을 자동 인지하고 복구하는 SSH-Worker](stock_monitoring/ID-stateful-self-healing-worker.md). 🌿 Sprouting
 
 ### 📈 전략 및 백테스팅 (Strategy)
 - **ID-recovery-stabilization**: 데이터 복구 프로세스의 안정성 및 속도 개선.

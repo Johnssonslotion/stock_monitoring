@@ -27,8 +27,11 @@ This workflow automates the merge process to the `develop` branch with built-in 
 
 ### 2. Run Test Suite
 **Action**: Execute all tests
-```bash
 pytest tests/ --cov --cov-report=term
+```
+(User requested: `poetry run pytest tests/` - adjusted dynamically)
+```bash
+poetry run pytest tests/
 ```
 
 **Pass Criteria**:

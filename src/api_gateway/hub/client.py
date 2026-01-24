@@ -41,10 +41,10 @@ class APIHubClient:
     def __init__(self, redis_url: str = None):
         """
         Args:
-            redis_url: Redis 연결 URL (기본: 환경변수 REDIS_URL)
+            redis_url: Redis 연결 URL (기본: 환경변수 API_HUB_REDIS_URL 또는 REDIS_URL)
         """
         self.redis_url = redis_url or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/0"
+            "API_HUB_REDIS_URL", os.getenv("REDIS_URL", "redis://localhost:6379/15")
         )
         self.queue_manager: Optional[QueueManager] = None
         self._connected = False
