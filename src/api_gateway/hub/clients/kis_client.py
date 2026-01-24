@@ -77,6 +77,15 @@ class KISClient(BaseAPIClient):
         "FHKST01010300": (
             "/uapi/domestic-stock/v1/quotations/inquire-time-itemconclusion"
         ),
+        "FHKST01010400": (
+            "/uapi/domestic-stock/v1/quotations/inquire-ccnl"
+        ),
+        "FHKST03010200": (
+            "/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
+        ),
+        "HHDFS76950200": (
+            "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice"
+        ),
     }
 
     def _build_headers(self, tr_id: str, **kwargs) -> Dict[str, str]:
@@ -112,6 +121,34 @@ class KISClient(BaseAPIClient):
                 "FID_INPUT_HOUR_1": params.get("time", "153000")
             }
 
+        # 현재가 분봉 조회 (FHKST01010400)
+        if tr_id == "FHKST01010400":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", ""))
+            }
+
+        # 기간별 분봉 조회 (FHKST03010200)
+        if tr_id == "FHKST03010200":
+            return {
+                "fid_etc_cls_code": params.get("fid_etc_cls_code", ""),
+                "fid_cond_mrkt_div_code": params.get("fid_cond_mrkt_div_code", "J"),
+                "fid_input_iscd": params.get("fid_input_iscd", params.get("symbol", "")),
+                "fid_input_hour_1": params.get("fid_input_hour_1", params.get("time", "153000")),
+                "fid_pw_data_incu_yn": params.get("fid_pw_data_incu_yn", "Y")
+            }
+
+        # 해외주식 기간별 분봉 (HHDFS76950200)
+        if tr_id == "HHDFS76950200":
+            return {
+                "AUTH": params.get("AUTH", ""),
+                "EXCD": params.get("EXCD", "NAS"),
+                "SYMB": params.get("SYMB", params.get("symbol", "")),
+                "GUBN": params.get("GUBN", "0"),
+                "BYMD": params.get("BYMD", ""),
+                "MODP": params.get("MODP", "1")
+            }
+
         # 다른 TR ID는 params 그대로 전달
         return params
 
@@ -120,7 +157,13 @@ class KISClient(BaseAPIClient):
         return self.TR_URL_MAP.get(tr_id, f"/{tr_id}")
 
     # GET 요청이 필요한 TR ID 목록
-    GET_TRS = {"FHKST01010100", "FHKST01010300"}
+    GET_TRS = {
+        "FHKST01010100",
+        "FHKST01010300",
+        "FHKST01010400",
+        "FHKST03010200",
+        "HHDFS76950200"
+    }
 
     async def execute(
         self,
@@ -142,9 +185,14 @@ class KISClient(BaseAPIClient):
         """KIS API 응답 처리"""
         data = response.json()
 
+        # DEBUG: 응답 구조 확인
+        self.logger.info(f"🔍 KIS API Response keys: {list(data.keys())[:10]}")
+        self.logger.info(f"🔍 rt_cd={repr(data.get('rt_cd'))}, msg_cd={data.get('msg_cd')}, msg1={data.get('msg1')}")
+
         # 에러 체크
         rt_cd = data.get("rt_cd")
-        if rt_cd != "0":
+        # rt_cd가 None이거나 "0"이거나 빈 문자열이면 성공으로 간주
+        if rt_cd and rt_cd != "0":
             error_msg = data.get("msg1", "Unknown error")
             # 보안: 전체 응답 데이터를 로그에 출력하지 않음 (토큰이 포함될 수 있음)
             self.logger.error(f"❌ KIS API Error: rt_cd={rt_cd}, msg1={error_msg}")
