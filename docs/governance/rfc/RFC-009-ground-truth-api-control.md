@@ -15,7 +15,7 @@
 ### 핵심 결정사항
 1. **REST API 분봉 = 유일한 참값(Ground Truth)**
 2. **모든 REST API 호출은 RedisRateLimiter 경유 필수**
-3. **GatewayWorker 배포를 P0 우선순위로 상향**
+3. ~~GatewayWorker 배포를 P0 우선순위로 상향~~ → **API Hub v2로 대체 완료** ✅
 
 ---
 
@@ -123,8 +123,8 @@ ORDER BY time DESC LIMIT 100;
         │   RedisRateLimiter       │
         │    (gatekeeper)          │
         │  ┌────────────────────┐  │
-        │  │ KIS:    30 req/s   │  │
-        │  │ KIWOOM: 30 req/s   │  │
+        │  │ KIS:    20 req/s   │  │
+        │  │ KIWOOM: 10 req/s   │  │
         │  └────────────────────┘  │
         └──────────┬───────────────┘
                    │ Token Bucket (Lua Script)
@@ -168,21 +168,31 @@ if not acquired:
 
 ### 4.3 적용 대상 모듈
 
-| 모듈 | 현재 상태 | 조치 필요 |
-|------|-----------|----------|
+| 모듈 | 현재 상태 | 비고 |
+|------|-----------|------|
 | `collector_kis.py` | ✅ 적용 완료 | - |
 | `collector_kiwoom.py` | ✅ 적용 완료 | - |
-| **`BackfillManager`** | ❌ 미적용 | **즉시 수정 필요** |
-| **`RecoveryOrchestrator`** | ❌ 미적용 | **즉시 수정 필요** |
-| `impute_final_candles.py` | ❌ 미적용 | 수정 필요 |
+| `BackfillManager` | ✅ 적용 완료 | API Hub v2 Queue 전환 (2026-01-23) |
+| `RecoveryOrchestrator` | ✅ 적용 완료 | BackfillManager 경유 (2026-01-22) |
+| `impute_final_candles.py` | ✅ 적용 완료 | Ground Truth 우선순위 로직 (2026-01-22) |
+| `verification-worker` | ✅ 적용 완료 | API Hub v2 마이그레이션 (2026-01-23) |
+| `history-collector` | ✅ 적용 완료 | API Hub v2 마이그레이션 (2026-01-23) |
 
-### 4.4 GatewayWorker 배포 (P0)
+### 4.4 GatewayWorker → API Hub v2 (Superseded)
 
-현재 `src/api_gateway/worker.py`는 스터브 상태이며 미배포입니다. 다음 단계를 즉시 실행합니다:
+> **Note**: 본 섹션의 GatewayWorker 계획은 **API Hub v2**로 대체되었습니다.
+> - **ISSUE-037**: API Hub v2 Phase 1 - Mock Mode ✅ Done
+> - **ISSUE-040**: API Hub v2 Phase 2 - Real API Integration ✅ Done
+> - **ISSUE-041**: API Hub v2 Phase 3 - Container Unification ✅ Done
+>
+> 참조: [API Hub v2 Overview](../../specs/api_hub_v2_overview.md)
 
-1. **완성**: `worker.py` 실제 API 호출 로직 구현
-2. **배포**: `docker-compose.yml`에 `gateway-worker` 서비스 추가
-3. **전환**: 모든 REST API 호출을 Queue 기반으로 전환 (선택적)
+~~현재 `src/api_gateway/worker.py`는 스터브 상태이며 미배포입니다.~~
+
+**현재 상태 (2026-01-23)**:
+- API Hub v2가 중앙 집중식 API 통제 역할 수행
+- `src/api_gateway/hub/` 디렉토리에 구현 완료
+- TokenManager, RateLimiter, CircuitBreaker 통합
 
 ### 4.5 Container-based E2E Verification & CI Fail-Fast [UPDATED]
 **배경**: 운영 환경의 오설정이 배포 단계에서 검출되지 않아 발생하는 장애를 방지하기 위해 '성공'뿐만 아니라 '의도된 실패'를 CI에서 검증함.
@@ -234,8 +244,8 @@ if not acquired:
 
 ### Phase 1: 정책 문서화 (Week 1)
 - [x] RFC-009 작성 및 승인
-- [ ] `ground_truth_policy.md` 작성
-- [ ] `BACKLOG.md` 업데이트
+- [x] `ground_truth_policy.md` 작성 ✅ 2026-01-22
+- [x] `BACKLOG.md` 업데이트 ✅ 2026-01-22
 
 ### Phase 2: 코드 수정 (Week 1-2)
 - [x] `BackfillManager.fetch_real_ticks()`: gatekeeper 통합 ✅ 2026-01-22
@@ -245,11 +255,12 @@ if not acquired:
 
 ### Phase 3: 인프라 배포 (Week 2)
 - [x] Redis 물리적 분리 (별도 컨테이너 `redis-gatekeeper`) ✅ 2026-01-22
-- [ ] `GatewayWorker` 실제 구현 및 배포 (선택적)
+- [x] ~~`GatewayWorker` 실제 구현 및 배포~~ → **API Hub v2로 대체** ✅ 2026-01-23
+  - ISSUE-037, 040, 041 통해 완료
 
 ### Phase 4: 검증 (Week 3-4) [UPDATED 2026-01-23]
 **통합 테스트 전략**: Unit → Integration → E2E Container 실구동
-**참고**: [RFC-009 Test Strategy](../../tests/rfc009/README.md)
+**참고**: 본 문서 Section 10 (Council of Six - Testing Strategy Review)
 
 #### Week 3: Unit & Integration Tests
 - [ ] **Unit Tests (90% coverage 목표)**
@@ -278,11 +289,11 @@ if not acquired:
 
 ## 7. Risks & Mitigation
 
-| Risk | Impact | Mitigation | Priority |
-|------|--------|------------|----------|
-| **API 한도 초과** | 서비스 중단 | GatewayWorker 우선 배포 | **P0** |
-| **레거시 코드 미발견** | 429 에러 발생 | Grep 검색 + Linter 추가 | **P1** |
-| **DB 마이그레이션 실패** | 데이터 손실 | 백업 선행, Rollback 계획 | **P1** |
+| Risk | Impact | Mitigation | Status |
+|------|--------|------------|--------|
+| **API 한도 초과** | 서비스 중단 | ~~GatewayWorker~~ API Hub v2 배포 | ✅ **Mitigated** |
+| **레거시 코드 미발견** | 429 에러 발생 | Grep 검색 + Linter 추가 | ✅ **Mitigated** (Phase 3-B) |
+| **DB 마이그레이션 실패** | 데이터 손실 | 백업 선행, Rollback 계획 | ✅ **Mitigated** |
 
 ---
 
@@ -318,8 +329,11 @@ if not acquired:
 - [RFC-008: Tick Completeness QA](RFC-008-tick-completeness-qa.md)
 - [ISSUE-031: Hybrid Recovery](../../ARCHIVE/issues/ISSUE-031.md)
 - [SSH-Worker Idea](../../ideas/stock_monitoring/ID-stateful-self-healing-worker.md)
-- **[RFC-009 Test Strategy](../../tests/rfc009/README.md)** [NEW 2026-01-23]
 - [ID-hybrid-multi-vendor-validation.md](../../ideas/ID-hybrid-multi-vendor-validation.md)
+- [API Hub v2 Overview](../../specs/api_hub_v2_overview.md) [SUPERSEDES GatewayWorker]
+- [Ground Truth Policy](../ground_truth_policy.md) [SSoT for Config Values]
+
+> **Note**: RFC-009 Test Strategy는 본 문서 Section 10에 통합되어 있습니다.
 
 ---
 
@@ -361,6 +375,8 @@ if not acquired:
 
 ---
 
-**Status Update**: ✅ Approved by Council of Six (2026-01-22)  
-**Testing Strategy Approved**: ✅ Council Review Completed (2026-01-23)  
+**Status Update**: ✅ Approved by Council of Six (2026-01-22)
+**Testing Strategy Approved**: ✅ Council Review Completed (2026-01-23)
+**API Hub v2 Integration**: ✅ Phase 1-3 완료 (ISSUE-037, 040, 041) - GatewayWorker 대체
+**Document Sync**: ✅ Ground Truth Policy 기준 동기화 (2026-01-23)
 **Next Steps**: Phase 4 실행 (Unit Tests → Integration → E2E Container 실구동)
