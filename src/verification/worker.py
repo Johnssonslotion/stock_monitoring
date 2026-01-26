@@ -79,12 +79,16 @@ class VerificationResult:
     kiwoom_volume: Optional[int] = None
     db_volume: Optional[int] = None
     delta_pct: float = 0.0
+    price_match: bool = False
+    details: Optional[Dict[str, Any]] = None
     message: str = ""
     verified_at: str = ""
 
     def __post_init__(self):
         if not self.verified_at:
             self.verified_at = datetime.now().isoformat()
+        if self.details is None:
+            self.details = {}
 
 
 # === Configuration ===
@@ -108,6 +112,9 @@ class VerificationConfig:
     # Batch
     BATCH_SIZE = 10
     BATCH_DELAY_SEC = 1.0
+
+    # Scheduling
+    VERIFICATION_OFFSET_SECONDS = int(os.getenv("VERIFICATION_OFFSET_SECONDS", 30))
 
 
 # === TR ID Mapping (API Hub용) ===
@@ -693,10 +700,15 @@ async def run_verification_worker():
         VerificationSchedule,
         ScheduleType
     )
+    from src.verification.realtime_verifier import RealtimeVerifier
 
     producer = VerificationProducer()
     consumer = VerificationConsumer()
     scheduler = VerificationSchedulerManager()
+    
+    # Realtime Verifier (for market hours)
+    verifier = RealtimeVerifier()
+    await verifier.initialize()
 
     # 장 마감 후 배치 검증 스케줄
     scheduler.add_schedule(
@@ -706,6 +718,19 @@ async def run_verification_worker():
             cron_expr="40 15 * * 1-5"
         ),
         producer.produce_daily_tasks
+    )
+
+    # 장 중 실시간 검증 스케줄 (매 분 +5초)
+    scheduler.add_schedule(
+        VerificationSchedule(
+            name="realtime_minute_verification",
+            schedule_type=ScheduleType.INTERVAL,
+            interval_seconds=60,
+            offset_seconds=VerificationConfig.VERIFICATION_OFFSET_SECONDS,
+            market_hours_only=True,
+            mode="realtime"
+        ),
+        verifier.run_verification_cycle
     )
 
     try:
@@ -720,6 +745,7 @@ async def run_verification_worker():
         await scheduler.stop()
         await consumer.close()
         await producer.close()
+        await verifier.cleanup()
 
 
 if __name__ == "__main__":

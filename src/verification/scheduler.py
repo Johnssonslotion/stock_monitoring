@@ -13,6 +13,8 @@ from typing import Callable, Optional, Dict, Any
 from datetime import datetime, time
 import asyncio
 import logging
+import pytz # Assuming pytz is available or use zoneinfo
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +74,16 @@ class MarketSchedule:
 
     @classmethod
     def is_market_hours(cls, dt: Optional[datetime] = None) -> bool:
-        """현재 장 중인지 확인"""
+        """현재 장 중인지 확인 (KST 기준)"""
+        kst = ZoneInfo("Asia/Seoul")
         if dt is None:
-            dt = datetime.now()
+            dt = datetime.now(kst)
+        elif dt.tzinfo is None:
+            # If naive, assume it's naive local time (which is UTC in container)
+            # Convert UTC naive to KST
+            dt = dt.replace(tzinfo=ZoneInfo("UTC")).astimezone(kst)
+        else:
+             dt = dt.astimezone(kst)
 
         current_time = dt.time()
 
@@ -93,9 +102,14 @@ class MarketSchedule:
 
     @classmethod
     def next_market_open(cls, dt: Optional[datetime] = None) -> datetime:
-        """다음 장 시작 시간"""
+        """다음 장 시작 시간 (KST)"""
+        kst = ZoneInfo("Asia/Seoul")
         if dt is None:
-            dt = datetime.now()
+            dt = datetime.now(kst)
+        elif dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo("UTC")).astimezone(kst)
+        else:
+            dt = dt.astimezone(kst)
 
         # 오늘 장 시작 전이면 오늘
         if dt.time() < cls.MARKET_OPEN and dt.weekday() < 5:
