@@ -31,6 +31,7 @@
 - **ID-realtime-gap-recovery**: [장중 실시간 데이터 누락 자동 탐지 및 즉시 복구](ID-realtime-gap-recovery.md).
 - **ID-api-normalization**: [외부 API 제공자 간의 데이터 형식 표준화](ID-docs-api-standardization.md) (`@/create-spec`).
 - **ID-volume-cross-check**: [거래량 기반 정합성 체크 로직](ID-volume-cross-check.md).
+- [ ] [Tick Aggregation Verification](stock_monitoring/ID-tick-aggregation-verification.md) (Sprouting) - 1분틱 합산 vs API 분봉 비교 검증.
 - **ID-tick-quality-evaluation**: [틱 데이터 품질 평가 지표 정의](ID-tick-quality-evaluation.md).
 
 ### 📝 문서 및 프로세스 (Process)
