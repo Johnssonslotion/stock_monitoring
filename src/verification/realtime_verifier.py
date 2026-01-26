@@ -9,6 +9,7 @@ RFC-008 Appendix H 구현
 - 우선순위 큐를 통한 즉시 복구
 """
 import asyncio
+import json
 import os
 import logging
 from datetime import datetime, timedelta
@@ -141,8 +142,11 @@ class RealtimeVerifier:
         now = datetime.now()
         target_minute = now.replace(second=0, microsecond=0) - timedelta(minutes=1)
 
-        # 1. DB에서 틱 거래량 합계 조회
-        db_volume = await self._get_tick_volume_from_db(symbol, target_minute)
+        # 1. DB에서 로컬 캔들(OHLCV) 집계 조회
+        local_candle = await self._get_local_candle_from_db(symbol, target_minute)
+
+        # 거래량 추출 (없으면 0)
+        db_volume = local_candle['volume'] if local_candle else 0
 
         # 저유동성 스킵
         if db_volume is not None and db_volume < self.config.min_volume_threshold:
@@ -196,9 +200,9 @@ class RealtimeVerifier:
             )
 
         # 해당 분봉 찾기
-        api_volume = self._extract_minute_volume(api_data, target_minute)
+        api_candle = self._extract_minute_candle(api_data, target_minute)
 
-        if api_volume is None:
+        if not api_candle:
             return VerificationResult(
                 symbol=symbol,
                 minute=target_minute.isoformat(),
@@ -207,61 +211,84 @@ class RealtimeVerifier:
                 message="Target minute not found in API response"
             )
 
-        # 3. Tolerance 기반 비교
+        api_volume = api_candle['volume']
+
+        # 3. 상세 비교 (OHLC + Volume)
         self._stats["verified"] += 1
 
         if db_volume is None:
             db_volume = 0
 
-        delta_pct = abs(api_volume - db_volume) / max(api_volume, 1)
+        # Price Verify (Strict Match 1e-9)
+        price_match = True
+        mismatch_details = {}
+        
+        if local_candle and api_candle:
+            for field in ['open', 'high', 'low', 'close']:
+                local_val = local_candle.get(field, 0.0)
+                api_val = api_candle.get(field, 0.0)
+                if abs(local_val - api_val) > 1e-9:
+                    price_match = False
+                    mismatch_details[f"{field}_diff"] = local_val - api_val
+                    mismatch_details[f"local_{field}"] = local_val
+                    mismatch_details[f"api_{field}"] = api_val
 
-        if delta_pct <= self.config.volume_tolerance_pct:
-            self._stats["passed"] += 1
-            return VerificationResult(
-                symbol=symbol,
-                minute=target_minute.isoformat(),
-                status=VerificationStatus.PASS,
-                confidence=ConfidenceLevel.HIGH,
-                kiwoom_volume=api_volume,
-                db_volume=db_volume,
-                delta_pct=delta_pct,
-                message="Realtime verification passed"
-            )
-        else:
-            # Gap 감지 → 복구 트리거
+        # Volume Verify (Tolerance 2%)
+        delta_pct = abs(api_volume - db_volume) / max(api_volume, 1) if api_volume > 0 else 0.0
+        
+        # Determine Status
+        status = VerificationStatus.PASS
+        confidence = ConfidenceLevel.HIGH
+        msg = "Realtime verification passed"
+
+        if not price_match:
+            status = VerificationStatus.NEEDS_RECOVERY
+            confidence = ConfidenceLevel.MEDIUM
+            msg = f"Price mismatch: {mismatch_details}"
+            self._stats["gaps_detected"] += 1
+            await self._trigger_recovery(symbol, target_minute, 0) # Gap 0 but price mismatch
+
+        elif delta_pct > self.config.volume_tolerance_pct:
+            status = VerificationStatus.NEEDS_RECOVERY
+            confidence = ConfidenceLevel.MEDIUM
+            msg = f"Volume Gap detected: {delta_pct:.2%}"
             self._stats["gaps_detected"] += 1
             gap = api_volume - db_volume
-
             await self._trigger_recovery(symbol, target_minute, gap)
+        else:
+            self._stats["passed"] += 1
 
-            return VerificationResult(
-                symbol=symbol,
-                minute=target_minute.isoformat(),
-                status=VerificationStatus.NEEDS_RECOVERY,
-                confidence=ConfidenceLevel.MEDIUM,
-                kiwoom_volume=api_volume,
-                db_volume=db_volume,
-                delta_pct=delta_pct,
-                message=f"Gap detected: {gap} ticks ({delta_pct:.2%})"
-            )
+        result = VerificationResult(
+            symbol=symbol,
+            minute=target_minute.isoformat(),
+            status=status,
+            confidence=confidence,
+            kiwoom_volume=api_volume,
+            db_volume=db_volume,
+            delta_pct=delta_pct,
+            price_match=price_match,
+            details=mismatch_details if not price_match else None,
+            message=msg
+        )
+        
+        # 결과 DB 저장
+        await self._save_verification_result(result)
+        
+        return result
 
-    async def _get_tick_volume_from_db(
+    async def _get_local_candle_from_db(
         self,
         symbol: str,
         minute: datetime
-    ) -> Optional[int]:
+    ) -> Optional[Dict[str, Any]]:
         """
-        DB(TimescaleDB)에서 틱 거래량 합계 조회
+        DB(TimescaleDB)에서 로컬 캔들(OHLCV) 집계 조회
         """
-        # 1. Redis 캐시 조회 (Archiver 등이 기록했을 경우)
-        cache_key = f"tick_volume:{symbol}:{minute.strftime('%Y%m%d%H%M')}"
-        cached = await self.redis.get(cache_key)
-        if cached:
-            return int(cached)
-
-        # 2. DB 조회 (TimescaleDB)
+        # 1. Redis 캐시 조회 (Archiver 등이 기록했을 경우) - TODO: OHLC 캐싱 전략 필요
+        # 현재는 Volume만 캐싱하므로 일단 DB 직접 조회 (정확도 우선)
+        
         if not self.db_pool:
-            logger.warning("DB pool not initialized, cannot query tick volume")
+            logger.warning("DB pool not initialized, cannot query candle")
             return None
 
         try:
@@ -269,38 +296,40 @@ class RealtimeVerifier:
             end_time = minute + timedelta(minutes=1)
             
             async with self.db_pool.acquire() as conn:
+                # TimescaleDB first/last/max/min aggregation
                 row = await conn.fetchrow("""
-                    SELECT COALESCE(SUM(volume), 0) as total_volume
+                    SELECT 
+                        first(price, time) as open,
+                        max(price) as high,
+                        min(price) as low,
+                        last(price, time) as close,
+                        COALESCE(SUM(volume), 0) as volume
                     FROM market_ticks
                     WHERE symbol = $1
                       AND time >= $2
                       AND time < $3
                 """, symbol, start_time, end_time)
                 
-                if row:
-                    volume = int(row['total_volume'])
-                    # Cache for 5 minutes
-                    await self.redis.setex(cache_key, 300, str(volume))
-                    return volume
+                if row and row['open'] is not None:
+                    return {
+                        'open': float(row['open']),
+                        'high': float(row['high']),
+                        'low': float(row['low']),
+                        'close': float(row['close']),
+                        'volume': int(row['volume'])
+                    }
         except Exception as e:
-            logger.error(f"Error querying DB volume for {symbol} @ {minute}: {e}")
+            logger.error(f"Error querying DB candle for {symbol} @ {minute}: {e}")
             
         return None
 
-    def _extract_minute_volume(
+    def _extract_minute_candle(
         self,
         api_data: List[Dict[str, Any]],
         target_minute: datetime
-    ) -> Optional[int]:
+    ) -> Optional[Dict[str, Any]]:
         """
-        API 응답에서 특정 분봉의 거래량 추출
-
-        Args:
-            api_data: API 응답 데이터
-            target_minute: 대상 분
-
-        Returns:
-            거래량 또는 None
+        API 응답에서 특정 분봉의 OHLCV 추출
         """
         target_str = target_minute.strftime("%Y%m%d%H%M")
 
@@ -308,15 +337,49 @@ class RealtimeVerifier:
             if not isinstance(item, dict):
                 continue
 
-            # Kiwoom 분봉 응답의 시간 필드
             dt = item.get("dt", item.get("stck_bsop_date", ""))
 
-            # 형식: "202601201000" (YYYYMMDDHHMM)
-            if dt.startswith(target_str[:12]):  # 분까지 매칭
-                volume = item.get("trde_qty", item.get("cntg_vol", 0))
-                return int(volume) if volume else 0
+            if dt.startswith(target_str[:12]):
+                # Kiwoom fields: stck_oprc, stck_hgpr, stck_lwpr, stck_clpr, trde_qty (or cntg_vol)
+                # Output keys might vary. Standardize here.
+                return {
+                    'open': float(abs(int(item.get('stck_oprc', 0)))),
+                    'high': float(abs(int(item.get('stck_hgpr', 0)))),
+                    'low': float(abs(int(item.get('stck_lwpr', 0)))),
+                    'close': float(abs(int(item.get('stck_clpr', 0)))),
+                    'volume': int(item.get("trde_qty", item.get("cntg_vol", 0)))
+                }
 
         return None
+
+    async def _save_verification_result(self, result: VerificationResult):
+        """결과 DB 저장"""
+        if not self.db_pool or not result.minute:
+            return
+
+        try:
+            async with self.db_pool.acquire() as conn:
+                # Use json.dumps for details dict
+                details_json = json.dumps(result.details) if result.details else None
+                
+                await conn.execute("""
+                    INSERT INTO market_verification_results
+                    (time, symbol, local_vol, api_vol, price_match, details, status, 
+                     kiwoom_vol, vol_delta_kiwoom)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                """, 
+                datetime.fromisoformat(result.minute),
+                result.symbol,
+                float(result.db_volume) if result.db_volume is not None else 0,
+                float(result.kiwoom_volume) if result.kiwoom_volume is not None else 0,
+                result.price_match,
+                details_json,
+                result.status.value,
+                float(result.kiwoom_volume) if result.kiwoom_volume is not None else 0,
+                result.delta_pct
+                )
+        except Exception as e:
+            logger.error(f"Failed to save result: {e}")
 
     async def _trigger_recovery(self, symbol: str, minute: datetime, gap: int):
         """
