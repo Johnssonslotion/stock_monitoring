@@ -29,6 +29,7 @@
 | **ISSUE-013: Virtual Trading Audit** | Architect | - | 가상 거래 시스템 정밀 점검 |
 | ~~ISSUE-038: Sentinel & Global Logging Standard~~ | Developer | - | ✅ 완료 |
 | **ISSUE-042: Docker Network Isolation Fix** | DevOps | - | Redis 연결 오류 수정 (Stock Prod vs Deploy) |
+| **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
