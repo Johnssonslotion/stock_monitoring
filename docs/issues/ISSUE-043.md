@@ -6,24 +6,44 @@
 **Created**: 2026-01-26
 **Assignee**: Agent
 
-## Problem Description
-Current `RealtimeVerifier` (`src/verification/realtime_verifier.py`) only verifies **Volume** sum against API data.
-The user requirement is to verify the **integrity of local ticks** by aggregating them into 1-minute OHLCV candles and comparing them against the broker's official minute candles.
+## 1. 개요 (Problem Description)
+현재 `RealtimeVerifier`는 **거래량(Volume) 합계**만을 단순 비교하고 있어, 가격 데이터(Price)의 무결성을 보장하지 못함.
+사용자는 로컬에 수집된 **틱 데이터(Tick)를 직접 1분봉(OHLCV)으로 합산(Aggregation)**하여, 브로커 API의 공식 분봉과 정밀 대조하기를 원함.
+
 - **Current**: `Local DB Volume Sum` vs `API Volume` (2% tolerance)
 - **Required**: `Local Tick Aggregation (OHLCV)` vs `API Candle (OHLCV)`
 
-## Acceptance Criteria
-- [ ] `RealtimeVerifier` queries TimescaleDB for `first(price)`, `max(price)`, `min(price)`, `last(price)`, `sum(volume)` for the target minute.
-- [ ] Comparison Logic:
-  - **Price (Open/High/Low/Close)**: Strict equality check (tolerance < 0.01 or exact match).
-  - **Volume**: Existing tolerance (2%) maintained.
-- [ ] Any Price mismatch or Volume gap triggers the existing `NEEDS_RECOVERY` flow.
+## 2. 상세 구현 계획 (Technical Details)
 
-## Technical Details
-- **DB Function**: Use TimescaleDB's `first()` and `last()` aggregate functions.
-- **File**: `src/verification/realtime_verifier.py`
-- **Output**: `VerificationResult` should include price discrepancy details (e.g., "High Mismatch: Local 100 vs API 101").
+### 2.1. DB 스키마 설계 (Schema Design)
+`market_verification_results` 테이블을 확장하여 가격 검증 결과를 포함합니다.
 
-## Related
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `time` | timestamp | 검증 대상 분 (PK) |
+| `symbol` | text | 종목 코드 (PK) |
+| `local_vol` | double | **[New]** 로컬 DB 집계 거래량 (Tick Sum) |
+| `api_vol` | double | API 조회 거래량 (Renamed from kis_vol/kiwoom_vol) |
+| `price_match` | boolean | **[New]** 가격(OHLC) 완전 일치 여부 |
+| `details` | jsonb | **[New]** 불일치 상세 (예: `{"high_diff": -100, "local": [100, 102, 99, 101]}`) |
+| `status` | text | `PASS` / `FAIL` / `RECOVERING` |
+
+### 2.2. 로직 흐름 (Operation Flow)
+1. **Local Aggregation (TimescaleDB)**
+   - `market_ticks` 테이블에서 `first(price, time)`, `max(price)`, `min(price)`, `last(price, time)`, `sum(volume)` 쿼리.
+2. **API Fetch (API Hub)**
+   - KIS/Kiwoom REST API를 통해 해당 분의 공식 1분봉(OHLCV) 조회.
+3. **Comparison Logic**
+   - **Price (OHLC)**: **Strict Match** (부동소수점 오차 `1e-9` 미만 허용). 하나라도 다르면 `FAIL`.
+   - **Volume**: 기존 허용오차(Tolerance) **2%** 유지.
+4. **Action**
+   - 불일치 발생 시 `FAIL` 기록 및 **즉시 Recovery Queue**에 복구 작업 등록.
+
+## 3. 완료 조건 (Acceptance Criteria)
+- [ ] `RealtimeVerifier`가 TimescaleDB의 집계 함수(`first`, `last`)를 사용하여 로컬 캔들을 생성해야 함.
+- [ ] 가격(Price) 불일치 시, 거래량이 맞더라도 `NEEDS_RECOVERY` 상태로 전이되어야 함.
+- [ ] `market_verification_results` 테이블에 `price_match`, `details` 컬럼이 추가되고 데이터가 적재되어야 함.
+
+## 4. Related
 - Derived from `ID-tick-aggregation-verification`
-- [ISSUE-042](ISSUE-042.md) (Network Isolation Fix) - Pre-requisite for stable verification.
+- [ISSUE-042](ISSUE-042.md) (Network Isolation Fix) - Pre-requisite
