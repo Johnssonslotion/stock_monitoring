@@ -2,7 +2,7 @@
 
 **Status**: Open
 **Priority**: P1 (High)
-**Type**: Enhancement
+**Type**: Bug (Implementation Gap) - Missed Requirement from RFC-008
 **Created**: 2026-01-26
 **Assignee**: Agent
 
@@ -10,8 +10,10 @@
 현재 `RealtimeVerifier`는 **거래량(Volume) 합계**만을 단순 비교하고 있어, 가격 데이터(Price)의 무결성을 보장하지 못함.
 사용자는 로컬에 수집된 **틱 데이터(Tick)를 직접 1분봉(OHLCV)으로 합산(Aggregation)**하여, 브로커 API의 공식 분봉과 정밀 대조하기를 원함.
 
-- **Current**: `Local DB Volume Sum` vs `API Volume` (2% tolerance)
-- **Required**: `Local Tick Aggregation (OHLCV)` vs `API Candle (OHLCV)`
+
+- **History**: `RFC-008: Appendix C.2 Option B (ADOPTED)`에서 이미 "OHLCV Consistency (정밀 검증)" 전략이 승인됨.
+- **Current**: `Local DB Volume Sum` vs `API Volume` (2% tolerance) - Tier 1만 구현된 상태.
+- **Required**: `Local Tick Aggregation (OHLCV)` vs `API Candle (OHLCV)` - Tier 2 구현 누락분.
 
 ## 2. 상세 구현 계획 (Technical Details)
 
@@ -45,5 +47,5 @@
 - [ ] `market_verification_results` 테이블에 `price_match`, `details` 컬럼이 추가되고 데이터가 적재되어야 함.
 
 ## 4. Related
-- Derived from `ID-tick-aggregation-verification`
-- [ISSUE-042](ISSUE-042.md) (Network Isolation Fix) - Pre-requisite
+- **Origin**: [RFC-008](../governance/rfc/RFC-008-tick-completeness-qa.md#c2-최종-verification-strategy) (Option B: Volume + OHLCV Cross-Check)
+- [ISSUE-042](ISSUE-042.md) (Network Isolation Fix)
