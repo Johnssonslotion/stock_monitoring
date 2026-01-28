@@ -274,7 +274,7 @@ OAuth 토큰 자동 갱신 정책은 Broker API의 토큰 만료 정책과 동�
 
 [RFC-007], [RFC-008], [RFC-009]를 통합한 실시간 데이터 흐름 및 각 담당 컨테이너 명세입니다.
 
-### 9.1 파이프라인 아키텍처
+### 9.1 파이프라인 아키텍처 (ISSUE-044 반영)
 
 ```mermaid
 graph TD
@@ -283,22 +283,23 @@ graph TD
         Kiwoom[kiwoom-service] --> |Ticker/Orderbook| R_Pub
     end
 
-    subgraph "Storage Layer"
+    subgraph "Storage Layer (Hot)"
         R_Pub --> |Subscribe| TSArch[timescale-archiver]
-        R_Pub --> |Subscribe| TArch[tick-archiver]
         TSArch --> |Insert| TSDB[(TimescaleDB)]
-        TArch --> |Local Storage| Duck[(DuckDB/Parquet)]
+        TSDB --> |Continuous Agg| Views[market_candles_1m_view]
     end
 
-    subgraph "Verification Layer (Appendix H)"
+    subgraph "Verification & Recovery (Unified)"
         RV[realtime-verifier] --> |Min + 5s| K_API[Kiwoom REST API]
         RV --> |Query| TSDB
         RV --> |Gap Detected| R_Que[Redis Recovery Queue]
+        R_Que --> |Consume| VC[verification-consumer]
+        VC --> |REST API Recovery| TSDB
+        VC --> |Refresh| Views
     end
 
-    subgraph "Recovery Layer"
-        R_Que --> |Consume| RW[recovery-worker]
-        RW --> |REST API Backfill| TSDB
+    subgraph "Archiving Layer (Cold)"
+        TSDB --> |Daily Batch| Duck[(DuckDB/Parquet)]
     end
 
     subgraph "Monitoring"
@@ -307,20 +308,48 @@ graph TD
     end
 ```
 
-### 9.2 서비스별 책임 명세 (Hybrid Recovery Hierarchy)
+### 9.2 서비스별 책임 명세 (Unified Recovery - ISSUE-044)
 
-본 프로젝트는 데이터 유실 방지를 위해 3단계 계층적 복구 체계를 운영합니다.
+**변경사항 (2026-01-28)**: 기존 3단계 계층 복구를 **통합 복구 체계**로 단순화.
 
 | 서비스명 | 계층 | 담당 모듈 | 주요 역할 및 R&R |
 |:---------|:---:|:----------|:----------------|
-| **`realtime-verifier`** | **감지** | `realtime_verifier.py` | **Sensor**: 장 중 매 분(+5s) 틱/분봉 거래량 대조. Gap 감지 시 고우선순위 복구 큐 발행. |
-| **`verification-worker`** | **실시간 복구** | `worker.py` | **Fast Response**: 복구 큐를 상시 리스닝. 감지된 **특정 분봉(1분)**에 대해 즉시 KIS 틱 API 호출 및 DB 보정. |
-| **`recovery-worker`** | **대규모 백필** | `backfill_manager.py` | **Hard Recovery**: 장 마감 후 또는 대규모 장애 시 **일일 전체 Gap**을 전수 조사하여 DuckDB 병합 방식으로 광역 복구. |
+| **`realtime-verifier`** | **감지** | `realtime_verifier.py` | **Sensor**: 장 중 매 분(+5s) 틱/분봉 거래량 대조. Gap 감지 시 고우선순위 복구 큐 발행. 배치 모드로 장 마감 후 전체 검증도 수행. |
+| **`verification-consumer`** | **통합 복구** | `worker.py` | **Unified Recovery**: 복구 큐를 상시 리스닝. Gap 감지 시 KIS API 호출 → TimescaleDB 직접 저장 → Continuous Aggregates Refresh. |
 | `sentinel-agent` | **감시** | `sentinel.py` | **Watcher**: 파이프라인 생존 및 인프라(Redis/DB) 상태 상시 모니터링. |
 
-#### 차이점 요약
-- `verification-worker`는 **"장 중 1분 단위 정밀 타격"** (속도 중점)
-- `recovery-worker`는 **"장 마감 후 전수 대량 복구"** (안정성 중점)
+#### 레거시 (Deprecated)
+| 서비스명 | 상태 | 대체 방안 |
+|:---------|:---:|:----------|
+| ~~`backfill_manager.py`~~ | **Legacy** | `verification-consumer`로 통합 |
+| ~~`merge_worker.py`~~ | **Legacy** | 불필요 (TimescaleDB 직접 저장) |
+| ~~`recovery_orchestrator.py`~~ | **Legacy** | `realtime-verifier` + `verification-consumer` |
+
+#### 통합 복구의 장점
+- **단일 데이터 경로**: TimescaleDB 직접 저장 (DuckDB 중간 단계 제거)
+- **Continuous Aggregates 자동 연동**: 복구 후 즉시 View Refresh
+- **운영 단순화**: 컨테이너 수 감소, 수동 실행 불필요
+
+### 9.3 DuckDB 역할 변경 (Cold Storage)
+
+**기존**: 복구 중간 저장소 + 분석용
+**변경 후**: **완결된(Verified) 틱 데이터만 장기 보관** (Cold Storage)
+
+```
+TimescaleDB (Hot)  →  검증 완료  →  DuckDB/Parquet (Cold)
+   (실시간)              ↓              (분석/백테스팅)
+                   일일 배치 아카이빙
+                   (장 마감 후 16:00)
+```
+
+**아카이빙 조건**:
+- `source_type IN ('REST_API_KIS', 'REST_API_KIWOOM', 'TICK_AGGREGATION_VERIFIED')`
+- 검증 완료 후 7일 경과 데이터
+
+**용도**:
+- 백테스팅 (Backtesting)
+- ML 학습 데이터
+- 장기 분석 및 리포팅
 
 ---
 

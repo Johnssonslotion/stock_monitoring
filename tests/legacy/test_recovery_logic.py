@@ -3,7 +3,8 @@ import pytest
 import duckdb
 import pandas as pd
 from datetime import datetime, timedelta
-from src.data_ingestion.recovery.backfill_manager import BackfillManager
+# ISSUE-044: BackfillManager moved to legacy
+from src.data_ingestion.recovery.legacy.backfill_manager import BackfillManager
 
 @pytest.fixture
 def temp_db(tmp_path):
