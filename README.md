@@ -186,7 +186,7 @@ make test
 | 문서 (Document) | 역할 (Role) | 타겟 (Target) |
 | :--- | :--- | :--- |
 | **[MASTER_BUILD_GUIDE](file:///home/ubuntu/.gemini/antigravity/brain/ee8eaf5b-a6b8-4374-ab9b-277a200222dc/MASTER_BUILD_GUIDE.kr.md)** | **구축 가이드 (How)** | 0부터 시스템을 다시 만들려는 엔지니어 |
-| **[Master Roadmap](docs/strategies/master_roadmap.md)** | **전략 로드맵 (What/When)** | 프로젝트의 미래와 마일스톤을 확인하려는 PM |
+| **[Master Roadmap](docs/strategy/master_roadmap.md)** | **전략 로드맵 (What/When)** | 프로젝트의 미래와 마일스톤을 확인하려는 PM |
 | **[Governance Rules](docs/governance/personas.md)** | **운영 원칙 (People)** | 6인의 페르소나 및 의사결정 프로토콜 |
 | **[Development Standard](docs/governance/development.md)** | **개발 표준 (Method)** | GitHub Flow, 멀티 디바이스, 테스트 정책 |
 | **[Protocol Specs](docs/specs/backend_specification.md)** | **통신 명세 (Spec)** | **SSoT**: Backend, UI, Database 명세서 모음 |
@@ -197,32 +197,32 @@ make test
 ### 🚨 운영 문서 (Operations) - 장애 대응
 
 **데이터가 수집되지 않나요?**
-- 📘 [Runbook: Data Collection Recovery](docs/runbooks/data_collection_recovery.md)
+- 📘 [Runbook: Data Collection Recovery](docs/operations/runbooks/data_collection_recovery.md)
   - Quick Diagnosis (SQL 명령어 포함)
   - Recovery Steps (Collector/Archiver별)
   - Verification Checklist
 
 **알려진 이슈 확인**:
-- 📋 [Known Issues](docs/KNOWN_ISSUES.md)
+- 📋 [Known Issues](docs/issues/KNOWN_ISSUES.md)
   - 최근 해결: Map-First Layout E2E 클릭 안정성 확보 (2026-01-15)
   - 최근 해결: ALREADY_IN_SUBSCRIBE 에러 (2026-01-15)
   - 최근 해결: Archiver restart policy 누락 (2026-01-15)
 
 **장애 발생 시 보고**:
 - 📊 [Incident Reports](docs/incidents/)
-  - 최신: [2026-01-15 Data Collection Failures](docs/incidents/2026-01-15_data_collection_failures.md)
+  - 최신: [2026-01-15 Data Collection Failures](docs/ARCHIVE/incidents/2026-01-15_data_collection_failures.md)
 
 ---
 
 ### 🚀 배포 문서 (Deployment)
 
 **배포 전 필수 체크리스트**:
-- ✅ [Deployment Checklist](docs/deployment/CHECKLIST.md)
+- ✅ [Deployment Checklist](docs/operations/deployment/CHECKLIST.md)
   - Pre-deployment: 코드 리뷰, 테스트, 롤백 계획
   - **Critical**: Post-deployment 검증 (서비스 상태, 데이터 흐름, 5분 안정성 체크)
 
 **모니터링 구현 가이드**:
-- 📈 [Monitoring Requirements](docs/infrastructure/monitoring_requirements.md)
+- 📈 [Monitoring Requirements](docs/operations/infrastructure/monitoring_requirements.md)
   - Prometheus 메트릭 정의
   - Alertmanager 알림 규칙
   - Grafana 대시보드 설계
@@ -233,11 +233,11 @@ make test
 
 | 상황 | 문서 |
 |------|------
-| 🔴 프로덕션 장애 | [Data Collection Runbook](docs/runbooks/data_collection_recovery.md) |
-| 🚀 코드 배포 | [Deployment Checklist](docs/deployment/CHECKLIST.md) |
-| 📊 모니터링 구현 | [Monitoring Requirements](docs/infrastructure/monitoring_requirements.md) |
-| 🐛 버그 확인 | [Known Issues](docs/KNOWN_ISSUES.md) |
-| 🏛️ 아키텍처 이해 | [UI Design Master](docs/ui_design_master.md) |
+| 🔴 프로덕션 장애 | [Data Collection Runbook](docs/operations/runbooks/data_collection_recovery.md) |
+| 🚀 코드 배포 | [Deployment Checklist](docs/operations/deployment/CHECKLIST.md) |
+| 📊 모니터링 구현 | [Monitoring Requirements](docs/operations/infrastructure/monitoring_requirements.md) |
+| 🐛 버그 확인 | [Known Issues](docs/issues/KNOWN_ISSUES.md) |
+| 🏛️ 아키텍처 이해 | [UI Design Master](docs/specs/ui_design_master.md) |
 | 👥 의사결정 방식 | [Personas & Council](docs/governance/personas.md) |
 
 ## 📡 현재 시스템 상태 (As of 2026-01-23)

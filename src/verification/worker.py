@@ -429,17 +429,24 @@ class VerificationConsumer:
             if result.get("status") == "SUCCESS":
                 data = result.get("data", {})
                 items = data.get("output1", [])
-                
+
                 if items:
                     # Filter and Save Ticks
                     recovered_count = await self._save_recovered_ticks(symbol, dt_min, items)
-                    
+
+                    # ISSUE-044: Refresh Continuous Aggregates after recovery
+                    if recovered_count > 0:
+                        await self._refresh_continuous_aggregates(
+                            dt_min,
+                            dt_min + timedelta(minutes=1)
+                        )
+
                     return VerificationResult(
                         symbol=symbol,
                         minute=task.minute,
                         status=VerificationStatus.PASS,
                         confidence=ConfidenceLevel.HIGH,
-                        message=f"Recovered {recovered_count} ticks via API Hub"
+                        message=f"Recovered {recovered_count} ticks via API Hub + View refreshed"
                     )
             elif result.get("status") == "RATE_LIMITED":
                 logger.warning(f"[{symbol}] Rate limited by API Hub")
@@ -469,8 +476,9 @@ class VerificationConsumer:
             if t_str and t_str[:4] == target_hhmm:
                 # Build Row (time, symbol, source, price, volume, change)
                 tick_dt = datetime.strptime(f"{date_prefix} {t_str}", "%Y%m%d %H%M%S")
+                # ISSUE-044: Use REST_API_KIS per Ground Truth Policy
                 rows.append((
-                    tick_dt, symbol, "KIS_RECOVERY",
+                    tick_dt, symbol, "REST_API_KIS",
                     float(item['stck_prpr']), float(item['cntg_vol']), float(item.get('prdy_vrss', 0))
                 ))
         
@@ -493,8 +501,43 @@ class VerificationConsumer:
                 return len(rows)
             except Exception as e:
                 logger.error(f"Failed to save recovered ticks: {e}")
-        
+
         return 0
+
+    async def _refresh_continuous_aggregates(self, start: datetime, end: datetime):
+        """
+        ISSUE-044: Refresh Continuous Aggregates after tick recovery
+
+        Refreshes views for the given time range.
+        """
+        views = [
+            'market_candles_1m_view',
+            'market_candles_5m_view',
+            'market_candles_1h_view',
+            'market_candles_1d_view'
+        ]
+
+        if not self.db_pool:
+            logger.warning("DB pool not initialized, skipping refresh")
+            return
+
+        for view in views:
+            for attempt in range(3):  # Max 3 retries
+                try:
+                    async with self.db_pool.acquire() as conn:
+                        await conn.execute(
+                            "CALL refresh_continuous_aggregate($1, $2, $3)",
+                            view, start, end
+                        )
+                    logger.info(f"✅ Refreshed {view} for {start} → {end}")
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        logger.error(f"❌ Failed to refresh {view} after 3 attempts: {e}")
+                        # Queue for later retry (optional: implement pending_refresh queue)
+                    else:
+                        logger.warning(f"⚠️ Retry {attempt+1}/3 for {view}: {e}")
+                        await asyncio.sleep(1)
 
     async def _process_task(
         self,

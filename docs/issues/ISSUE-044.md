@@ -108,10 +108,11 @@ TimescaleDB (Hot)  →  검증 완료  →  DuckDB/Parquet (Cold)
 **View 분리**: 기존 `market_candles`(API 원본)와 구분하기 위해 `market_candles_1m_view`(틱 집계)를 신규 생성.
 
 **Continuous Aggregates**:
-- `market_candles_1m_view`: Ticks → 1m Aggregation
-- `market_candles_5m`: 1m View → 5m Aggregation (Cascade)
-- `market_candles_1h`: 1m View → 1h Aggregation (Cascade)
-- `market_candles_1d`: 1m View → 1d Aggregation (Cascade)
+- `market_candles_1m_view`: Ticks → 1m Aggregation (Base)
+- `market_candles_5m`: Ticks → 5m Aggregation (Flat, independent)
+- `market_candles_1h`: Ticks → 1h Aggregation (Flat, independent)
+- `market_candles_1d`: Ticks → 1d Aggregation (Flat, independent)
+*(Ref: Migration script deployment issues with Cascade enforced a Flat strategy)*
 
 ### 3.2 source_type 컬럼 처리 (Ground Truth Policy 준수)
 
@@ -153,11 +154,11 @@ market_ticks (원본)
     ↓ [자동: 1분 주기]
 market_candles_1m_view
     ↓ [자동: 5분 주기]
-market_candles_5m
+market_candles_5m_view (Ticks에서 직접 생성)
     ↓ [자동: 1시간 주기]
-market_candles_1h
-    ↓ [자동: 1일 1회, 장 마감 후]
-market_candles_1d
+market_candles_1h_view (Ticks에서 직접 생성)
+    ↓ [자동: 1일 1회]
+market_candles_1d_view (Ticks에서 직접 생성)
 ```
 
 **Refresh Policy 설정**:

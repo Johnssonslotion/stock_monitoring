@@ -30,7 +30,7 @@
 | ~~ISSUE-038: Sentinel & Global Logging Standard~~ | Developer | - | ✅ 완료 |
 | **ISSUE-042: Docker Network Isolation Fix** | DevOps | - | Redis 연결 오류 수정 (Stock Prod vs Deploy) |
 | **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
-| **ISSUE-044: TimescaleDB Tick-to-Candle Automation** | Developer | ISSUE-043 | 틱 → 분봉 자동 변환 및 복구 정합성 |
+| ~~ISSUE-044: TimescaleDB Tick-to-Candle Automation~~ | Developer | ISSUE-043 | ✅ 완료 (2026-01-28) |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -62,6 +62,9 @@
 - [x] **ISSUE-038: Sentinel & Global Logging Standard (P1)** - 이미 적용 확인, development.md 가이드 추가
 - [x] **SSoT: Unified Backlog Management System (v2.18)** - `deferred_work.md` 통합 및 거버넌스 개정
 - [x] **ISSUE-033: TimescaleArchiver Schema Mismatch (P0)** - 494,505 ticks/1h 검증 완료
+
+### 2026-01-28
+- [x] **ISSUE-044: TimescaleDB Tick-to-Candle Automation (P1)** - `market_candles_1m_view` 등 연속 집계 뷰 생성, Flat Strategy 적용, VerificationConsumer 통합 완료. Gap Analysis PASS.
 
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
