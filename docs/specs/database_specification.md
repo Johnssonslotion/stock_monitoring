@@ -1,4 +1,4 @@
-# Database Specification (v1.0)
+# Database Specification (v1.1)
 
 ## 1. 개요 (Overview)
 본 문서는 `Stock Monitoring System`의 영구 저장소인 **TimescaleDB**의 스키마와 데이터 수명 주기(Retention)를 정의합니다.
@@ -41,7 +41,30 @@
 
 *(Note: 총 43개 컬럼. `ask_price1` ... `bid_vol10`)*
 
-### 3.3 시스템 메트릭 (System Metrics)
+### 3.3 분봉 데이터 (Market Candles) [ISSUE-044]
+#### 3.3.1 Continuous Aggregate Views (Auto-Generated)
+- **Source**: `market_ticks`
+- **Type**: Materialized View (TimescaleDB Continuous Aggregate)
+- **Strategy**: Flat (Todos directly from Ticks)
+
+| View Name | Interval | Refresh Policy | Source Type |
+| :--- | :--- | :--- | :--- |
+| `market_candles_1m_view` | 1 Minute | Every 1 min (Lag: 1min) | Derived from Ticks |
+| `market_candles_5m_view` | 5 Minutes | Every 5 min | Derived from Ticks |
+| `market_candles_1h_view` | 1 Hour | Every 1 hour | Derived from Ticks |
+| `market_candles_1d_view` | 1 Day | Daily (16:00) | Derived from Ticks |
+
+#### 3.3.2 Serving Views (Unified)
+- **Strategy**: Ground Truth Policy (REST API 우선, 없으면 Tick Aggregation 사용)
+
+| View Name | Description |
+| :--- | :--- |
+| `market_candles_1m_serving` | 1분봉 통합 서빙 (Priority Logic Applied) |
+| `market_candles_5m_serving` | 5분봉 통합 서빙 |
+| `market_candles_1h_serving` | 1시간봉 통합 서빙 |
+| `market_candles_1d_serving` | 일봉 통합 서빙 |
+
+### 3.4 시스템 메트릭 (System Metrics)
 - **Table Name**: `system_metrics`
 - **Type**: Hypertable
 
@@ -52,7 +75,7 @@
 | **value** | `DOUBLE` | 측정값 |
 | **meta** | `JSONB` | 추가 메타데이터 (예: `{"host": "prod-1"}`) |
 
-### 3.4. Data Validation (ISSUE-029)
+### 3.5. Data Validation (ISSUE-029)
 **Table**: `market_ticks_validation`
 **Type**: Hypertable (Partition by `bucket_time`)
 
