@@ -5,8 +5,9 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 from src.data_ingestion.recovery.log_recovery import LogRecoveryManager
-from src.data_ingestion.recovery.backfill_manager import BackfillManager
-from src.data_ingestion.recovery.merge_worker import merge_recovery_data
+# ISSUE-044: Legacy imports (moved to legacy folder)
+from src.data_ingestion.recovery.legacy.backfill_manager import BackfillManager
+from src.data_ingestion.recovery.legacy.merge_worker import merge_recovery_data
 
 # Setup Logger
 logging.basicConfig(level=logging.INFO)
