@@ -340,8 +340,9 @@ services:
       context: ..
       dockerfile: Dockerfile
     container_name: recovery-worker
-    # RFC-009: Use actual recovery script with Self-Diagnosis
-    command: bash -c "python -c 'from src.data_ingestion.recovery.backfill_manager import BackfillManager; print(\"Self-Diagnosis passed, ready for cron-triggered recovery\")' && sleep infinity"
+    # ISSUE-044: Recovery pipeline unified to VerificationConsumer
+    # Legacy BackfillManager moved to legacy/ - this container now only runs health checks
+    command: bash -c "python -c 'print(\"ISSUE-044: Recovery unified to verification-worker. This container is deprecated.\")' && sleep infinity"
     env_file:
       - ../${ENV_FILE:-.env.prod}
     volumes:
