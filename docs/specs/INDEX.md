@@ -7,6 +7,7 @@
 - **[Data Schema](data_schema.md)**: 데이터 테이블 정의 및 타입 명세.
 - **[Database Specification](database_specification.md)**: 데이터베이스 인프라 및 설정.
 - **[Ingestion Open Guard](ingestion_open_guard_spec.md)**: 수집기 예외 처리 및 가드 로직.
+- **[Market Intelligence Spec](market_intelligence_spec.md)**: 수급/공매도 분석 및 순환매 탐지 설계 (Pillar 8).
 
 ## 2. API & Integration
 - **[API Specification](api_specification.md)**: 전체 API 인터페이스 정의 (OpenAPI).
@@ -18,6 +19,7 @@
 - **[Data Normalization](data_normalization_spec.md)**: 외부 API 통합 정규화 규격.
 - **[Kiwoom Chart API](kiwoom-chart-api.md)**: 키움 전용 차트 API 연동 가이드.
 - **[Virtual Investment API](virtual_investment_api.md)**: 가상 투자 모듈 및 API 명세.
+- **[Virtual Exchange RFC](../governance/decisions/RFC-007_virtual_exchange_architecture.md)**: 가상 거래소 핵심 아키텍처 설계 (Pillar 6).
 
 ## 3. Frontend & Visualization
 - **[UI Design Master](ui_design_master.md)**: 디자인 시스템 및 UI 전체 설계.
