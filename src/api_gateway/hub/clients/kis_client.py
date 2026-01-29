@@ -71,6 +71,7 @@ class KISClient(BaseAPIClient):
 
     # TR ID to URL Path 매핑 (BackfillManager 참조)
     TR_URL_MAP = {
+        # 기존 시세 조회
         "FHKST01010100": (
             "/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
         ),
@@ -85,6 +86,22 @@ class KISClient(BaseAPIClient):
         ),
         "HHDFS76950200": (
             "/uapi/overseas-price/v1/quotations/inquire-daily-chartprice"
+        ),
+        # Pillar 8: Market Intelligence (RFC-010)
+        "FHKST01010900": (
+            "/uapi/domestic-stock/v1/quotations/inquire-investor"
+        ),
+        "FHKST01060200": (
+            "/uapi/domestic-stock/v1/quotations/inquire-foreign-daily"
+        ),
+        "FHKST01060300": (
+            "/uapi/domestic-stock/v1/quotations/inquire-member-daily"
+        ),
+        "FHKST01060500": (
+            "/uapi/domestic-stock/v1/quotations/inquire-daily-short"
+        ),
+        "FHKST01060600": (
+            "/uapi/domestic-stock/v1/quotations/inquire-daily-program"
         ),
     }
 
@@ -149,6 +166,46 @@ class KISClient(BaseAPIClient):
                 "MODP": params.get("MODP", "1")
             }
 
+        # Pillar 8: Market Intelligence TR IDs
+        # 주식현재가 투자자 (FHKST01010900)
+        if tr_id == "FHKST01010900":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", ""))
+            }
+
+        # 종목별 외국계 순매수추이 (FHKST01060200)
+        if tr_id == "FHKST01060200":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", "")),
+                "FID_INPUT_DATE_1": params.get("FID_INPUT_DATE_1", ""),
+                "FID_INPUT_DATE_2": params.get("FID_INPUT_DATE_2", "")
+            }
+
+        # 국내기관/외국인 매매종목 (FHKST01060300)
+        if tr_id == "FHKST01060300":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", ""))
+            }
+
+        # 공매도 일별추이 (FHKST01060500)
+        if tr_id == "FHKST01060500":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", "")),
+                "FID_INPUT_DATE_1": params.get("FID_INPUT_DATE_1", ""),
+                "FID_INPUT_DATE_2": params.get("FID_INPUT_DATE_2", "")
+            }
+
+        # 프로그램매매 추이 (FHKST01060600)
+        if tr_id == "FHKST01060600":
+            return {
+                "FID_COND_MRKT_DIV_CODE": params.get("FID_COND_MRKT_DIV_CODE", "J"),
+                "FID_INPUT_ISCD": params.get("FID_INPUT_ISCD", params.get("symbol", ""))
+            }
+
         # 다른 TR ID는 params 그대로 전달
         return params
 
@@ -158,11 +215,18 @@ class KISClient(BaseAPIClient):
 
     # GET 요청이 필요한 TR ID 목록
     GET_TRS = {
+        # 기존
         "FHKST01010100",
         "FHKST01010300",
         "FHKST01010400",
         "FHKST03010200",
-        "HHDFS76950200"
+        "HHDFS76950200",
+        # Pillar 8: Market Intelligence
+        "FHKST01010900",
+        "FHKST01060200",
+        "FHKST01060300",
+        "FHKST01060500",
+        "FHKST01060600",
     }
 
     async def execute(
