@@ -161,6 +161,19 @@
 - **Phase 2 (Type Safety)**: Pydantic 기반의 엄격한 설정 검증 도입. (⏳ DEFERRED)
 - **Trigger**: 사용자 일정 여유 확보 시 순차 진행 예정.
 
+### Pillar 8: 시장 인텔리전스 및 순환매 분석 (Market Intelligence & Rotation) [PLANNED] 🆕
+- **목표**: 투자자별 수급, 공매도 현황, 프로그램 매매 데이터를 분석하여 업종 간 순환매 포착.
+- **Phase 1 (Data Expansion)**:
+    - KIS/Kiwoom 투자자별 매매동향(외국인, 기관) TR 연동.
+    - 공매도 잔고 및 일별 공매도 거래량 수집 엔진 구축.
+    - 프로그램 매매(차익/비차익) 실시간 추적.
+- **Phase 2 (Rotation Engine)**:
+    - 섹터별 자금 유입도(Money Flow Index) 기반 순환매 탐지 알고리즘 구현.
+    - 외국인/기관 집중 매수 종목 실시간 플래깅.
+- **Phase 3 (Visualization)**:
+    - 섹터 맵에 '수급 강도' 오버레이 적용.
+    - 공매도 과열 및 숏커버링 예상 종목 리포트 자동 생성.
+
 ---
 
 ## 📅 타임라인 (Timeline Estimate)
