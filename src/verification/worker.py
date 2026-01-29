@@ -194,7 +194,7 @@ class VerificationProducer:
 
         for symbol in symbols:
             task = VerificationTask(
-                task_type="full_verification",
+                task_type="verify_db_integrity",
                 symbol=symbol,
                 date=today
             )
@@ -209,7 +209,7 @@ class VerificationProducer:
         await self.connect()
 
         task = VerificationTask(
-            task_type="minute_verification",
+            task_type="verify_db_integrity",
             symbol=symbol,
             minute=minute.isoformat()
         )
