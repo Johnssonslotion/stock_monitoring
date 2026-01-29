@@ -111,6 +111,7 @@
 | INF-NET-01 | `test_network_alias_validation` | `tests/test_infrastructure.py` | docker-compose.yml의 network alias가 실제 네트워크에 적용되었는지 검증 (FMEA 3.5) | ✅ Pass |
 | INF-HEALTH-01 | `test_service_startup_health` | `tests/test_infrastructure.py` | 모든 서비스가 시작 후 30초 내 정상 상태(healthy/running)에 도달하는지 검증 (FMEA 3.5) | ✅ Pass |
 | INF-ENV-01 | `test_environment_variables` | `tests/test_infrastructure.py` | 필수 환경변수(DB_HOST, REDIS_URL 등)가 모든 컨테이너에 올바르게 설정되었는지 검증 | ✅ Pass (Fixed) |
+| INF-DEPLOY-01 | `verify_deployment_logs` | `scripts/verify_deployment_logs.py` | 배포 직후 모든 컨테이너 로그에서 Critical Error/Traceback 검출 (RFC-006) | ✅ Pass |
 
 ---
 

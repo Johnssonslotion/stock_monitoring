@@ -9,6 +9,7 @@
 - **[Constitution (ai-rules.md)](../.ai-rules.md)**: 최상위 절대 원칙 및 워크플로우 바인딩
 - **[HISTORY](governance/HISTORY.md)** / **[RFC Center](governance/rfc/)** / **[Templates](governance/templates/)**
 - **[RFC-005: Unified Verification](governance/decisions/RFC-005_unified_verification_architecture.md)**: 검증 아키텍처 통합 (Queue + Realtime)
+- **[RFC-006: Auto-Deploy Verify](governance/decisions/RFC-006_automated_deployment_verification.md)**: 배포 로그 자동 검증 (Silent Failure 방지)
 
 ## 🔭 전략 및 설계 (Strategy)
 - **[Strategy Hub (INDEX)](strategy/master_roadmap.md)**: 로드맵 및 핵심 아키텍처 (Master Roadmap)
