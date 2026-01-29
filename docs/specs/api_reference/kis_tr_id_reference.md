@@ -245,6 +245,81 @@
 
 ---
 
+### 3.5 FHKST01010900 (주식현재가 투자자) ⚠️ 미구현
+
+**용도**: 현재가 기준 외국인/기관 매매동향 요약 정보 조회
+
+**URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor`  
+**Method**: GET  
+
+**Headers**:
+```json
+{
+  "tr_id": "FHKST01010900",
+  "custtype": "P"
+}
+```
+
+**Query Parameters**:
+```json
+{
+  "FID_COND_MRKT_DIV_CODE": "J",
+  "FID_INPUT_ISCD": "005930"
+}
+```
+
+**Response (Core Fields)**:
+- `fore_ntby_qty`: 외국인 순매수 수량
+- `orgn_ntby_qty`: 기관 순매수 수량
+- `pstn_ntby_qty`: 개인 순매수 수량
+
+---
+
+### 3.6 FHKST02010100 (주식현재가 공매도 현황) ⚠️ 미구현
+
+**용도**: 특정 종목의 실시간/일별 공매도 거래량 및 잔고 조회
+
+**URL**: `/uapi/domestic-stock/v1/quotations/inquire-short-selling-status`  
+**Method**: GET  
+
+**Headers**:
+```json
+{
+  "tr_id": "FHKST02010100",
+  "custtype": "P"
+}
+```
+
+**Query Parameters**:
+```json
+{
+  "FID_COND_MRKT_DIV_CODE": "J",
+  "FID_INPUT_ISCD": "005930"
+}
+```
+
+**Response (Core Fields)**:
+- `sstk_cntg_vol`: 공매도 체결 수량
+- `sstk_cntg_amt`: 공매도 체결 금액
+- `sstk_val_amt`: 공매도 평가 금액
+
+---
+
+### 3.7 FHKST03020100 (종목별 투자자 매매추이) ⚠️ 미구현
+
+**용도**: 특정 종목의 일별 투자자별 순매수 추이 (히스토리)
+
+**URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor` (Path vary by doc)
+**Method**: GET  
+
+---
+
+### 3.8 FHKST03110100 (업종별 수급현황) ⚠️ 미구현
+
+**용도**: 특정 업종(코스피, 코스닥, 각 섹터)의 전체 수급 흐름 조회
+
+---
+
 ## 4. Rate Limit (Ground Truth)
 
 | Provider | Rate Limit | Authority |
