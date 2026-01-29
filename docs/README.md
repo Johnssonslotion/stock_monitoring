@@ -8,6 +8,7 @@
 - **[Governance Hub (INDEX)](governance/INDEX.md)**: 전체 운영 원칙 및 의사결정 인덱스
 - **[Constitution (ai-rules.md)](../.ai-rules.md)**: 최상위 절대 원칙 및 워크플로우 바인딩
 - **[HISTORY](governance/HISTORY.md)** / **[RFC Center](governance/rfc/)** / **[Templates](governance/templates/)**
+- **[RFC-005: Unified Verification](governance/decisions/RFC-005_unified_verification_architecture.md)**: 검증 아키텍처 통합 (Queue + Realtime)
 
 ## 🔭 전략 및 설계 (Strategy)
 - **[Strategy Hub (INDEX)](strategy/master_roadmap.md)**: 로드맵 및 핵심 아키텍처 (Master Roadmap)
@@ -19,6 +20,7 @@
 - **[Specifications Hub (INDEX)](specs/INDEX.md)**: 전체 기술 명세 및 설계 문서 인덱스
 - **[API Hub v2 Overview](specs/api_hub_v2_overview.md)**: 통합 REST API Gateway 전체 설계 (ISSUE-037)
 - **[API Hub v2 Configuration (SSoT)](specs/api_hub_config_spec.md)**: API Hub 설정 옵션 참조 문서
+- **[Unified Verification Worker](specs/verification/unified_verification_worker.md)**: 검증 워커 통합 설계 (RFC-005)
 - **[Database Spec](specs/database_specification.md)** / **[API Spec](specs/api_specification.md)**
 - **[UI Master](specs/ui_design_master.md)** / **[Data Normalization](specs/data_normalization_spec.md)**
 
