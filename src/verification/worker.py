@@ -992,6 +992,11 @@ async def run_verification_worker():
         ScheduleType
     )
     from datetime import datetime # Added import for datetime.now()
+    
+    producer = VerificationProducer()
+    consumer = VerificationConsumer()
+    scheduler = VerificationSchedulerManager()
+
     # [RFC-005] Unified Scheduler Configuration
     
     # Define wrapper for realtime verification (All Target Symbols)

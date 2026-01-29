@@ -9,7 +9,7 @@ from src.data_ingestion.ticks.archiver import TickArchiver
 # Mock Settings for Testing
 os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
-class TestTickArchiver(TickArchiver):
+class MockTickArchiver(TickArchiver):
     def __init__(self, db_path=":memory:"):
         self.db_path = db_path
         # Skip os.makedirs for memory db
@@ -40,7 +40,7 @@ class TestTickArchiver(TickArchiver):
 
 @pytest.mark.asyncio
 async def test_duckdb_type_conversion():
-    archiver = TestTickArchiver()
+    archiver = MockTickArchiver()
     
     # CASE 1: Unix Timestamp (int) - Seconds
     # 2026-01-20 00:00:00 UTC = 1768867200 (approx)
