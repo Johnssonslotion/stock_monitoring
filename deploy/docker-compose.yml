@@ -342,7 +342,7 @@ services:
     container_name: recovery-worker
     # ISSUE-044: Recovery pipeline unified to VerificationConsumer
     # Legacy BackfillManager moved to legacy/ - this container now only runs health checks
-    command: bash -c "python -c 'print(\"ISSUE-044: Recovery unified to verification-worker. This container is deprecated.\")' && sleep infinity"
+    command: [ "bash", "-c", "python -c 'print(\"ISSUE-044: Recovery unified to verification-worker. This container is deprecated.\")' && sleep infinity" ]
     env_file:
       - ../${ENV_FILE:-.env.prod}
     volumes:
