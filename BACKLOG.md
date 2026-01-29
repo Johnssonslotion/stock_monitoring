@@ -66,6 +66,9 @@
 ### 2026-01-28
 - [x] **ISSUE-044: TimescaleDB Tick-to-Candle Automation (P1)** - `market_candles_1m_view` 등 연속 집계 뷰 생성, Flat Strategy 적용, VerificationConsumer 통합 완료. Gap Analysis PASS.
 
+### 2026-01-29
+- [x] **ISSUE-044: Completed Verification & Merge** - Verified Continuous Aggregates with `test_continuous_aggregates_backfill`. Gap Analysis & Tests Passed.
+
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
   - ✅ `BackfillManager`: gatekeeper 통합 및 Self-Diagnosis 로직 추가

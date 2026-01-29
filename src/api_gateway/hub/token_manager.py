@@ -330,16 +330,16 @@ class TokenManager:
                 )
 
                 if provider.upper() == "KIS":
-                    new_token = await self._refresh_kis_token()
+                    new_token, expires_in = await self._refresh_kis_token()
                 elif provider.upper() == "KIWOOM":
-                    new_token = await self._refresh_kiwoom_token()
+                    new_token, expires_in = await self._refresh_kiwoom_token()
                 else:
                     raise ValueError(f"Unknown provider: {provider}")
 
-                # Redis에 저장
-                await self.set_token(provider, new_token)
+                # Redis에 저장 (실제 만료시간 사용)
+                await self.set_token(provider, new_token, expires_in=expires_in)
 
-                logger.info(f"✅ {provider} token refreshed successfully")
+                logger.info(f"✅ {provider} token refreshed successfully (expires_in={expires_in}s)")
                 return new_token
 
             except Exception as e:
@@ -361,8 +361,13 @@ class TokenManager:
                     # TODO: Sentinel 알람 발행
                     return None
 
-    async def _refresh_kis_token(self) -> str:
-        """KIS 토큰 갱신"""
+    async def _refresh_kis_token(self) -> Tuple[str, int]:
+        """
+        KIS 토큰 갱신
+        
+        Returns:
+            Tuple[str, int]: (acccess_token, expires_in)
+        """
         app_key = os.getenv("KIS_APP_KEY")
         app_secret = os.getenv("KIS_APP_SECRET")
         base_url = os.getenv(
@@ -394,10 +399,19 @@ class TokenManager:
                 logger.error(f"❌ KIS token refresh error ({response.status_code}): {error_desc}")
                 raise AuthenticationError(f"KIS token refresh failed: {error_desc}")
 
-            return data["access_token"]
+            # 명시적 만료시간 추출 (기본값 24시간)
+            # KIS returns 'expires_in' in seconds (e.g., 86400)
+            expires_in = int(data.get("expires_in", 86400))
+            
+            return data["access_token"], expires_in
 
-    async def _refresh_kiwoom_token(self) -> str:
-        """Kiwoom 토큰 갱신"""
+    async def _refresh_kiwoom_token(self) -> Tuple[str, int]:
+        """
+        Kiwoom 토큰 갱신
+        
+        Returns:
+            Tuple[str, int]: (token, expires_in)
+        """
         api_key = os.getenv("KIWOOM_API_KEY") or os.getenv("KIWOOM_APP_KEY")
         secret_key = os.getenv("KIWOOM_SECRET_KEY") or os.getenv("KIWOOM_APP_SECRET")
         
@@ -437,4 +451,9 @@ class TokenManager:
                 logger.error(f"❌ Kiwoom token refresh error ({response.status_code}): {error_msg}")
                 raise AuthenticationError(f"Kiwoom token refresh failed: {error_msg}")
 
-            return data["token"]
+            # Kiwoom 'expire_in' or similar? Assuming default 24h if missing for now
+            # as per docs/specs/token_manager_spec.md it was not explicitly detailed for Kiwoom response body
+            # We will default to 86400 but try to parse if standard fields exist.
+            expires_in = int(data.get("expires_in", data.get("expire_in", 86400)))
+
+            return data["token"], expires_in
