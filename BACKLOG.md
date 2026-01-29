@@ -9,6 +9,7 @@
 | 태스크 | 담당 페르소나 | 우선순위 | 상태 | 비고 |
 | :--- | :--- | :--- | :--- | :--- |
 | *(현재 진행 중인 태스크 없음)* | - | - | - | - |
+| **HOTFIX-2026-01-29: Verification Worker Crash** | Developer | - | **Resolved** | NameError & TaskType mismatch fixed |
 
 ---
 
@@ -31,7 +32,7 @@
 | **ISSUE-042: Docker Network Isolation Fix** | DevOps | - | Redis 연결 오류 수정 (Stock Prod vs Deploy) |
 | **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
 | ~~ISSUE-044: TimescaleDB Tick-to-Candle Automation~~ | Developer | ISSUE-043 | ✅ 완료 (2026-01-28) |
-| **ISSUE-047: Unified Verification Architecture** | Developer | RFC-005 | Verification + Realtime 통합 (Queue Based) |
+| ~~ISSUE-047: Unified Verification Architecture~~ | Developer | RFC-005 | ✅ 완료 (2026-01-29) |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -69,6 +70,9 @@
 
 ### 2026-01-29
 - [x] **ISSUE-044: Completed Verification & Merge** - Verified Continuous Aggregates with `test_continuous_aggregates_backfill`. Gap Analysis & Tests Passed.
+- [x] **ISSUE-047: Unified Verification Architecture (RFC-005)** - Verification + Realtime 통합 완료, Redis Queue 기반 비동기 처리, 전 종목(98개) 동적 로딩 및 교차 검증 구현 완료.
+- [x] **RFC-006: Automated Deployment Verification** - `verify_deployment_logs.py`를 통한 배포 자동 검증 프로세스 구축 및 `/deploy-production` 워크플로우 통합.
+- [x] **HOTFIX-2026-01-29**: `verification-worker` NameError 및 task_type 불일치 긴급 수정 완료.
 
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
