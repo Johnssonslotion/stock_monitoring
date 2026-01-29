@@ -221,6 +221,7 @@ class TestMethodSelection:
             "FHKST01010100",
             "FHKST01010300",
             "FHKST01010400",
+            "FHKST01010900",  # Pillar 8: 주식현재가 투자자
             "FHKST03010200",
             "HHDFS76950200"
         }
