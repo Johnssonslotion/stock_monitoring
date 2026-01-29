@@ -23,6 +23,8 @@
 ### 🟠 P1 (높음)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
 | :--- | :--- | :--- | :--- |
+| **ISSUE-051: Short Selling Collector (Pillar 8)** | Developer | ISSUE-049 | 공매도 수집기 구현 |
+| **ISSUE-052: Program Trading Collector (Pillar 8)** | Developer | ISSUE-049 | 프로그램매매 수집기 구현 |
 | **ISSUE-002: Virtual Investment Platform - Frontend UI** | Frontend Developer | ISSUE-001 | 화면 구현 대기 |
 | **ISSUE-003: API Error Handling & Logging** | Developer | - | WebSocket 재연결, 타임아웃 개선 |
 | **ISSUE-008: OrderBook Streaming** | Backend | ISSUE-007 | Delta 기반 호가 스트리밍 |
@@ -33,7 +35,6 @@
 | **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
 | ~~ISSUE-044: TimescaleDB Tick-to-Candle Automation~~ | Developer | ISSUE-043 | ✅ 완료 (2026-01-28) |
 | ~~ISSUE-047: Unified Verification Architecture~~ | Developer | RFC-005 | ✅ 완료 (2026-01-29) |
-| **ISSUE-048: Market Intelligence (Short Selling/Investor)** | Developer | - | **Todo** (Pillar 8) |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
@@ -74,6 +75,8 @@
 - [x] **ISSUE-047: Unified Verification Architecture (RFC-005)** - Verification + Realtime 통합 완료, Redis Queue 기반 비동기 처리, 전 종목(98개) 동적 로딩 및 교차 검증 구현 완료.
 - [x] **RFC-006: Automated Deployment Verification** - `verify_deployment_logs.py`를 통한 배포 자동 검증 프로세스 구축 및 `/deploy-production` 워크플로우 통합.
 - [x] **HOTFIX-2026-01-29**: `verification-worker` NameError 및 task_type 불일치 긴급 수정 완료.
+- [x] **RFC-010: Market Intelligence & Rotation Analysis (Pillar 8)** - 투자자 수급, 공매도, 프로그램매매 분석 아키텍처 설계
+- [x] **ISSUE-050: Investor Trends Collector (Pillar 8)** - `FHKST01010900` TR ID 검증 완료, InvestorTrendsCollector 구현
 
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
@@ -160,6 +163,10 @@
 | [ISSUE-039](docs/issues/ISSUE-039.md) | TickArchiver Redis 연결 불안정 | P1 | Done | Developer |
 | [ISSUE-040](docs/issues/ISSUE-040.md) | **API Hub v2 Phase 2 - Real API Integration** | **P0** | Done | Developer |
 | [ISSUE-041](docs/issues/ISSUE-041.md) | **API Hub v2 Phase 3 - Production & Monitoring** | **P0** | **✅ Phase 3-B Done** | Developer |
+| [ISSUE-049](docs/issues/ISSUE-049.md) | **KIS TR ID Discovery (Pillar 8)** | **P0** | **Partial** | Developer |
+| [ISSUE-050](docs/issues/ISSUE-050.md) | **Investor Trends Collector (Pillar 8)** | **P1** | **Done** | Developer |
+| [ISSUE-051](docs/issues/ISSUE-051.md) | **Short Selling Collector (Pillar 8)** | **P1** | Todo | Developer |
+| [ISSUE-052](docs/issues/ISSUE-052.md) | **Program Trading Collector (Pillar 8)** | **P1** | Todo | Developer |
 
 ---
 
@@ -176,4 +183,4 @@ RFC/ADR 승인은 되었으나 특정 조건 충족 시 착수하기 위해 대�
 
 ---
 
-*Last Updated: 2026-01-23 (DEF-API-HUB-001 Activated)*
+*Last Updated: 2026-01-29 (Pillar 8 Market Intelligence - ISSUE-051/052 추가)*
