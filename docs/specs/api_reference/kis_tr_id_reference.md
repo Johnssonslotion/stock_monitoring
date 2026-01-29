@@ -33,6 +33,8 @@
 |-------|------|----------|--------|----------|--------|
 | `FHKST01010400` | 국내주식 현재가 분봉 | `/uapi/domestic-stock/v1/quotations/inquire-ccnl` | GET | **P0** | `verification-worker` |
 | `FHKST03010200` | 국내주식 기간별 분봉 | `/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice` | GET | **P0** | `history-collector`, `KISMinuteCollector` |
+| `FHKST01010900` | 주식현재가 투자자 | `/uapi/domestic-stock/v1/quotations/inquire-investor` | GET | **P1** | `analysis-worker` (수급 분석) |
+| `FHKST02010100` | 주식현재가 공매도 | `/uapi/domestic-stock/v1/quotations/inquire-short-selling-status` | GET | **P1** | `analysis-worker` (공매도 분석) |
 | `HHDFS76950200` | 해외주식 기간별 분봉 | `/uapi/overseas-price/v1/quotations/inquire-daily-chartprice` | GET | **P1** | `history-collector` (US) |
 
 ---

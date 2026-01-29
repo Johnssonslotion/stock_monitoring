@@ -33,6 +33,7 @@
 | **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
 | ~~ISSUE-044: TimescaleDB Tick-to-Candle Automation~~ | Developer | ISSUE-043 | ✅ 완료 (2026-01-28) |
 | ~~ISSUE-047: Unified Verification Architecture~~ | Developer | RFC-005 | ✅ 완료 (2026-01-29) |
+| **ISSUE-048: Market Intelligence (Short Selling/Investor)** | Developer | - | **Todo** (Pillar 8) |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |
