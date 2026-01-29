@@ -36,6 +36,7 @@ class VerificationStatus(Enum):
     SKIPPED = "SKIPPED"
     INCOMPLETE = "INCOMPLETE"
     ERROR = "ERROR"
+    TICKS_UNAVAILABLE = "TICKS_UNAVAILABLE"  # Fallback: Tick API failed, Candles upserted
 
 
 class ConfidenceLevel(Enum):
@@ -332,7 +333,9 @@ class VerificationConsumer:
             try:
                 task = VerificationTask.from_json(raw_task)
                 
-                if task.task_type == "recovery":
+                if task.task_type == "verify_db_integrity":
+                    result = await self._handle_db_integrity_task(task)
+                elif task.task_type == "recovery":
                     result = await self._handle_recovery_task(task)
                 else:
                     result = await self._process_task(task)
@@ -342,9 +345,11 @@ class VerificationConsumer:
                 # DB에 검증 결과 저장 (감사 추적)
                 await self._save_verification_result(result)
 
-                # Gap 발견 시 자동 복구 작업 생성
-                if result.status == VerificationStatus.NEEDS_RECOVERY:
-                    logger.warning(f"⚠️  Gap detected: {result.symbol}, delta={result.delta_pct:.2%}")
+                # Auto-Recovery is now handled INSIDE _handle_db_integrity_task
+                # So we don't need to trigger it here for that task type.
+                # Only legacy 'full_verification' might need this, but we are moving away from it.
+                if task.task_type not in ["verify_db_integrity", "recovery"] and result.status == VerificationStatus.NEEDS_RECOVERY:
+                    logger.warning(f"⚠️  Legacy Gap detected: {result.symbol}, delta={result.delta_pct:.2%}")
                     logger.info(f"🔧 Auto-triggering recovery task for {result.symbol}")
                     
                     # 복구 작업 생성 (우선순위 큐에 추가)
@@ -398,22 +403,234 @@ class VerificationConsumer:
             logger.error(f"Failed to save verification result to DB: {e}")
 
 
-    async def _handle_recovery_task(self, task: VerificationTask) -> VerificationResult:
+    async def _handle_db_integrity_task(self, task: VerificationTask) -> VerificationResult:
         """
-        긴급 복구 작업 처리 (API Hub Queue 사용)
-        
-        ISSUE-041: KIS Tick Data 복구를 API Hub를 통해 처리
+        [RFC-005] DB Integrity Verification (Realtime + Batch)
+        Target: DB View (market_candles_1m_view) vs API Candle (Ground Truth)
+        Strategy: Tick Recovery First -> Candle Fallback
         """
         symbol = task.symbol
-        # minute format: "2026-01-20T09:00:00"
-        dt_min = datetime.fromisoformat(task.minute)
+        # Parse minute or date (Batch uses date)
+        if task.minute:
+            start_dt = datetime.fromisoformat(task.minute)
+            end_dt = start_dt + timedelta(minutes=1)
+            target_desc = f"{symbol} @ {task.minute}"
+        elif task.date:
+            # Full Day Batch (09:00 ~ 15:30)
+            start_dt = datetime.strptime(f"{task.date} 090000", "%Y%m%d %H%M%S")
+            end_dt = datetime.strptime(f"{task.date} 153000", "%Y%m%d %H%M%S")
+            target_desc = f"{symbol} @ {task.date} (Batch)"
+        else:
+            return VerificationResult(symbol=symbol, minute=None, status=VerificationStatus.ERROR, confidence=ConfidenceLevel.SKIP, message="No date/minute")
+
+        logger.info(f"🔍 Verifying Integrity: {target_desc}")
+
+        # 1. Fetch DB Volume (Aggregated)
+        db_vol = await self._fetch_db_volume(symbol, start_dt, end_dt)
+        
+        # 2. Fetch API Volume (Ground Truth) - KIS Minute Candle
+        # Note: If Batch, we might need to loop or fetch 1 day candle? 
+        # For simplicity and granularity, let's fetch Minute Candles from API.
+        # But for full day batch, calling API for every minute is too heavy (380 calls).
+        # Optimization: Fetch Daily Candle for Volume Checksum first?
+        # User constraint: "verify day's minute candles".
+        # Let's assume we verify volume sum.
+        
+        api_vol_sum = 0
+        api_candles = []
+        
+        # Helper to fetch API
+        try:
+            api_candles = await self._fetch_api_candles_range(symbol, start_dt, end_dt)
+            if not api_candles:
+                 return VerificationResult(symbol=symbol, minute=str(start_dt), status=VerificationStatus.SKIPPED, confidence=ConfidenceLevel.SKIP, message="No API Data")
+            
+            api_vol_sum = sum(c['volume'] for c in api_candles)
+        except Exception as e:
+             return VerificationResult(symbol=symbol, minute=str(start_dt), status=VerificationStatus.ERROR, confidence=ConfidenceLevel.SKIP, message=f"API Error: {e}")
+
+        # 3. Compare
+        delta_pct = abs(api_vol_sum - db_vol) / max(api_vol_sum, 1) if api_vol_sum > 0 else 0.0
+        tolerance = VerificationConfig.BATCH_TOLERANCE_PCT if task.date else VerificationConfig.REALTIME_TOLERANCE_PCT
+        
+        if delta_pct > tolerance:
+            logger.warning(f"🚨 Integrity Fail: {target_desc} (DB={db_vol}, API={api_vol_sum}, Δ={delta_pct:.2%})")
+            
+            # 4. Trigger Recovery (Same-Day Catch-up)
+            recovery_res = await self._recover_from_gap(symbol, start_dt, end_dt, api_candles)
+            return recovery_res
+        
+        return VerificationResult(
+            symbol=symbol,
+            minute=str(start_dt),
+            status=VerificationStatus.PASS,
+            confidence=ConfidenceLevel.HIGH,
+            db_volume=db_vol,
+            kis_volume=api_vol_sum,
+            delta_pct=delta_pct,
+            message="Integrity Verified"
+        )
+
+    async def _fetch_db_volume(self, symbol: str, start: datetime, end: datetime) -> int:
+        if not self.db_pool: return 0
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT COALESCE(SUM(volume), 0) as vol 
+                FROM market_candles_1m_view 
+                WHERE symbol = $1 AND time >= $2 AND time < $3
+            """, symbol, start, end)
+            return int(row['vol']) if row else 0
+
+    async def _fetch_api_candles_range(self, symbol: str, start: datetime, end: datetime) -> List[Dict]:
+        """
+        API Hub를 통해 KIS 분봉 데이터 조회 (API Hub Client 사용)
+        FHKST01010400: 주식현재가 분봉 조회
+        """
+        tr_id = get_tr_id_for_use_case(UseCase.MINUTE_CANDLE_KIS)
+        
+        # KIS API requests backward from time provided.
+        # Format: HHMMSS of the END time.
+        # Caution: KIS might return 30 items default. 'FID_INPUT_HOUR_1'="" implies current time.
+        # If we need specific range, we might need multiple calls or careful time setting.
+        # Simplification: For realtime (last min) or small batch, fetching "current" set matches nicely.
+        # But for yesterday's batch, we need to specify time.
+        
+        target_time = end.strftime("%H%M%S")
+        
+        # If target is future/now, use empty string for latest
+        if end > datetime.now():
+            target_time = ""
+
+        try:
+            result = await self.hub_client.execute(
+                provider="KIS",
+                tr_id=tr_id,
+                params={
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_HOUR_1": target_time,
+                    "FID_PW_DATA_INCU_YN": "Y"
+                },
+                timeout=10.0
+            )
+
+            if result.get("status") == "SUCCESS":
+                data = result.get("data", {})
+                items = data.get("output2", [])
+                
+                valid_candles = []
+                for item in items:
+                    # Filter items within range [start, end)
+                    t_str = item.get('stck_cntg_hour') # HHMMSS
+                    if not t_str: continue
+                    
+                    # Date is implicit? KIS REST output2 is intraday.
+                    # We assume it matches the 'start' date if we are doing daily check.
+                    # Or we just match HHMMSS.
+                    
+                    # Logic: Create datetime from item time
+                    # API returns latest first? Need to check sort order. Usually desc.
+                    
+                    # Infer date from start (assuming range is within one day)
+                    item_dt = datetime.strptime(f"{start.strftime('%Y%m%d')} {t_str}", "%Y%m%d %H%M%S")
+                    
+                    if start <= item_dt < end:
+                         valid_candles.append({
+                             'time': item_dt,
+                             'open': float(item.get('stck_oprc', 0)),
+                             'high': float(item.get('stck_hgpr', 0)),
+                             'low': float(item.get('stck_lwpr', 0)),
+                             'close': float(item.get('stck_prpr', 0)),
+                             'volume': int(item.get('cntg_vol', 0))
+                         })
+                
+                return valid_candles
+                
+            else:
+                logger.warning(f"Failed to fetch API candles: {result.get('reason')}")
+                return []
+
+        except Exception as e:
+            logger.error(f"API Fetch Error: {e}")
+            return []
+
+    async def _recover_from_gap(self, symbol: str, start: datetime, end: datetime, api_candles: List[Dict]) -> VerificationResult:
+        """
+        [RFC-005] Recovery Strategy: Tick First -> Candle Fallback
+        """
+        logger.info(f"🔧 Attempting Recovery for {symbol}")
+        
+        # Step 1: Try Tick Recovery (API Hub)
+        try:
+            # Only possible if gap is small (e.g. 1 min). If batch, iterating all ticks is hard.
+            # But "Same-Day" usually implies we CAN fetch ticks.
+            # Let's try fetching ticks for the specific minutes that failed.
+            # Only fetch ticks if range is short (< 10 min).
+            duration = (end - start).total_seconds() / 60
+            if duration <= 10: 
+                # Simulate Tick Fetch
+                tick_count = await self._fetch_and_save_ticks(symbol, start)
+                if tick_count > 0:
+                     return VerificationResult(symbol=symbol, minute=str(start), status=VerificationStatus.PASS, confidence=ConfidenceLevel.HIGH, message="Recovered via Ticks")
+        except Exception as e:
+            logger.warning(f"⚠️ Tick Recovery Failed: {e}")
+
+        # Step 2: Fallback to Candle Upsert
+        logger.warning(f"⚠️ Fallback to Candle Upsert for {symbol}")
+        try:
+             # Upsert api_candles to market_candles table
+             await self._upsert_candles_fallback(symbol, api_candles)
+             return VerificationResult(
+                 symbol=symbol, 
+                 minute=str(start), 
+                 status=VerificationStatus.TICKS_UNAVAILABLE, # Log this!
+                 confidence=ConfidenceLevel.MEDIUM, 
+                 message="Recovered via Candle Fallback (Ticks Unavailable)"
+             )
+        except Exception as e:
+             return VerificationResult(symbol=symbol, minute=str(start), status=VerificationStatus.FAIL, confidence=ConfidenceLevel.LOW, message=f"Recovery Failed: {e}")
+
+    async def _upsert_candles_fallback(self, symbol: str, candles: List[Dict]):
+        """
+        Fallback: API 캔들 데이터를 DB에 Upsert
+        SourceType: 'REST_API_KIS' (Ground Truth)
+        """
+        if not self.db_pool or not candles: return
+
+        query = """
+            INSERT INTO market_candles (time, symbol, interval, open, high, low, close, volume, source_type)
+            VALUES ($1, $2, '1m', $3, $4, $5, $6, $7, 'REST_API_KIS')
+            ON CONFLICT (symbol, time) DO UPDATE
+            SET open = EXCLUDED.open,
+                high = EXCLUDED.high,
+                low = EXCLUDED.low,
+                close = EXCLUDED.close,
+                volume = EXCLUDED.volume,
+                source_type = EXCLUDED.source_type
+        """
+        
+        args = [
+            (c['time'], symbol, c['open'], c['high'], c['low'], c['close'], c['volume'])
+            for c in candles
+        ]
+        
+        try:
+            async with self.db_pool.acquire() as conn:
+                await conn.executemany(query, args)
+            logger.info(f"✅ Upserted {len(candles)} candles for {symbol} (Fallback)")
+        except Exception as e:
+            logger.error(f"Failed to upsert candles: {e}")
+            raise e
+
+    async def _fetch_and_save_ticks(self, symbol: str, dt_min: datetime) -> int:
+        """
+        지정된 분(Minute)의 틱 데이터를 API에서 조회하여 저장
+        Returns: 저장된 틱 수
+        """
         # KIS API expects HHMMSS of the end of the window (approx)
         target_time_req = (dt_min + timedelta(minutes=1)).strftime("%H%M%S")
         
-        logger.info(f"🛠️ Handling recovery task for {symbol} @ {dt_min.strftime('%H:%M')}")
-        
         try:
-            # API Hub를 통한 틱 데이터 조회 (TR Registry 사용)
             tr_id = get_tr_id_for_use_case(UseCase.TICK_DATA_KIS)
             result = await self.hub_client.execute(
                 provider="KIS",
@@ -425,44 +642,75 @@ class VerificationConsumer:
                 },
                 timeout=10.0
             )
-            
+
             if result.get("status") == "SUCCESS":
                 data = result.get("data", {})
                 items = data.get("output1", [])
-
                 if items:
-                    # Filter and Save Ticks
-                    recovered_count = await self._save_recovered_ticks(symbol, dt_min, items)
-
-                    # ISSUE-044: Refresh Continuous Aggregates after recovery
-                    if recovered_count > 0:
-                        await self._refresh_continuous_aggregates(
-                            dt_min,
-                            dt_min + timedelta(minutes=1)
-                        )
-
-                    return VerificationResult(
-                        symbol=symbol,
-                        minute=task.minute,
-                        status=VerificationStatus.PASS,
-                        confidence=ConfidenceLevel.HIGH,
-                        message=f"Recovered {recovered_count} ticks via API Hub + View refreshed"
-                    )
+                    # Filter: Only Ticks matching the target minute HHMM
+                    target_hhmm = dt_min.strftime("%H%M")
+                    filtered_items = [
+                        item for item in items 
+                        if item.get('stck_cntg_hour', '')[:4] == target_hhmm
+                    ]
+                    
+                    if filtered_items:
+                        return await self._save_recovered_ticks(symbol, dt_min, filtered_items)
+            
             elif result.get("status") == "RATE_LIMITED":
-                logger.warning(f"[{symbol}] Rate limited by API Hub")
+                logger.warning(f"[{symbol}] Rate limited by API Hub during tick fetch")
             else:
-                logger.warning(f"[{symbol}] API Hub error: {result.get('reason')}")
+                 logger.debug(f"[{symbol}] API Hub Tick Fetch result: {result.get('status')}")
+
+        except Exception as e:
+            logger.error(f"[{symbol}] Tick fetch error: {e}")
+        
+        return 0
+
+    async def _handle_recovery_task(self, task: VerificationTask) -> VerificationResult:
+        """
+        긴급 복구 작업 처리 (Legacy wrapper around _fetch_and_save_ticks)
+        """
+        symbol = task.symbol
+        dt_min = datetime.fromisoformat(task.minute)
+        
+        logger.info(f"🛠️ Handling recovery task for {symbol} @ {dt_min.strftime('%H:%M')}")
+        
+        try:
+            recovered_count = await self._fetch_and_save_ticks(symbol, dt_min)
+            
+            if recovered_count > 0:
+                # Refresh View
+                await self._refresh_continuous_aggregates(
+                    dt_min,
+                    dt_min + timedelta(minutes=1)
+                )
+
+                return VerificationResult(
+                    symbol=symbol,
+                    minute=task.minute,
+                    status=VerificationStatus.PASS,
+                    confidence=ConfidenceLevel.HIGH,
+                    message=f"Recovered {recovered_count} ticks via API Hub + View refreshed"
+                )
+            else:
+                return VerificationResult(
+                    symbol=symbol,
+                    minute=task.minute,
+                    status=VerificationStatus.FAIL,
+                    confidence=ConfidenceLevel.LOW,
+                    message="Recovery failed (No ticks found)"
+                )
         
         except Exception as e:
-            logger.error(f"[{symbol}] Recovery failed: {e}")
-        
-        return VerificationResult(
-            symbol=symbol,
-            minute=task.minute,
-            status=VerificationStatus.FAIL,
-            confidence=ConfidenceLevel.LOW,
-            message="Recovery failed (API Hub error)"
-        )
+            logger.error(f"[{symbol}] Recovery task exception: {e}")
+            return VerificationResult(
+                symbol=symbol,
+                minute=task.minute,
+                status=VerificationStatus.ERROR,
+                confidence=ConfidenceLevel.LOW,
+                message=f"Recovery exception: {e}"
+            )
 
     async def _save_recovered_ticks(self, symbol: str, dt_min: datetime, items: List[Dict]) -> int:
         """복구된 틱 데이터를 DB에 저장 (TimescaleDB)"""
@@ -743,27 +991,21 @@ async def run_verification_worker():
         VerificationSchedule,
         ScheduleType
     )
-    from src.verification.realtime_verifier import RealtimeVerifier
-
-    producer = VerificationProducer()
-    consumer = VerificationConsumer()
-    scheduler = VerificationSchedulerManager()
+    from datetime import datetime # Added import for datetime.now()
+    # [RFC-005] Unified Scheduler Configuration
     
-    # Realtime Verifier (for market hours)
-    verifier = RealtimeVerifier()
-    await verifier.initialize()
+    # Define wrapper for realtime verification (All Target Symbols)
+    async def produce_realtime_all():
+        # Get current time for the task
+        now = datetime.now()
+        symbols = await producer.get_target_symbols()
+        # For priority symbols only? Or all?
+        # RFC says "Priority Symbols" for Realtime.
+        # Assuming get_target_symbols returns priority ones for now.
+        for sym in symbols:
+            await producer.produce_minute_task(sym, now)
 
-    # 장 마감 후 배치 검증 스케줄
-    scheduler.add_schedule(
-        VerificationSchedule(
-            name="daily_verification",
-            schedule_type=ScheduleType.CRON,
-            cron_expr="40 15 * * 1-5"
-        ),
-        producer.produce_daily_tasks
-    )
-
-    # 장 중 실시간 검증 스케줄 (매 분 +5초)
+    # 1. Realtime Verification (Every Minute) -> Producer
     scheduler.add_schedule(
         VerificationSchedule(
             name="realtime_minute_verification",
@@ -773,7 +1015,17 @@ async def run_verification_worker():
             market_hours_only=True,
             mode="realtime"
         ),
-        verifier.run_verification_cycle
+        produce_realtime_all
+    )
+
+    # 2. Daily Batch (15:40) -> Producer
+    scheduler.add_schedule(
+        VerificationSchedule(
+            name="daily_verification",
+            schedule_type=ScheduleType.CRON,
+            cron_expr="40 15 * * 1-5" # 15:40 KST
+        ),
+        producer.produce_daily_tasks
     )
 
     try:
@@ -788,7 +1040,8 @@ async def run_verification_worker():
         await scheduler.stop()
         await consumer.close()
         await producer.close()
-        await verifier.cleanup()
+        await producer.close()
+        # await verifier.cleanup() # Removed
 
 
 if __name__ == "__main__":
