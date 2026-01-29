@@ -92,6 +92,32 @@
 | `updated_at` | TIMESTAMPTZ | YES | Last update timestamp (Default: NOW()) |
 | `validation_status` | TEXT | YES | Validation result status |
 
+### 3.6 투자자별 매매동향 (Investor Trends) [Pillar 8]
+- **Table Name**: `market_investor_trends`
+- **Type**: Hypertable (Partition by `time`)
+
+| Column | Type | Nullable | Description |
+| :--- | :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | **No** | 수집 기준 시간 (Daily/Min) |
+| **symbol** | `TEXT` | **No** | 종목 코드 |
+| **fore_ntby_qty** | `BIGINT` | Yes | 외국인 순매수 수량 |
+| **orgn_ntby_qty** | `BIGINT` | Yes | 기관 순매수 수량 |
+| **pstn_ntby_qty** | `BIGINT` | Yes | 개인 순매수 수량 |
+| **fore_pstn_rate** | `DOUBLE` | Yes | 외국인 보유 지분율 |
+
+### 3.7 공매도 현황 (Short Selling Status) [Pillar 8]
+- **Table Name**: `market_short_selling`
+- **Type**: Hypertable (Partition by `time`)
+
+| Column | Type | Nullable | Description |
+| :--- | :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | **No** | 수취 일자/시간 |
+| **symbol** | `TEXT` | **No** | 종목 코드 |
+| **short_vol** | `BIGINT` | Yes | 공매도 거래량 |
+| **short_amt** | `BIGINT` | Yes | 공매도 거래 대금 |
+| **short_balance** | `BIGINT` | Yes | 공매도 잔고 수량 |
+| **short_bal_amt** | `BIGINT` | Yes | 공매도 잔고 금액 |
+
 **Indexes**:
 - `market_ticks_validation_bucket_time_idx` (Derived from Hypertable)
 - Unique Constraint: `(bucket_time, symbol)`
