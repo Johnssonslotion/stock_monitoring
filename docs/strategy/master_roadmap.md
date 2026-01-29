@@ -147,7 +147,7 @@
 ### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [IN-PROGRESS]
 - **목표**: 비용(세금, 수수료, 이자)과 시장 마찰(슬리피지)을 반영한 하이퍼 리얼리즘 시뮬레이션 환경 구축.
 - **Phase 0 (Ideation)**: [IDEA-005: 하이퍼 리얼리즘 가상 거래 시스템](../ARCHIVE/ideas/ID-virtual-trading-v2.md) 브레인스토밍 완료 (🌿 Sprouting). (✅ DONE 2026-01-19)
-- **Phase 1 (Virtual Exchange)**: RFC-007 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
+- **Phase 1 (Virtual Exchange)**: RFC-004 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
   - *Related*: [ISSUE-001](../ARCHIVE/issues/ISSUE-001.md) (Backend)
 - **Phase 2 (Cost Modeling)**: KR/US 세금, 브로커 수수료, 미수 이자 계산 엔진 통합. (⏳ PLANNED)
 - **Phase 3 (Dashboard)**: 실시간 PnL 및 비용 분석 대시보드 추가. (⏳ PLANNED)

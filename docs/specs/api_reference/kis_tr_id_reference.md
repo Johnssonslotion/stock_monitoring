@@ -1,9 +1,9 @@
 # KIS API TR ID Reference (Ground Truth)
 
-**Version**: 1.0  
-**Last Updated**: 2026-01-23  
-**Authority**: KIS OpenAPI Portal (https://apiportal.koreainvestment.com)  
-**Status**: API Hub v2 Integration Reference
+**Version**: 1.1
+**Last Updated**: 2026-01-29
+**Authority**: KIS OpenAPI Portal (https://apiportal.koreainvestment.com)
+**Status**: API Hub v2 Integration Reference (Pillar 8 확장)
 
 ---
 
@@ -33,9 +33,22 @@
 |-------|------|----------|--------|----------|--------|
 | `FHKST01010400` | 국내주식 현재가 분봉 | `/uapi/domestic-stock/v1/quotations/inquire-ccnl` | GET | **P0** | `verification-worker` |
 | `FHKST03010200` | 국내주식 기간별 분봉 | `/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice` | GET | **P0** | `history-collector`, `KISMinuteCollector` |
-| `FHKST01010900` | 주식현재가 투자자 | `/uapi/domestic-stock/v1/quotations/inquire-investor` | GET | **P1** | `analysis-worker` (수급 분석) |
-| `FHKST02010100` | 주식현재가 공매도 | `/uapi/domestic-stock/v1/quotations/inquire-short-selling-status` | GET | **P1** | `analysis-worker` (공매도 분석) |
 | `HHDFS76950200` | 해외주식 기간별 분봉 | `/uapi/overseas-price/v1/quotations/inquire-daily-chartprice` | GET | **P1** | `history-collector` (US) |
+
+### 2.3 Pillar 8: Market Intelligence (신규) - 2026-01-29 검증
+
+| TR ID | 용도 | URL Path | Method | 상태 | 사용처 |
+|-------|------|----------|--------|------|--------|
+| `FHKST01010900` | 주식현재가 투자자 | `/uapi/domestic-stock/v1/quotations/inquire-investor` | GET | **검증완료** | `InvestorTrendsCollector` |
+| `FHKST01060200` | 종목별 외국계 순매수추이 | (URL 재조사 필요) | GET | **404 Error** | - |
+| `FHKST01060500` | 국내주식 공매도 일별추이 | (URL 재조사 필요) | GET | **404 Error** | - |
+| `FHKST01060600` | 프로그램매매 종목별 추이 | (URL 재조사 필요) | GET | **404 Error** | - |
+
+**검증 결과 요약**:
+- **FHKST01010900**: 투자자별(외국인/기관/개인) 순매수량/대금 데이터 제공 확인
+- 나머지 TR ID: URL 경로 오류로 404 발생, KIS Developers 포털에서 재확인 필요
+
+> **Note**: `FHKST01010900`만으로도 Pillar 8 Phase 1의 핵심 데이터(투자자별 수급)를 수집 가능합니다.
 
 ---
 
@@ -245,16 +258,23 @@
 
 ---
 
-### 3.5 FHKST01010900 (주식현재가 투자자) ⚠️ 미구현
+## 3.5 Pillar 8: Market Intelligence TR IDs (신규)
 
-**용도**: 현재가 기준 외국인/기관 매매동향 요약 정보 조회
+### 3.5.1 FHKST01010900 (주식현재가 투자자) - **검증 완료** (2026-01-29)
 
-**URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor`  
-**Method**: GET  
+**용도**: 종목별 투자자(외국인/기관/개인) 매매 동향 조회
+
+**URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor`
+**Method**: GET
+**Authority**: [KIS API Portal - 국내주식시세](https://apiportal.koreainvestment.com)
+**Status**: **API 호출 성공** - 스키마 검증 완료
 
 **Headers**:
 ```json
 {
+  "authorization": "Bearer {access_token}",
+  "appkey": "{app_key}",
+  "appsecret": "{app_secret}",
   "tr_id": "FHKST01010900",
   "custtype": "P"
 }
@@ -263,60 +283,61 @@
 **Query Parameters**:
 ```json
 {
-  "FID_COND_MRKT_DIV_CODE": "J",
-  "FID_INPUT_ISCD": "005930"
+  "FID_COND_MRKT_DIV_CODE": "J",       // 시장구분 (J: 주식)
+  "FID_INPUT_ISCD": "005930"           // 종목코드
 }
 ```
 
-**Response (Core Fields)**:
-- `fore_ntby_qty`: 외국인 순매수 수량
-- `orgn_ntby_qty`: 기관 순매수 수량
-- `pstn_ntby_qty`: 개인 순매수 수량
-
----
-
-### 3.6 FHKST02010100 (주식현재가 공매도 현황) ⚠️ 미구현
-
-**용도**: 특정 종목의 실시간/일별 공매도 거래량 및 잔고 조회
-
-**URL**: `/uapi/domestic-stock/v1/quotations/inquire-short-selling-status`  
-**Method**: GET  
-
-**Headers**:
+**Response** (실제 검증됨 - 2026-01-29):
 ```json
 {
-  "tr_id": "FHKST02010100",
-  "custtype": "P"
+  "rt_cd": "0",
+  "output": [
+    {
+      "stck_bsop_date": "20260129",      // 영업일자
+      "stck_clpr": "160700",             // 종가
+      "prdy_vrss": "-1700",              // 전일대비
+      "prdy_vrss_sign": "5",             // 등락부호
+      "frgn_ntby_qty": "-7415509",       // 외국인 순매수량 ★
+      "frgn_ntby_tr_pbmn": "-1195226",   // 외국인 순매수대금 (백만원)
+      "orgn_ntby_qty": "-1769435",       // 기관 순매수량 ★
+      "orgn_ntby_tr_pbmn": "-287799",    // 기관 순매수대금 (백만원)
+      "prsn_ntby_qty": "9140430",        // 개인 순매수량 ★
+      "prsn_ntby_tr_pbmn": "1475759",    // 개인 순매수대금 (백만원)
+      "frgn_shnu_vol": "7123017",        // 외국인 매수량
+      "frgn_seln_vol": "14538526",       // 외국인 매도량
+      "orgn_shnu_vol": "8725997",        // 기관 매수량
+      "orgn_seln_vol": "10495432",       // 기관 매도량
+      "prsn_shnu_vol": "19799124",       // 개인 매수량
+      "prsn_seln_vol": "10658694"        // 개인 매도량
+    }
+  ]
 }
 ```
 
-**Query Parameters**:
-```json
-{
-  "FID_COND_MRKT_DIV_CODE": "J",
-  "FID_INPUT_ISCD": "005930"
-}
-```
-
-**Response (Core Fields)**:
-- `sstk_cntg_vol`: 공매도 체결 수량
-- `sstk_cntg_amt`: 공매도 체결 금액
-- `sstk_val_amt`: 공매도 평가 금액
+**사용처**:
+- `InvestorTrendsCollector`: 투자자별 수급 데이터 수집 (Pillar 8 Phase 1)
 
 ---
 
-### 3.7 FHKST03020100 (종목별 투자자 매매추이) ⚠️ 미구현
+### 3.5.2 공매도/프로그램매매 TR ID - **URL 재조사 필요**
 
-**용도**: 특정 종목의 일별 투자자별 순매수 추이 (히스토리)
+아래 TR ID들은 2026-01-29 테스트에서 **404 Not Found** 오류가 발생했습니다.
+URL 경로가 잘못 추정되어 KIS Developers 포털에서 정확한 엔드포인트 확인이 필요합니다.
 
-**URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor` (Path vary by doc)
-**Method**: GET  
+| TR ID (추정) | 기능 | 테스트 결과 | 조치 |
+|-------------|------|-----------|------|
+| `FHKST01060200` | 외국계 순매수추이 | 404 Error | URL 재조사 필요 |
+| `FHKST01060500` | 공매도 일별추이 | 404 Error | URL 재조사 필요 |
+| `FHKST01060600` | 프로그램매매 추이 | 404 Error | URL 재조사 필요 |
 
----
+**다음 단계**:
+1. [KIS Developers 포털](https://apiportal.koreainvestment.com)에서 [국내주식] > [시세분석] 카테고리 확인
+2. "공매도", "프로그램매매", "외국인" 관련 API의 정확한 TR ID 및 URL 확인
+3. 본 문서 업데이트 후 재검증
 
-### 3.8 FHKST03110100 (업종별 수급현황) ⚠️ 미구현
-
-**용도**: 특정 업종(코스피, 코스닥, 각 섹터)의 전체 수급 흐름 조회
+> **Note**: `FHKST01010900` (주식현재가 투자자)만으로도 외국인/기관/개인 순매수 데이터를 수집할 수 있음.
+> 공매도/프로그램매매 데이터는 별도 API 확인 후 추가 구현 예정.
 
 ---
 
