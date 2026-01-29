@@ -9,6 +9,7 @@ import websockets
 from src.data_ingestion.price.schemas.kiwoom_re import KiwoomTickData, KiwoomOrderbookData
 from src.core.config import get_redis_connection
 from src.data_ingestion.logger.raw_logger import RawWebSocketLogger
+from src.data_ingestion.price.common.delta_filter import OrderbookDeltaFilter
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class KiwoomWSCollector:
         self.token_expire: Optional[datetime] = None
         self.running = False
         self.redis = None
+        self._delta_filter = OrderbookDeltaFilter() # [NEW] 델타 기반 중복 제거
         
         # Environment-based URL selection
         if mock_mode:
@@ -228,7 +230,11 @@ class KiwoomWSCollector:
                         elif msg_type == "0D":
                             # Orderbook (0D) Handling [ISSUE-026]
                             ob = KiwoomOrderbookData.from_ws_json(values, symbol)
-                            await self._publish_orderbook_to_redis(ob)
+                            
+                            # [NEW] 10단계 확장 및 델타 필터 적용
+                            ob_dict = ob.model_dump()
+                            if self._delta_filter.should_publish(symbol, ob_dict):
+                                await self._publish_orderbook_to_redis(ob)
                 
         except Exception as e:
             logger.debug(f"Msg Parse Error: {e}")

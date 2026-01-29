@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
+import logging
+
+logger = logging.getLogger(__name__)
 
 class KiwoomTickData(BaseModel):
     """
@@ -135,5 +138,5 @@ class KiwoomOrderbookData(BaseModel):
                 total_bid_volume=total_bid
             )
         except Exception as e:
-             # logging.error(f"Orderbook Parse Error: {e}")
+             logger.error(f"Orderbook Parse Error: {e}")
              raise ValueError(f"Orderbook Parse Error: {e}")
