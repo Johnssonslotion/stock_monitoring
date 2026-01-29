@@ -29,10 +29,10 @@ FROM market_ticks
 GROUP BY time_bucket('1 minute', time), symbol
 WITH NO DATA;
 
--- SELECT add_continuous_aggregate_policy('market_candles_1m_view',
---     start_offset => INTERVAL '1 hour',
---     end_offset => INTERVAL '1 minute',
---     schedule_interval => INTERVAL '1 minute');
+SELECT add_continuous_aggregate_policy('market_candles_1m_view',
+    start_offset => INTERVAL '1 hour',
+    end_offset => INTERVAL '1 minute',
+    schedule_interval => INTERVAL '1 minute');
 
 -- COMMENT ON MATERIALIZED VIEW market_candles_1m_view IS 
 -- '1-minute candles aggregated from market_ticks.';
@@ -54,10 +54,10 @@ FROM market_ticks
 GROUP BY time_bucket('5 minutes', time), symbol
 WITH NO DATA;
 
--- SELECT add_continuous_aggregate_policy('market_candles_5m_view',
---    start_offset => INTERVAL '2 hours',
---    end_offset => INTERVAL '5 minutes',
---    schedule_interval => INTERVAL '5 minutes');
+SELECT add_continuous_aggregate_policy('market_candles_5m_view',
+   start_offset => INTERVAL '2 hours',
+   end_offset => INTERVAL '5 minutes',
+   schedule_interval => INTERVAL '5 minutes');
 
 -- COMMENT ON MATERIALIZED VIEW market_candles_5m_view IS 
 -- '5-minute candles aggregated from market_ticks.';
@@ -79,10 +79,10 @@ FROM market_ticks
 GROUP BY time_bucket('1 hour', time), symbol
 WITH NO DATA;
 
--- SELECT add_continuous_aggregate_policy('market_candles_1h_view',
---    start_offset => INTERVAL '2 days',
---    end_offset => INTERVAL '1 hour',
---    schedule_interval => INTERVAL '1 hour');
+SELECT add_continuous_aggregate_policy('market_candles_1h_view',
+   start_offset => INTERVAL '2 days',
+   end_offset => INTERVAL '1 hour',
+   schedule_interval => INTERVAL '1 hour');
 
 -- COMMENT ON MATERIALIZED VIEW market_candles_1h_view IS 
 -- '1-hour candles aggregated from market_ticks.';
@@ -104,10 +104,10 @@ FROM market_ticks
 GROUP BY time_bucket('1 day', time), symbol
 WITH NO DATA;
 
--- SELECT add_continuous_aggregate_policy('market_candles_1d_view',
---     start_offset => INTERVAL '7 days',
---     end_offset => INTERVAL '1 day',
---     schedule_interval => INTERVAL '1 day');
+SELECT add_continuous_aggregate_policy('market_candles_1d_view',
+    start_offset => INTERVAL '7 days',
+    end_offset => INTERVAL '1 day',
+    schedule_interval => INTERVAL '1 day');
 
 -- COMMENT ON MATERIALIZED VIEW market_candles_1d_view IS 
 -- 'Daily candles aggregated from market_ticks.';

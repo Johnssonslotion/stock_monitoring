@@ -229,14 +229,14 @@ async def get_recent_candles(symbol: str, limit: int = 200, interval: str = "1d"
                 query = f"""
                     WITH combined_data AS (
                         SELECT time, open, high, low, close, volume, 1 as priority
-                        FROM candles_1m
-                        WHERE symbol = $1
+                        FROM market_candles
+                        WHERE symbol = $1 AND interval = '1m'
 
                         UNION ALL
 
                         SELECT time, open, high, low, close, volume, 2 as priority
-                        FROM market_candles
-                        WHERE symbol = $1 AND interval = '1m'
+                        FROM market_candles_1m_view
+                        WHERE symbol = $1
                     )
                     SELECT time, open, high, low, close, volume
                     FROM (
