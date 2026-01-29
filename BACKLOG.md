@@ -31,6 +31,7 @@
 | **ISSUE-042: Docker Network Isolation Fix** | DevOps | - | Redis 연결 오류 수정 (Stock Prod vs Deploy) |
 | **ISSUE-043: RealtimeVerifier OHLCV Upgrade** | Developer | ISSUE-042 | 거래량 검증 → OHLCV 완전 검증 고도화 |
 | ~~ISSUE-044: TimescaleDB Tick-to-Candle Automation~~ | Developer | ISSUE-043 | ✅ 완료 (2026-01-28) |
+| **ISSUE-047: Unified Verification Architecture** | Developer | RFC-005 | Verification + Realtime 통합 (Queue Based) |
 
 ### 🟡 P2 (보통)
 | 태스크 | 담당 페르소나 | 의존성 | 비고 |

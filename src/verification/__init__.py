@@ -7,7 +7,7 @@ Components:
 - api_registry: API Target 중앙 관리
 - scheduler: 검증 작업 스케줄링
 - worker: Producer/Consumer 기반 비동기 처리
-- realtime_verifier: 장 중 실시간 검증
+
 
 Usage:
     from src.verification import api_registry, VerificationProducer, VerificationConsumer
@@ -52,10 +52,7 @@ from src.verification.worker import (
     VerificationConsumer
 )
 
-from src.verification.realtime_verifier import (
-    RealtimeConfig,
-    RealtimeVerifier
-)
+
 
 __all__ = [
     # API Registry
@@ -83,7 +80,5 @@ __all__ = [
     "VerificationProducer",
     "VerificationConsumer",
 
-    # Realtime
-    "RealtimeConfig",
-    "RealtimeVerifier"
+
 ]
