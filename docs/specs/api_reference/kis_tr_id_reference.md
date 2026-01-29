@@ -35,19 +35,20 @@
 | `FHKST03010200` | 국내주식 기간별 분봉 | `/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice` | GET | **P0** | `history-collector`, `KISMinuteCollector` |
 | `HHDFS76950200` | 해외주식 기간별 분봉 | `/uapi/overseas-price/v1/quotations/inquire-daily-chartprice` | GET | **P1** | `history-collector` (US) |
 
-### 2.3 Pillar 8: Market Intelligence (신규)
+### 2.3 Pillar 8: Market Intelligence (신규) - 2026-01-29 검증
 
-> **Status**: Schema Discovery 필요 - TR ID 추정치, 실제 API 호출로 검증 예정
+| TR ID | 용도 | URL Path | Method | 상태 | 사용처 |
+|-------|------|----------|--------|------|--------|
+| `FHKST01010900` | 주식현재가 투자자 | `/uapi/domestic-stock/v1/quotations/inquire-investor` | GET | **검증완료** | `InvestorTrendsCollector` |
+| `FHKST01060200` | 종목별 외국계 순매수추이 | (URL 재조사 필요) | GET | **404 Error** | - |
+| `FHKST01060500` | 국내주식 공매도 일별추이 | (URL 재조사 필요) | GET | **404 Error** | - |
+| `FHKST01060600` | 프로그램매매 종목별 추이 | (URL 재조사 필요) | GET | **404 Error** | - |
 
-| TR ID | 용도 | URL Path (추정) | Method | 우선순위 | 사용처 |
-|-------|------|-----------------|--------|----------|--------|
-| `FHKST01010900` | 주식현재가 투자자 | `/uapi/domestic-stock/v1/quotations/inquire-investor` | GET | **P0** | `InvestorTrendsCollector` |
-| `FHKST01060200` | 종목별 외국계 순매수추이 | `/uapi/domestic-stock/v1/quotations/inquire-foreign-daily` | GET | **P1** | `InvestorTrendsCollector` |
-| `FHKST01060300` | 국내기관/외국인 매매종목 | `/uapi/domestic-stock/v1/quotations/inquire-member-daily` | GET | **P1** | `InvestorTrendsCollector` |
-| `FHKST01060500` | 국내주식 공매도 일별추이 | `/uapi/domestic-stock/v1/quotations/inquire-daily-short` | GET | **P1** | `ShortSellingCollector` |
-| `FHKST01060600` | 프로그램매매 종목별 추이 | `/uapi/domestic-stock/v1/quotations/inquire-daily-program` | GET | **P1** | `ProgramTradingCollector` |
+**검증 결과 요약**:
+- **FHKST01010900**: 투자자별(외국인/기관/개인) 순매수량/대금 데이터 제공 확인
+- 나머지 TR ID: URL 경로 오류로 404 발생, KIS Developers 포털에서 재확인 필요
 
-**Note**: 위 TR ID는 KIS Developers 포털 기준 추정치입니다. 실제 구현 전 Schema Discovery 테스트를 통해 정확한 TR ID와 응답 구조를 검증해야 합니다.
+> **Note**: `FHKST01010900`만으로도 Pillar 8 Phase 1의 핵심 데이터(투자자별 수급)를 수집 가능합니다.
 
 ---
 
@@ -259,13 +260,14 @@
 
 ## 3.5 Pillar 8: Market Intelligence TR IDs (신규)
 
-### 3.5.1 FHKST01010900 (주식현재가 투자자) - 검증 완료
+### 3.5.1 FHKST01010900 (주식현재가 투자자) - **검증 완료** (2026-01-29)
 
 **용도**: 종목별 투자자(외국인/기관/개인) 매매 동향 조회
 
 **URL**: `/uapi/domestic-stock/v1/quotations/inquire-investor`
 **Method**: GET
 **Authority**: [KIS API Portal - 국내주식시세](https://apiportal.koreainvestment.com)
+**Status**: **API 호출 성공** - 스키마 검증 완료
 
 **Headers**:
 ```json
@@ -286,67 +288,56 @@
 }
 ```
 
-**Response** (추정):
+**Response** (실제 검증됨 - 2026-01-29):
 ```json
 {
   "rt_cd": "0",
-  "output": {
-    "frgn_ntby_qty": "123456",         // 외국인 순매수량
-    "frgn_ntby_tr_pbmn": "1234567890", // 외국인 순매수대금
-    "orgn_ntby_qty": "234567",         // 기관 순매수량
-    "orgn_ntby_tr_pbmn": "2345678901", // 기관 순매수대금
-    "prsn_ntby_qty": "-358023",        // 개인 순매수량
-    "prsn_ntby_tr_pbmn": "-3580230000" // 개인 순매수대금
-  }
+  "output": [
+    {
+      "stck_bsop_date": "20260129",      // 영업일자
+      "stck_clpr": "160700",             // 종가
+      "prdy_vrss": "-1700",              // 전일대비
+      "prdy_vrss_sign": "5",             // 등락부호
+      "frgn_ntby_qty": "-7415509",       // 외국인 순매수량 ★
+      "frgn_ntby_tr_pbmn": "-1195226",   // 외국인 순매수대금 (백만원)
+      "orgn_ntby_qty": "-1769435",       // 기관 순매수량 ★
+      "orgn_ntby_tr_pbmn": "-287799",    // 기관 순매수대금 (백만원)
+      "prsn_ntby_qty": "9140430",        // 개인 순매수량 ★
+      "prsn_ntby_tr_pbmn": "1475759",    // 개인 순매수대금 (백만원)
+      "frgn_shnu_vol": "7123017",        // 외국인 매수량
+      "frgn_seln_vol": "14538526",       // 외국인 매도량
+      "orgn_shnu_vol": "8725997",        // 기관 매수량
+      "orgn_seln_vol": "10495432",       // 기관 매도량
+      "prsn_shnu_vol": "19799124",       // 개인 매수량
+      "prsn_seln_vol": "10658694"        // 개인 매도량
+    }
+  ]
 }
 ```
 
 **사용처**:
-- `InvestorTrendsCollector`: 투자자별 수급 데이터 수집
+- `InvestorTrendsCollector`: 투자자별 수급 데이터 수집 (Pillar 8 Phase 1)
 
 ---
 
-### 3.5.2 FHKST01060500 (공매도 일별추이) - 검증 필요
+### 3.5.2 공매도/프로그램매매 TR ID - **URL 재조사 필요**
 
-**용도**: 종목별 공매도 일별 거래량/잔고 추이 조회
+아래 TR ID들은 2026-01-29 테스트에서 **404 Not Found** 오류가 발생했습니다.
+URL 경로가 잘못 추정되어 KIS Developers 포털에서 정확한 엔드포인트 확인이 필요합니다.
 
-**URL**: `/uapi/domestic-stock/v1/quotations/inquire-daily-short` (추정)
-**Method**: GET
-**Status**: Schema Discovery 필요
+| TR ID (추정) | 기능 | 테스트 결과 | 조치 |
+|-------------|------|-----------|------|
+| `FHKST01060200` | 외국계 순매수추이 | 404 Error | URL 재조사 필요 |
+| `FHKST01060500` | 공매도 일별추이 | 404 Error | URL 재조사 필요 |
+| `FHKST01060600` | 프로그램매매 추이 | 404 Error | URL 재조사 필요 |
 
-**Query Parameters** (추정):
-```json
-{
-  "FID_COND_MRKT_DIV_CODE": "J",       // 시장구분 (J: 주식)
-  "FID_INPUT_ISCD": "005930",          // 종목코드
-  "FID_INPUT_DATE_1": "20260101",      // 조회시작일
-  "FID_INPUT_DATE_2": "20260129"       // 조회종료일
-}
-```
+**다음 단계**:
+1. [KIS Developers 포털](https://apiportal.koreainvestment.com)에서 [국내주식] > [시세분석] 카테고리 확인
+2. "공매도", "프로그램매매", "외국인" 관련 API의 정확한 TR ID 및 URL 확인
+3. 본 문서 업데이트 후 재검증
 
-**사용처**:
-- `ShortSellingCollector`: 공매도 현황 수집
-
----
-
-### 3.5.3 FHKST01060600 (프로그램매매 추이) - 검증 필요
-
-**용도**: 종목별 프로그램매매(차익/비차익) 추이 조회
-
-**URL**: `/uapi/domestic-stock/v1/quotations/inquire-daily-program` (추정)
-**Method**: GET
-**Status**: Schema Discovery 필요
-
-**Query Parameters** (추정):
-```json
-{
-  "FID_COND_MRKT_DIV_CODE": "J",       // 시장구분 (J: 주식)
-  "FID_INPUT_ISCD": "005930"           // 종목코드
-}
-```
-
-**사용처**:
-- `ProgramTradingCollector`: 프로그램매매 현황 수집
+> **Note**: `FHKST01010900` (주식현재가 투자자)만으로도 외국인/기관/개인 순매수 데이터를 수집할 수 있음.
+> 공매도/프로그램매매 데이터는 별도 API 확인 후 추가 구현 예정.
 
 ---
 
