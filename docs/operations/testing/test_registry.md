@@ -51,6 +51,7 @@
 | TS-SAVE-02 | `test_save_orderbook_to_timescale` | `tests/test_timescale_archiver.py` | `market_orderbook` 22개 컬럼 매핑 저장 확인 | ✅ Pass |
 | TS-TYPE-01 | `test_system_metrics_type_validation` | `tests/test_system_metrics_schema.py` | Sentinel 발행 메트릭 데이터 타입이 Archiver 스키마와 일치하는지 검증 (FMEA 3.4) | ✅ Pass |
 | TS-CON-01 | `test_concurrent_save` | (신규 예정) | KR/US 동시 인입 시 DB 커넥션 풀 경합 및 저장 성공 여부 | ⏳ 예정 |
+| DB-TS-04 | `test_continuous_aggregates_backfill` | `tests/integration/test_continuous_aggregates.py` | TimescaleDB Continuous Aggregates 활성화 및 데이터 백필 검증 (ISSUE-044) | ✅ Pass |
 
 ---
 
