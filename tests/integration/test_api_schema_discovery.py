@@ -30,7 +30,7 @@ from src.api_gateway.hub.client import APIHubClient
 
 # 테스트 대상 TR ID 목록
 TEST_CASES = [
-    # KIS
+    # KIS - 기존
     {
         "provider": "KIS",
         "tr_id": "FHKST01010300",
@@ -67,6 +67,43 @@ TEST_CASES = [
             "GUBN": "0",
             "BYMD": datetime.now().strftime("%Y%m%d"),
             "MODP": "1"
+        }
+    },
+    # KIS - Pillar 8: Market Intelligence (신규)
+    {
+        "provider": "KIS",
+        "tr_id": "FHKST01010900",
+        "description": "[Pillar8] 주식현재가 투자자 (외국인/기관/개인)",
+        "params": {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": "005930"  # 삼성전자
+        }
+    },
+    {
+        "provider": "KIS",
+        "tr_id": "FHKST01060200",
+        "description": "[Pillar8] 종목별 외국계 순매수추이",
+        "params": {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": "005930"
+        }
+    },
+    {
+        "provider": "KIS",
+        "tr_id": "FHKST01060500",
+        "description": "[Pillar8] 국내주식 공매도 일별추이",
+        "params": {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": "005930"
+        }
+    },
+    {
+        "provider": "KIS",
+        "tr_id": "FHKST01060600",
+        "description": "[Pillar8] 프로그램매매 종목별 추이",
+        "params": {
+            "FID_COND_MRKT_DIV_CODE": "J",
+            "FID_INPUT_ISCD": "005930"
         }
     },
     # Kiwoom
