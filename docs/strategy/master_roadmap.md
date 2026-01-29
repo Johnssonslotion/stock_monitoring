@@ -77,7 +77,8 @@
     - **Concept**: Unified Worker with Morning Audit (10:30 KST) & Fallback Logging.
     - **Goal**: Tick 누락 시 API Candle로 서비스 복구 + Audit 로그 적재.
     - **Spec**: [RFC-005_unified_verification_architecture.md](../governance/decisions/RFC-005_unified_verification_architecture.md).
-    - **Status**: 🌿 Sprouting (Implementation Started)
+    - **Status**: ✅ **COMPLETED** (2026-01-29)
+    - **Results**: Unified Worker deployed, same-day tick recovery functional, 99 symbols verified weekly.
 - **Phase 5 (Subscription Confirmation)**: 🆕 **2026-01-14**
   - **구독 응답 확인**: 서버 응답(SUCCESS/FAILED) 파싱 및 성공/실패 판정. (✅ DONE)
   - **재시도 로직**: 구독 실패 시 심볼당 최대 3회 즉시 재시도. (✅ DONE)
@@ -129,18 +130,21 @@
 - **Phase 2.5 (External Health Dashboard)**: 🆕 **2026-01-19** (ISSUE-014)
   - **Standalone Bridge**: Netlify(Front) + Northflank(API) 기반의 독립 모니터링 구축.
   - **Security**: X-API-KEY 및 CORS 기반의 외부 접속 보안 강화.
-- **Phase 3 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
+- **Phase 3 (Deployment Governance)**: 🆕 **2026-01-29** (RFC-006)
+  - **Strategy**: 배포 전후 로그 자동 스캔 (`verify_deployment_logs.py`) 및 `/deploy-production` 워크플로우 통합. (✅ DONE)
+  - **Goal**: 배포 후 초기화 에러(NameError 등) 즉각 감지 및 롤백 가이드 제공.
+- **Phase 4 (Chaos Engineering)**: DB/Network 강제 장애 시나리오 검증.
 - **Phase 4 (Advanced Analytics)**: 🆕 **2026-01-19**
   - **Market Dynamics**: Correlation Engine 및 Whale Alert 시스템 통합.
   - *Related*: [ISSUE-010](../issues/ISSUE-010.md) (Correlation), [ISSUE-011](../issues/ISSUE-011.md) (Whale Alert)
 
-### Pillar 5: 전략 및 실험 (Strategy & Experimentation) [DONE] 🆕
+### Pillar 5: 전략 및 실험 (Strategy & Experimentation) [DONE]
 - **목표**: 과거 데이터를 활용한 전략 가속 검증 및 최적화.
 - **Phase 1 (Backtest Infrastructure)**: 원본과 격리된 백테스팅 전용 워크트리 및 Docker 인프라 구축. (✅ DONE)
 - **Phase 2 (Engine Core)**: Event-driven 방식의 백테스팅 엔진 및 성과 측정(Sharpe, MDD 등) 모듈 구현. (✅ DONE)
 - **Phase 3 (Worktree Strategy)**: `exp/*` 브랜치를 활용한 실험 관리 및 결과 리포트 자동화 프로세스 정립. (✅ DONE)
 
-### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [IN-PROGRESS] 🆕
+### Pillar 6: 가상 투자 시뮬레이션 (Virtual Exchange) [IN-PROGRESS]
 - **목표**: 비용(세금, 수수료, 이자)과 시장 마찰(슬리피지)을 반영한 하이퍼 리얼리즘 시뮬레이션 환경 구축.
 - **Phase 0 (Ideation)**: [IDEA-005: 하이퍼 리얼리즘 가상 거래 시스템](../ARCHIVE/ideas/ID-virtual-trading-v2.md) 브레인스토밍 완료 (🌿 Sprouting). (✅ DONE 2026-01-19)
 - **Phase 1 (Virtual Exchange)**: RFC-004 Architecture. 실제 브로커 API와 동일한 인터페이스를 가지지만 내부적으로 시뮬레이션 로직을 수행하는 `VirtualBroker` 구현. (⏳ PLANNED)
@@ -149,7 +153,7 @@
 - **Phase 3 (Dashboard)**: 실시간 PnL 및 비용 분석 대시보드 추가. (⏳ PLANNED)
   - *Related*: [ISSUE-002](../issues/ISSUE-002.md) (Frontend)
 
-### Pillar 5: 시스템 리팩토링 및 코드 품질 고도화 (System Refactoring) [DEFERRED]
+### Pillar 7: 시스템 리팩토링 및 코드 품질 고도화 (System Refactoring) [DEFERRED]
 - **Goal**: RFC-003(Config Management Standard) 준수를 위한 전략 파라미터의 YAML 분리 및 Config 시스템 구조 개선.
 - **Phase 1 (Config Separation)**: 전략 알고리즘 파라미터(이동평균 기간, 임계값 등)를 코드에서 분리하여 `configs/strategy_config.yaml`로 이관. (⏳ DEFERRED)
   - `SampleMomentumStrategy` 등 기존 전략 코드 리팩토링.
