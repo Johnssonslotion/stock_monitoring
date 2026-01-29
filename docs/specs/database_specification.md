@@ -92,32 +92,6 @@
 | `updated_at` | TIMESTAMPTZ | YES | Last update timestamp (Default: NOW()) |
 | `validation_status` | TEXT | YES | Validation result status |
 
-### 3.6 투자자별 매매동향 (Investor Trends) [Pillar 8]
-- **Table Name**: `market_investor_trends`
-- **Type**: Hypertable (Partition by `time`)
-
-| Column | Type | Nullable | Description |
-| :--- | :--- | :--- | :--- |
-| **time** | `TIMESTAMPTZ` | **No** | 수집 기준 시간 (Daily/Min) |
-| **symbol** | `TEXT` | **No** | 종목 코드 |
-| **fore_ntby_qty** | `BIGINT` | Yes | 외국인 순매수 수량 |
-| **orgn_ntby_qty** | `BIGINT` | Yes | 기관 순매수 수량 |
-| **pstn_ntby_qty** | `BIGINT` | Yes | 개인 순매수 수량 |
-| **fore_pstn_rate** | `DOUBLE` | Yes | 외국인 보유 지분율 |
-
-### 3.7 공매도 현황 (Short Selling Status) [Pillar 8]
-- **Table Name**: `market_short_selling`
-- **Type**: Hypertable (Partition by `time`)
-
-| Column | Type | Nullable | Description |
-| :--- | :--- | :--- | :--- |
-| **time** | `TIMESTAMPTZ` | **No** | 수취 일자/시간 |
-| **symbol** | `TEXT` | **No** | 종목 코드 |
-| **short_vol** | `BIGINT` | Yes | 공매도 거래량 |
-| **short_amt** | `BIGINT` | Yes | 공매도 거래 대금 |
-| **short_balance** | `BIGINT` | Yes | 공매도 잔고 수량 |
-| **short_bal_amt** | `BIGINT` | Yes | 공매도 잔고 금액 |
-
 **Indexes**:
 - `market_ticks_validation_bucket_time_idx` (Derived from Hypertable)
 - Unique Constraint: `(bucket_time, symbol)`
@@ -129,6 +103,78 @@
 - `market_ticks_symbol_time_idx`: `(symbol, time DESC)` - 종목별 최신 조회 최적화.
 - `market_orderbook_symbol_time_idx`: `(symbol, time DESC)`
 
-## 5. 알려진 이슈 (Known Issues)
+## 5. Pillar 8: Market Intelligence Tables (RFC-010)
+
+### 5.1 투자자별 매매동향 (Investor Trends)
+- **Table Name**: `investor_trends`
+- **Type**: Hypertable
+- **Retention**: 30 Days
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | 거래일시 |
+| **symbol** | `TEXT` | 종목 코드 |
+| **foreign_buy** | `BIGINT` | 외국인 매수량 |
+| **foreign_sell** | `BIGINT` | 외국인 매도량 |
+| **foreign_net** | `BIGINT` | 외국인 순매수 |
+| **institution_buy** | `BIGINT` | 기관 매수량 |
+| **institution_sell** | `BIGINT` | 기관 매도량 |
+| **institution_net** | `BIGINT` | 기관 순매수 |
+| **retail_buy** | `BIGINT` | 개인 매수량 |
+| **retail_sell** | `BIGINT` | 개인 매도량 |
+| **retail_net** | `BIGINT` | 개인 순매수 |
+| **source** | `TEXT` | 출처 (KIS) |
+
+### 5.2 공매도 현황 (Short Selling)
+- **Table Name**: `short_selling`
+- **Type**: Hypertable
+- **Retention**: 30 Days
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | 거래일시 |
+| **symbol** | `TEXT` | 종목 코드 |
+| **short_volume** | `BIGINT` | 공매도 거래량 |
+| **short_ratio** | `DECIMAL(5,2)` | 공매도 비율 (%) |
+| **balance_volume** | `BIGINT` | 공매도 잔고 |
+| **balance_ratio** | `DECIMAL(5,2)` | 잔고 비율 (%) |
+
+### 5.3 프로그램 매매 (Program Trading)
+- **Table Name**: `program_trading`
+- **Type**: Hypertable
+- **Retention**: 30 Days
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | 거래일시 |
+| **symbol** | `TEXT` | 종목 코드 |
+| **arb_buy** | `BIGINT` | 차익 매수 |
+| **arb_sell** | `BIGINT` | 차익 매도 |
+| **arb_net** | `BIGINT` | 차익 순매수 |
+| **non_arb_buy** | `BIGINT` | 비차익 매수 |
+| **non_arb_sell** | `BIGINT` | 비차익 매도 |
+| **non_arb_net** | `BIGINT` | 비차익 순매수 |
+| **total_net** | `BIGINT` | 전체 순매수 |
+
+### 5.4 섹터 순환매 (Sector Rotation)
+- **Table Name**: `sector_rotation`
+- **Type**: Hypertable
+- **Retention**: 90 Days
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| **time** | `TIMESTAMPTZ` | 분석 일시 |
+| **sector_code** | `TEXT` | 섹터 코드 |
+| **sector_name** | `TEXT` | 섹터명 |
+| **money_flow_index** | `DECIMAL(10,2)` | 자금 유입도 지수 |
+| **foreign_flow** | `BIGINT` | 외국인 순매수 합계 |
+| **institution_flow** | `BIGINT` | 기관 순매수 합계 |
+| **rotation_signal** | `TEXT` | INFLOW / OUTFLOW / NEUTRAL |
+
+**Migration Script**: `sql/migrations/007_pillar8_market_intelligence.sql`
+
+---
+
+## 6. 알려진 이슈 (Known Issues)
 > [!WARNING]
 > 현재 `timescale_archiver.py` 코드 상 `market_orderbook` 테이블 생성 로직이 누락되어 있음. (Manual Creation 필요 상태) -> **Migration Script 작성 필요**.
