@@ -13,6 +13,7 @@ import asyncio
 import json
 import os
 import logging
+import yaml
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, asdict
@@ -171,18 +172,43 @@ class VerificationProducer:
         self._target_symbols = symbols
 
     async def get_target_symbols(self) -> List[str]:
-        """검증 대상 종목 조회"""
+        """검증 대상 종목 조회 (configs/kr_symbols.yaml 로드)"""
         if self._target_symbols:
             return self._target_symbols
 
-        # DB에서 활성 종목 조회 (간단 버전: 기본 종목)
-        return [
-            "005930",  # 삼성전자
-            "000660",  # SK하이닉스
-            "035420",  # NAVER
-            "035720",  # 카카오
-            "051910",  # LG화학
-        ]
+        config_path = os.path.join(os.getcwd(), "configs/kr_symbols.yaml")
+        if not os.path.exists(config_path):
+            logger.error(f"❌ Symbol config not found: {config_path}")
+            return ["005930", "000660"] # Fallback
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+            
+            symbols_data = config.get('symbols', {})
+            targets = []
+            
+            # Indices
+            for item in symbols_data.get('indices', []):
+                targets.append(item['symbol'])
+            
+            # Leverage
+            for item in symbols_data.get('leverage', []):
+                targets.append(item['symbol'])
+            
+            # Sectors
+            for sector_data in symbols_data.get('sectors', {}).values():
+                if 'etf' in sector_data:
+                    targets.append(sector_data['etf']['symbol'])
+                for stock in sector_data.get('top3', []):
+                    targets.append(stock['symbol'])
+            
+            unique_targets = sorted(list(set(targets)))
+            logger.info(f"📋 Loaded {len(unique_targets)} symbols for verification")
+            return unique_targets
+        except Exception as e:
+            logger.error(f"❌ Failed to load symbols from {config_path}: {e}")
+            return ["005930", "000660"]
 
     async def produce_daily_tasks(self):
         """장 마감 후 전체 검증 작업 생성"""
