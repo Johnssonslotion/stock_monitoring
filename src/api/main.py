@@ -11,8 +11,7 @@ import yaml
 from datetime import datetime
 from typing import List, Optional, Dict
 from .auth import verify_api_key
-from .routes import system
-from .routes import virtual
+from src.api.routes import system, virtual, realtime
 from src.broker.virtual import VirtualExchange
 
 # 로깅 설정
@@ -146,7 +145,8 @@ app = FastAPI(title="Antigravity API", version="1.0.0", lifespan=lifespan)
 
 # Register Routers
 app.include_router(system.router)
-app.include_router(virtual.router)
+app.include_router(virtual.router, prefix="/api/v1/virtual", tags=["Virtual Trading"])
+app.include_router(realtime.router, tags=["Realtime"]) # WebSocket routes don't usually have prefix
 
 # CORS 설정 (로컬 개발 및 Electron 앱 지원)
 app.add_middleware(

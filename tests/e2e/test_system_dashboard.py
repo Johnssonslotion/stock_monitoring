@@ -52,14 +52,14 @@ async def test_system_dashboard_e2e():
     for _ in range(10): # 5s timeout
         # Check Host Metric
         row_host = await conn.fetchrow(
-            "SELECT * FROM system_metrics WHERE type = 'cpu' AND value = $1 ORDER BY time DESC LIMIT 1", 
+            "SELECT * FROM system_metrics WHERE metric_name = 'cpu' AND value = $1 ORDER BY time DESC LIMIT 1", 
             test_cpu_val
         )
         if row_host: found_host = True
         
         # Check Container Metric (Meta field JSON query)
         row_cont = await conn.fetchrow(
-            "SELECT * FROM system_metrics WHERE type = 'container_status' AND meta->>'container' = $1", 
+            "SELECT * FROM system_metrics WHERE metric_name = 'container_status' AND labels->>'container' = $1", 
             container_name
         )
         if row_cont: found_container = True

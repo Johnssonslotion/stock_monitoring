@@ -27,6 +27,29 @@ async def test_continuous_aggregates_backfill():
         return
 
     try:
+        # 0. Setup: Insert Sample Data and Refresh View
+        # Insert raw ticks
+        await conn.execute("""
+            INSERT INTO market_ticks (time, symbol, price, volume, source)
+            VALUES 
+                (NOW() - INTERVAL '5 minutes', 'TEST_SYM', 100.0, 10, 'TEST'),
+                (NOW() - INTERVAL '4 minutes', 'TEST_SYM', 101.0, 20, 'TEST'),
+                (NOW() - INTERVAL '3 minutes', 'TEST_SYM', 102.0, 30, 'TEST')
+        """)
+        
+        # Refresh Continuous Aggregate manually (since real-time policy might be slow)
+        # Note: bucket range must cover the inserted data
+        try:
+            await conn.execute("""
+                CALL refresh_continuous_aggregate(
+                    'market_candles_1m_view',
+                    NULL, -- window_start (auto)
+                    NULL  -- window_end (auto)
+                )
+            """)
+        except Exception as e:
+            print(f"Refresh warning: {e}") 
+
         # 1. Check if the view exists and has data
         row_count = await conn.fetchval("SELECT COUNT(*) FROM market_candles_1m_view")
         print(f"DEBUG: market_candles_1m_view count = {row_count}")
