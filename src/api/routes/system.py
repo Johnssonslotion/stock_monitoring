@@ -22,7 +22,7 @@ async def get_system_metrics(request: Request, limit: int = 100):
     async with pool.acquire() as conn:
         # Fetch generic metrics
         rows = await conn.fetch("""
-            SELECT time, type, value, meta
+            SELECT time, metric_name as type, value, labels as meta
             FROM system_metrics
             ORDER BY time DESC
             LIMIT $1

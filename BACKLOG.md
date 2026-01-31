@@ -76,6 +76,9 @@
 - [x] **RFC-006: Automated Deployment Verification** - `verify_deployment_logs.py`를 통한 배포 자동 검증 프로세스 구축 및 `/deploy-production` 워크플로우 통합.
 - [x] **HOTFIX-2026-01-29**: `verification-worker` NameError 및 task_type 불일치 긴급 수정 완료.
 
+### 2026-01-31
+- [x] **ISSUE-008: Realtime Orderbook Streaming (Phase 1)** - WebSocket API(`src/api/routes/realtime.py`) 구현, StreamManager 통합, E2E 테스트(`test_system_dashboard.py`) 통과. (Stream Test는 ISSUE-050으로 이연)
+
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
   - ✅ `BackfillManager`: gatekeeper 통합 및 Self-Diagnosis 로직 추가
@@ -144,11 +147,12 @@
 | [ISSUE-005](docs/issues/ISSUE-005.md) | 캔들 데이터 서비스 | P2 | Open | Backend |
 | [ISSUE-006](docs/issues/ISSUE-006.md) | 시장 섹터 서비스 | P2 | Open | Data Engineer |
 | [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Done | Backend |
-| [ISSUE-008](docs/issues/ISSUE-008.md) | OrderBook Streaming | P1 | Open | Backend |
+| [ISSUE-008](docs/issues/ISSUE-008.md) | **OrderBook Streaming (Phase 1)** | P1 | **Phase 1 Done** | Backend |
 | [ISSUE-009](docs/issues/ISSUE-009.md) | Execution Streaming | P1 | Open | Backend |
 | [ISSUE-010](docs/issues/ISSUE-010.md) | Correlation Engine | P3 | Open | Quant |
 | [ISSUE-011](docs/issues/ISSUE-011.md) | Whale Alert System | P3 | Open | Backend |
 | [ISSUE-013](docs/issues/ISSUE-013.md) | Virtual Trading Audit | P1 | Open | Architect |
+| [ISSUE-050](docs/issues/ISSUE-050.md) | WebSocket Stream Test Stabilization (ISSUE-008 Follow-up) | P2 | Todo | QA |
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Done | Developer |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | DuckDBArchiver (Hybrid Architecture) | P1 | Done | Developer |
 | [ISSUE-018](docs/issues/ISSUE-018.md) | KIS Tick Recovery (Backfill Manager) | P1 | Done | Developer |
