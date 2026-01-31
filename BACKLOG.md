@@ -11,6 +11,7 @@
 | *(현재 진행 중인 태스크 없음)* | - | - | - | - |
 | **HOTFIX-2026-01-29: Verification Worker Crash** | Developer | - | **Resolved** | NameError & TaskType mismatch fixed |
 
+
 ---
 
 ## 2. 대기 중 (Todo)
@@ -77,6 +78,9 @@
 - [x] **HOTFIX-2026-01-29**: `verification-worker` NameError 및 task_type 불일치 긴급 수정 완료.
 - [x] **RFC-010: Market Intelligence & Rotation Analysis (Pillar 8)** - 투자자 수급, 공매도, 프로그램매매 분석 아키텍처 설계
 - [x] **ISSUE-050: Investor Trends Collector (Pillar 8)** - `FHKST01010900` TR ID 검증 완료, InvestorTrendsCollector 구현
+
+### 2026-01-31
+- [x] **ISSUE-008: Realtime Orderbook Streaming (Phase 1)** - WebSocket API(`src/api/routes/realtime.py`) 구현, StreamManager 통합, E2E 테스트(`test_system_dashboard.py`) 통과. (Stream Test는 ISSUE-050으로 이연)
 
 ### 2026-01-22
 - [x] **RFC-009: Ground Truth & API Control Policy Implementation**
@@ -146,11 +150,12 @@
 | [ISSUE-005](docs/issues/ISSUE-005.md) | 캔들 데이터 서비스 | P2 | Open | Backend |
 | [ISSUE-006](docs/issues/ISSUE-006.md) | 시장 섹터 서비스 | P2 | Open | Data Engineer |
 | [ISSUE-007](docs/issues/ISSUE-007.md) | WebSocket 연결 관리자 | P1 | Done | Backend |
-| [ISSUE-008](docs/issues/ISSUE-008.md) | OrderBook Streaming | P1 | Open | Backend |
+| [ISSUE-008](docs/issues/ISSUE-008.md) | **OrderBook Streaming (Phase 1)** | P1 | **Phase 1 Done** | Backend |
 | [ISSUE-009](docs/issues/ISSUE-009.md) | Execution Streaming | P1 | Open | Backend |
 | [ISSUE-010](docs/issues/ISSUE-010.md) | Correlation Engine | P3 | Open | Quant |
 | [ISSUE-011](docs/issues/ISSUE-011.md) | Whale Alert System | P3 | Open | Backend |
 | [ISSUE-013](docs/issues/ISSUE-013.md) | Virtual Trading Audit | P1 | Open | Architect |
+
 | [ISSUE-015](docs/issues/ISSUE-015.md) | 데이터 누락 자동 보완 | P1 | Done | Developer |
 | [ISSUE-017](docs/issues/ISSUE-017.md) | DuckDBArchiver (Hybrid Architecture) | P1 | Done | Developer |
 | [ISSUE-018](docs/issues/ISSUE-018.md) | KIS Tick Recovery (Backfill Manager) | P1 | Done | Developer |
@@ -167,6 +172,8 @@
 | [ISSUE-050](docs/issues/ISSUE-050.md) | **Investor Trends Collector (Pillar 8)** | **P1** | **Done** | Developer |
 | [ISSUE-051](docs/issues/ISSUE-051.md) | **Short Selling Collector (Pillar 8)** | **P1** | Todo | Developer |
 | [ISSUE-052](docs/issues/ISSUE-052.md) | **Program Trading Collector (Pillar 8)** | **P1** | Todo | Developer |
+| [ISSUE-053](docs/issues/ISSUE-053.md) | **10-Level Orderbook & Delta Compression** | **P1** | **Done** | Backend |
+| [ISSUE-054](docs/issues/ISSUE-054.md) | WebSocket Stream Test Stabilization | P2 | Todo | QA |
 
 ---
 
