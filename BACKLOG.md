@@ -10,6 +10,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | *(현재 진행 중인 태스크 없음)* | - | - | - | - |
 | **HOTFIX-2026-01-29: Verification Worker Crash** | Developer | - | **Resolved** | NameError & TaskType mismatch fixed |
+| **ISSUE-049: 10단계 호가 수집 확장 및 델타 압축 도입** | Developer | - | **In-Progress** | Kiwoom 10-level + DeltaFilter |
 
 ---
 
