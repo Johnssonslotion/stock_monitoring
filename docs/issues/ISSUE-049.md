@@ -13,3 +13,18 @@
 - **Broker**: Kiwoom
 - **Filter**: Delta-based (Price/Volume change detection)
 - **Depth**: 10 levels (Ask/Bid)
+
+## Verification Results (Approved)
+2026-01-30 자동화 테스트 검증 완료 (All Passed).
+
+### 1. Delta Filter (`tests/unit/test_delta_filter.py`)
+| Test Case | Outcome | Note |
+| :--- | :--- | :--- |
+| `test_orderbook_delta_filter` | ✅ PASS | 변동 없는 호가 필터링, 변경 시 허용 |
+| `test_orderbook_delta_filter_reset` | ✅ PASS | 초기화 후 재전송 로직 확인 |
+
+### 2. Kiwoom 10-Level Parsing (`tests/unit/test_kiwoom_orderbook.py`)
+| Test Case | Outcome | Note |
+| :--- | :--- | :--- |
+| `test_kiwoom_orderbook_10level_parsing` | ✅ PASS | 10단계 Ask/Bid 및 잔량 파싱 정확성 검증 |
+| `test_kiwoom_orderbook_parsing_error` | ✅ PASS | 비정상 데이터 입력 시 안정적 예외/로깅 처리 확인 |
